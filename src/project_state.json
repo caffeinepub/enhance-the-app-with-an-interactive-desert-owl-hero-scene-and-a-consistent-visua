@@ -1,0 +1,64 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 5,
+  "summary": "New project",
+  "architectural_notes": [],
+  "known_issues": [
+    "Build/pipeline failed during app build; retry requested."
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-implement-the-currently-empty-frontend-src-components-desertowlscene-tsx-as-a-lightweight-performance-safe-hero-scene-using-react-three-fiber-with-automatic-fallback-to-a-static-image-when-webgl-is-unavailable-or-fails-to-initialize",
+      "title": "Implement the currently empty `frontend/src/components/DesertOwlScene.tsx` as a lightweight, performance-safe hero scene using React Three Fiber, with automatic fallback to a static image when WebGL is unavailable or fails to initialize.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-the-new-desert-owl-hero-scene-to-the-home-page-frontend-src-pages-homepage-tsx-as-a-top-section-above-the-goal-text-ensuring-it-fits-rtl-layout-remains-responsive-on-mobile-and-does-not-degrade-perceived-performance-use-a-placeholder-while-loading",
+      "title": "Add the new desert-owl hero scene to the Home page (`frontend/src/pages/HomePage.tsx`) as a top section (above the goal text), ensuring it fits RTL layout, remains responsive on mobile, and does not degrade perceived performance (use a placeholder while loading).",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-unify-the-app-s-visual-theme-so-homepage-styling-and-global-splash-header-styling-feel-consistent-using-a-single-coherent-desert-wildlife-documentary-theme-sand-amber-olive-neutrals-high-readability-minimal-gradients-and-applying-it-consistently-across-the-main-header-splash-screen-and-home-sections-without-changing-app-functionality",
+      "title": "Unify the app’s visual theme so HomePage styling and global/splash/header styling feel consistent, using a single coherent “desert wildlife documentary” theme (sand/amber/olive neutrals, high readability, minimal gradients) and applying it consistently across the main header, splash screen, and home sections without changing app functionality.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-required-generated-images-as-static-assets-under-frontend-public-assets-generated-and-use-them-in-the-new-hero-fallback-rendering-do-not-serve-these-images-from-the-backend",
+      "title": "Add required generated images as static assets under `frontend/public/assets/generated` and use them in the new hero fallback rendering (do not serve these images from the backend).",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-identify-the-root-cause-of-the-current-build-pipeline-failure-and-apply-the-minimal-code-config-changes-required-so-the-project-builds-successfully-end-to-end-frontend-build-canister-build-without-introducing-functional-regressions",
+      "title": "Identify the root cause of the current build/pipeline failure and apply the minimal code/config changes required so the project builds successfully end-to-end (frontend build + canister build) without introducing functional regressions.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-lightweight-developer-facing-build-time-safeguards-to-prevent-the-same-build-failure-from-recurring-e-g-ensure-any-missing-imports-exports-missing-referenced-assets-or-invalid-route-component-lazy-imports-fail-fast-with-clear-errors-during-build",
+      "title": "Add lightweight, developer-facing build-time safeguards to prevent the same build failure from recurring (e.g., ensure any missing imports/exports, missing referenced assets, or invalid route/component lazy imports fail fast with clear errors during build).",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [],
+  "projectName": "Enhance the app with an interactive desert-owl hero scene and a consistent visual theme",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

@@ -1,0 +1,64 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Fix frontend build failure and add build-time safeguards",
+  "requirements": [
+    {
+      "id": "REQ-5",
+      "summary": "Fix the frontend-side root cause(s) of the build/pipeline failure with minimal, non-regressive changes so the app builds and loads Home successfully.",
+      "acceptanceCriteria": [
+        "A clean build completes successfully with no TypeScript compile errors and no Motoko compile errors.",
+        "The app loads to the Home page without a blank screen or runtime crash.",
+        "No edits are made to frontend immutable paths listed in SYSTEM_CONTEXT."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/backend.d.ts",
+          "operation": "modify",
+          "description": "Reconcile the frontend backendInterface typings with actual frontend usage to eliminate TypeScript build errors (e.g., add any missing method signatures referenced by hooks/components, and ensure return/parameter types match existing shared types like Principal, UserRole, etc.)."
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Fix TypeScript compile issues by aligning actor method calls with the updated backendInterface typings (remove any accidental/invalid calls, or adjust to the correct typed method names so hooks compile cleanly without using unsafe casts)."
+        },
+        {
+          "path": "frontend/src/hooks/useActor.ts",
+          "operation": "modify",
+          "description": "Ensure actor initialization code compiles cleanly and remains stable (keep initialization idempotent, avoid untyped/incorrect imports, and ensure the actor creation helper import is correct for the current project structure)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "summary": "Add lightweight build-time safeguards to fail fast on missing assets and invalid lazy imports without impacting initial load performance.",
+      "acceptanceCriteria": [
+        "If a referenced static asset path is missing, the issue is surfaced clearly during development/build (not silently at runtime).",
+        "No increase in initial page load time is introduced by the safeguards.",
+        "The Home page still renders its hero section and existing sections as before."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/lib/requiredAssets.ts",
+          "operation": "create",
+          "description": "Create a small, developer-facing required-asset registry that resolves key Home/hero/header static assets via build-checked imports (e.g., using URL-based imports that fail when the file is missing) and throws a clear error when an expected asset cannot be resolved."
+        },
+        {
+          "path": "frontend/src/components/DesertOwlScene.tsx",
+          "operation": "modify",
+          "description": "Replace hard-coded hero image string paths with required-asset registry references so missing hero assets fail fast during dev/build; keep the rendered hero UI and existing Arabic copy unchanged."
+        },
+        {
+          "path": "frontend/src/components/MainHeader.tsx",
+          "operation": "modify",
+          "description": "Replace hard-coded header logo image string paths with required-asset registry references so missing logo assets fail fast during dev/build; keep navigation and existing Arabic UI unchanged."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Add a minimal developer-only check that validates lazy import targets are defined (e.g., centralize lazy imports in one module and ensure import failures surface with clear console errors during build/dev) without adding runtime work to the initial render path."
+        }
+      ]
+    }
+  ]
+}

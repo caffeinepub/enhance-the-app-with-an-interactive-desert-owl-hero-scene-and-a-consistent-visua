@@ -1,0 +1,258 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Desert wildlife documentary theme - Sand/Amber/Olive neutrals */
+    --background: 0 0% 100%;
+    --foreground: 30 20% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 30 20% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 20% 15%;
+    --primary: 35 80% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 40 30% 85%;
+    --secondary-foreground: 30 20% 15%;
+    --muted: 40 30% 90%;
+    --muted-foreground: 30 15% 40%;
+    --accent: 45 85% 55%;
+    --accent-foreground: 30 20% 15%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 40 25% 85%;
+    --input: 40 25% 85%;
+    --ring: 35 80% 45%;
+    --radius: 0.5rem;
+    --chart-1: 35 80% 55%;
+    --chart-2: 45 70% 50%;
+    --chart-3: 25 60% 45%;
+    --chart-4: 50 75% 60%;
+    --chart-5: 30 65% 50%;
+  }
+
+  .dark {
+    /* Dark mode - warm desert night tones */
+    --background: 30 15% 10%;
+    --foreground: 40 30% 95%;
+    --card: 30 15% 12%;
+    --card-foreground: 40 30% 95%;
+    --popover: 30 15% 12%;
+    --popover-foreground: 40 30% 95%;
+    --primary: 40 70% 60%;
+    --primary-foreground: 30 15% 10%;
+    --secondary: 30 20% 20%;
+    --secondary-foreground: 40 30% 95%;
+    --muted: 30 20% 18%;
+    --muted-foreground: 40 20% 65%;
+    --accent: 45 75% 55%;
+    --accent-foreground: 30 15% 10%;
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 40 30% 95%;
+    --border: 30 20% 22%;
+    --input: 30 20% 22%;
+    --ring: 40 70% 60%;
+    --chart-1: 40 75% 55%;
+    --chart-2: 50 70% 60%;
+    --chart-3: 30 65% 50%;
+    --chart-4: 55 80% 65%;
+    --chart-5: 35 70% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Noto Sans Arabic', 'Cairo', 'Tajawal', system-ui, -apple-system, sans-serif;
+    font-size: 20px;
+    line-height: 1.9;
+    direction: rtl;
+  }
+}
+
+/* Splash Screen Styles */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #92400e 0%, #b45309 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
+}
+
+.splash-screen.fade-out {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.splash-owl-image {
+  width: 400px;
+  height: 400px;
+  object-fit: contain;
+  margin-bottom: 2rem;
+  background: transparent !important;
+  filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.3));
+}
+
+/* Enforce transparency for all owl images */
+.owl-image,
+.owl-image-container,
+.owl-image-container img,
+img[src*="owl"],
+img[alt*="البومة"],
+img[alt*="owl"] {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* 3D Canvas transparency */
+canvas {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* Image View Page Styles - Perfectly Opaque Black Background */
+.image-view-page {
+  background-color: #000000 !important;
+  background: #000000 !important;
+}
+
+.image-view-container {
+  background-color: #000000 !important;
+  background: #000000 !important;
+}
+
+/* Site Manager Section - Enhanced Visibility with Subtle Animation */
+.site-manager-section {
+  position: relative;
+  overflow: hidden;
+}
+
+.site-manager-section::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) translateY(100%) rotate(45deg);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+/* Mobile Responsiveness Enhancements */
+@media (max-width: 640px) {
+  /* Touch-friendly button sizing */
+  button,
+  a.button,
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 48px;
+    min-width: 48px;
+    padding: 0.875rem 1.25rem;
+    font-size: 16px;
+  }
+
+  /* Prevent iOS zoom on input focus */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Responsive modal sizing */
+  .modal-content,
+  [role="dialog"] {
+    max-width: 95vw;
+    max-height: 90vh;
+  }
+
+  /* Responsive map height */
+  .map-container {
+    height: 400px !important;
+  }
+
+  /* Responsive chart containers */
+  .recharts-wrapper {
+    max-width: 100% !important;
+  }
+
+  /* Adjust body font size for mobile */
+  body {
+    font-size: 16px;
+  }
+}
+
+/* Landscape orientation optimizations */
+@media (max-height: 500px) and (orientation: landscape) {
+  .splash-owl-image {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .splash-screen h1 {
+    font-size: 1.5rem;
+  }
+  
+  .splash-screen p {
+    font-size: 1rem;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border: 40 40% 70%;
+  }
+  
+  .dark {
+    --border: 40 40% 35%;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

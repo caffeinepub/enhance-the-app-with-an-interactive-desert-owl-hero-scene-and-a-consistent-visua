@@ -1,0 +1,68 @@
+{
+  "kind": "build_request",
+  "title": "Retry build and fix build pipeline failure",
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-5",
+      "text": "Identify the root cause of the current build/pipeline failure and apply the minimal code/config changes required so the project builds successfully end-to-end (frontend build + canister build) without introducing functional regressions.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "❌ Failed to build your app",
+          "نعم ايها المبدع"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A clean build completes successfully with no TypeScript compile errors and no Motoko compile errors.",
+        "The app loads to the Home page without a blank screen or runtime crash.",
+        "No edits are made to frontend immutable paths listed in SYSTEM_CONTEXT."
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Add lightweight, developer-facing build-time safeguards to prevent the same build failure from recurring (e.g., ensure any missing imports/exports, missing referenced assets, or invalid route/component lazy imports fail fast with clear errors during build).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "❌ Failed to build your app"
+        ]
+      },
+      "acceptanceCriteria": [
+        "If a referenced static asset path is missing, the issue is surfaced clearly during development/build (not silently at runtime).",
+        "No increase in initial page load time is introduced by the safeguards.",
+        "The Home page still renders its hero section and existing sections as before."
+      ]
+    }
+  ],
+  "constraints": [
+    "Backend must remain a single Motoko actor in backend/main.mo; only add migration.mo if an upgrade requires state migration.",
+    "Do not edit any frontend files under the immutable paths listed in SYSTEM_CONTEXT (compose shadcn/ui components instead of modifying them).",
+    "Use English for any new user-facing text introduced as part of this change request (this build request itself is in English; do not translate existing Arabic UI unless explicitly requested)."
+  ],
+  "nonGoals": [
+    "Adding new product features unrelated to fixing the build failure.",
+    "Changing app information architecture, routes, or backend schema unless required to resolve the build failure.",
+    "Replacing the existing Arabic UI copy with English across the app."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
+  }
+}

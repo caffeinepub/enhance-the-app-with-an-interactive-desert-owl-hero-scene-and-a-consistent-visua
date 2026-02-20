@@ -1,2 +1,3 @@
-# enhance-the-app-with-an-interactive-desert-owl-hero-scene-and-a-consistent-visua
-Exported from Caffeine project: Restore persisted data after update and fix blank white page (Add/Edit/Save missing)
+## 
+
+To run app build and run docker image: `docker build -t app . docker run -it --network host app`

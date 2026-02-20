@@ -1,0 +1,72 @@
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfile = record {name: text;};
+type TeamMember = 
+ record {
+   contactNumber: text;
+   fullNameTribe: text;
+   number: int;
+   residence: text;
+   specialization: text;
+   timestamp: int;
+   university: text;
+ };
+type LocationData = 
+ record {
+   birdName: text;
+   coordinate: Coordinate;
+ };
+type FileReference = 
+ record {
+   hash: text;
+   path: text;
+ };
+type Coordinate = 
+ record {
+   latitude: float64;
+   longitude: float64;
+ };
+type BirdData = 
+ record {
+   audioFile: opt text;
+   locations: vec Coordinate;
+   name: text;
+ };
+service : {
+  addAudioFile: (birdName: text, audioFilePath: text) -> ();
+  addBirdData: (birdName: text, latitude: float64, longitude: float64) -> ();
+  addTeamMember: (fullNameTribe: text, university: text, specialization:
+   text, residence: text, contactNumber: text, number: int) -> ();
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  dropFileReference: (path: text) -> ();
+  getAllBirdData: () -> (vec record {
+                               text;
+                               BirdData;
+                             }) query;
+  getAllCoordinates: () -> (vec Coordinate) query;
+  getAllLocationsForMap: (filter: text) -> (vec LocationData) query;
+  getAllLocationsWithNames: () -> (vec LocationData) query;
+  getAudioFile: (birdName: text) -> (opt text) query;
+  getBirdLocations: (birdName: text) -> (opt vec Coordinate) query;
+  getBirdNames: () -> (vec text) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getFileReference: (path: text) -> (FileReference) query;
+  getLocationCountByBird: () -> (vec record {
+                                       text;
+                                       int;
+                                     }) query;
+  getTeamMembers: () -> (vec TeamMember) query;
+  getTotalBirdCount: () -> (int) query;
+  getTotalLocationCount: () -> (int) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  initializeAccessControl: () -> ();
+  isCallerAdmin: () -> (bool) query;
+  listFileReferences: () -> (vec FileReference) query;
+  registerFileReference: (path: text, hash: text) -> ();
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+}
