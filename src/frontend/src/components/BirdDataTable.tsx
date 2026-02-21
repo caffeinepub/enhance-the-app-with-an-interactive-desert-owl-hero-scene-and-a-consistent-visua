@@ -1,142 +1,31 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Trash2, Save, Loader2, LogIn, LogOut, User, RefreshCw, Plus, Download, Music, Camera, Image as ImageIcon, Edit } from 'lucide-react';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { 
-  useGetAllBirdDetails, 
-  useDeleteBirdData, 
-  useSaveAllBirdData,
-  useIsAppManager,
-  useCanModifyData,
-  useInvalidateBirdData,
-  useAddBirdWithDetails,
-  useSaveChanges,
-  useAddSubImage,
-  useAddAudioFile
-} from '../hooks/useQueries';
+import React, { useState } from 'react';
+import { useGetAllBirdDetails, useDeleteBird, useSaveBirdDataArray, useAddBirdWithDetails, useCanModifyData } from '../hooks/useQueries';
+import { BirdData } from '../backend';
+import { exportBirdsToExcel } from '../lib/excelExport';
+import { exportBirdsToPDF } from '../lib/pdfExport';
 import { useFileUpload } from '../blob-storage/FileStorage';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import type { BirdData } from '../backend';
+import { Trash2, FileSpreadsheet, FileText, Plus } from 'lucide-react';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
 
-interface BirdDataTableProps {
-  owlTableData: any[];
-  onOwlDataUpdate: (data: any[]) => void;
-  uploadedFiles: any[];
-}
-
-// Helper function to export table data to Excel
-function exportToExcel(data: any[], filename: string = 'bird-data.xlsx') {
-  if (!data || data.length === 0) {
-    toast.error('❌ لا توجد بيانات للتصدير', {
-      duration: 3000,
-      position: 'bottom-center',
-    });
-    return;
-  }
-
-  const headers = ['الاسم المحلي', 'الاسم العلمي', 'الموقع', 'اسم الجبل', 'اسم الوادي', 'الولاية', 'خط العرض', 'خط الطول', 'الملاحظات'];
-  let tableHTML = '<table><thead><tr>';
-  
-  headers.forEach(header => {
-    tableHTML += `<th>${header}</th>`;
-  });
-  tableHTML += '</tr></thead><tbody>';
-
-  data.forEach(row => {
-    tableHTML += '<tr>';
-    tableHTML += `<td>${row.arabicName || ''}</td>`;
-    tableHTML += `<td>${row.scientificName || ''}</td>`;
-    tableHTML += `<td>${row.location || ''}</td>`;
-    tableHTML += `<td>${row.mountainName || ''}</td>`;
-    tableHTML += `<td>${row.valleyName || ''}</td>`;
-    tableHTML += `<td>${row.state || ''}</td>`;
-    tableHTML += `<td>${row.latitude || ''}</td>`;
-    tableHTML += `<td>${row.longitude || ''}</td>`;
-    tableHTML += `<td>${row.notes || ''}</td>`;
-    tableHTML += '</tr>';
-  });
-  
-  tableHTML += '</tbody></table>';
-
-  const uri = 'data:application/vnd.ms-excel;base64,';
-  const template = `
-    <html xmlns:o="urn:schemas-microsoft-com:office:office" 
-          xmlns:x="urn:schemas-microsoft-com:office:excel" 
-          xmlns="http://www.w3.org/TR/REC-html40">
-      <head>
-        <meta charset="utf-8">
-        <style>
-          table { border-collapse: collapse; width: 100%; direction: rtl; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
-          th { background-color: #4CAF50; color: white; font-weight: bold; }
-          tr:nth-child(even) { background-color: #f2f2f2; }
-        </style>
-      </head>
-      <body>
-        ${tableHTML}
-      </body>
-    </html>
-  `;
-
-  const base64 = (s: string) => window.btoa(unescape(encodeURIComponent(s)));
-  const link = document.createElement('a');
-  link.href = uri + base64(template);
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  toast.success('✅ تم تصدير البيانات بنجاح', {
-    description: `تم تنزيل ملف ${filename} إلى جهازك`,
-    duration: 3000,
-    position: 'bottom-center',
-  });
-}
-
-// Helper function to parse location info from notes
-function parseLocationInfo(notes: string) {
-  const locationMatch = notes.match(/الموقع:\s*([^\|]+)/);
-  const mountainMatch = notes.match(/اسم الجبل:\s*([^\|]+)/);
-  const valleyMatch = notes.match(/اسم الوادي:\s*([^\|]+)/);
-  const stateMatch = notes.match(/الولاية:\s*([^\|]+)/);
-
-  return {
-    location: locationMatch ? locationMatch[1].trim() : '',
-    mountainName: mountainMatch ? mountainMatch[1].trim() : '',
-    valleyName: valleyMatch ? valleyMatch[1].trim() : '',
-    state: stateMatch ? stateMatch[1].trim() : '',
-  };
-}
-
-export default function BirdDataTable({ owlTableData, onOwlDataUpdate, uploadedFiles }: BirdDataTableProps) {
-  const { login, clear, loginStatus, identity } = useInternetIdentity();
-  const { data: isAppManager = false, isLoading: isLoadingAppManager } = useIsAppManager();
-  const { data: canModify = false, isLoading: isLoadingCanModify, refetch: refetchCanModify } = useCanModifyData();
-  const { data: allBirdData = [], isLoading, refetch } = useGetAllBirdDetails();
-  const deleteBirdMutation = useDeleteBirdData();
-  const saveAllBirdDataMutation = useSaveAllBirdData();
-  const addBirdWithDetailsMutation = useAddBirdWithDetails();
-  const saveChangesMutation = useSaveChanges();
-  const addSubImageMutation = useAddSubImage();
-  const addAudioFileMutation = useAddAudioFile();
-  const invalidateBirdData = useInvalidateBirdData();
+export default function BirdDataTable() {
+  const { data: birdDataEntries, isLoading } = useGetAllBirdDetails();
+  const { mutate: deleteBird } = useDeleteBird();
+  const { mutate: saveBirdDataArray, isPending: isSaving } = useSaveBirdDataArray();
+  const { mutate: addBirdWithDetails, isPending: isAdding } = useAddBirdWithDetails();
+  const { data: canModify } = useCanModifyData();
   const { uploadFile, isUploading } = useFileUpload();
+  const { identity } = useInternetIdentity();
 
-  const [birdToDelete, setBirdToDelete] = useState<string | null>(null);
-  const [showAddDataDialog, setShowAddDataDialog] = useState(false);
-  const [editingBird, setEditingBird] = useState<{ name: string; data: BirdData } | null>(null);
-  const [uploadingForBird, setUploadingForBird] = useState<string | null>(null);
-  const [savingBird, setSavingBird] = useState<string | null>(null);
-  const [permissionsChecked, setPermissionsChecked] = useState(false);
-  
-  const [addDataForm, setAddDataForm] = useState({
+  const [editingData, setEditingData] = useState<BirdData[]>([]);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<bigint | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newBirdForm, setNewBirdForm] = useState({
     arabicName: '',
     scientificName: '',
     englishName: '',
@@ -144,1230 +33,444 @@ export default function BirdDataTable({ owlTableData, onOwlDataUpdate, uploadedF
     notes: '',
     latitude: '',
     longitude: '',
-    location: '',
-    mountainName: '',
-    valleyName: '',
-    state: '',
   });
+  const [uploadingImages, setUploadingImages] = useState<File[]>([]);
+  const [uploadingAudio, setUploadingAudio] = useState<File | null>(null);
 
   const isAuthenticated = !!identity;
-  const isLoggingIn = loginStatus === 'logging-in';
 
-  // Automatic permission checking on page initialization
-  useEffect(() => {
-    if (isAuthenticated && !isLoadingCanModify && !isLoadingAppManager && !permissionsChecked) {
-      refetchCanModify();
-      setPermissionsChecked(true);
+  React.useEffect(() => {
+    if (birdDataEntries) {
+      const birdDataArray = birdDataEntries.map(([_, data]) => data);
+      setEditingData(birdDataArray);
     }
-  }, [isAuthenticated, isLoadingCanModify, isLoadingAppManager, permissionsChecked, refetchCanModify]);
+  }, [birdDataEntries]);
 
-  // Reset permissions check when user logs out
-  useEffect(() => {
-    if (!isAuthenticated) {
-      setPermissionsChecked(false);
+  const handleFieldChange = (id: bigint, field: keyof BirdData, value: string) => {
+    setEditingData((prev) =>
+      prev.map((bird) => (bird.id === id ? { ...bird, [field]: value } : bird))
+    );
+  };
+
+  const handleLocationChange = (id: bigint, index: number, field: 'latitude' | 'longitude', value: string) => {
+    setEditingData((prev) =>
+      prev.map((bird) => {
+        if (bird.id === id) {
+          const newLocations = [...bird.locations];
+          newLocations[index] = {
+            ...newLocations[index],
+            [field]: parseFloat(value) || 0,
+          };
+          return { ...bird, locations: newLocations };
+        }
+        return bird;
+      })
+    );
+  };
+
+  const handleSaveAll = () => {
+    if (!canModify) {
+      toast.error('ليس لديك صلاحية لحفظ البيانات');
+      return;
     }
-  }, [isAuthenticated]);
+    saveBirdDataArray(editingData);
+  };
 
-  const tableData = useMemo(() => {
-    return allBirdData.map(([birdName, birdData]) => {
-      const locationInfo = parseLocationInfo(birdData.notes);
-      const firstLocation = birdData.locations[0];
-      
-      return {
-        birdName,
-        arabicName: birdData.arabicName,
-        scientificName: birdData.scientificName,
-        location: locationInfo.location,
-        mountainName: locationInfo.mountainName,
-        valleyName: locationInfo.valleyName,
-        state: locationInfo.state,
-        latitude: firstLocation ? firstLocation.latitude.toFixed(6) : '',
-        longitude: firstLocation ? firstLocation.longitude.toFixed(6) : '',
-        notes: birdData.notes,
-        fullData: birdData,
-      };
-    });
-  }, [allBirdData]);
+  const handleDelete = (birdId: bigint) => {
+    if (!canModify) {
+      toast.error('ليس لديك صلاحية لحذف البيانات');
+      return;
+    }
+    setDeleteConfirmId(birdId);
+  };
 
-  const handleAuth = async () => {
-    if (isAuthenticated) {
-      await clear();
-      invalidateBirdData();
-      setPermissionsChecked(false);
-      toast.success('✅ تم تسجيل الخروج بنجاح', {
-        duration: 2000,
-        position: 'bottom-center',
-      });
-    } else {
-      try {
-        await login();
-        toast.success('✅ تم تسجيل الدخول بنجاح', {
-          duration: 2000,
-          position: 'bottom-center',
-        });
-        // Trigger permission check after successful login
-        setTimeout(() => {
-          refetchCanModify();
-          setPermissionsChecked(true);
-        }, 500);
-      } catch (error: any) {
-        console.error('Login error:', error);
-        if (error.message === 'User is already authenticated') {
-          await clear();
-          setTimeout(() => login(), 300);
+  const confirmDelete = () => {
+    if (deleteConfirmId !== null) {
+      deleteBird(deleteConfirmId);
+      setDeleteConfirmId(null);
+    }
+  };
+
+  const handleExportExcel = () => {
+    if (!birdDataEntries) return;
+    const birdDataArray = birdDataEntries.map(([_, data]) => data);
+    exportBirdsToExcel(birdDataArray);
+  };
+
+  const handleExportPDF = () => {
+    if (!birdDataEntries) return;
+    const birdDataArray = birdDataEntries.map(([_, data]) => data);
+    exportBirdsToPDF(birdDataArray);
+  };
+
+  const handleAddBird = async () => {
+    if (!canModify) {
+      toast.error('ليس لديك صلاحية لإضافة البيانات');
+      return;
+    }
+
+    if (!newBirdForm.arabicName || !newBirdForm.latitude || !newBirdForm.longitude) {
+      toast.error('يرجى ملء الحقول المطلوبة: الاسم العربي وخط العرض وخط الطول');
+      return;
+    }
+
+    try {
+      const latitude = parseFloat(newBirdForm.latitude);
+      const longitude = parseFloat(newBirdForm.longitude);
+
+      if (isNaN(latitude) || isNaN(longitude)) {
+        toast.error('يرجى إدخال قيم صحيحة لخط العرض وخط الطول');
+        return;
+      }
+
+      let audioFilePath: string | null = null;
+      const subImages: string[] = [];
+
+      if (uploadingAudio) {
+        const audioPath = `audio/${Date.now()}_${uploadingAudio.name}`;
+        const result = await uploadFile(audioPath, uploadingAudio);
+        audioFilePath = result.path;
+      }
+
+      if (uploadingImages.length > 0) {
+        for (const image of uploadingImages) {
+          const imagePath = `images/${Date.now()}_${image.name}`;
+          const result = await uploadFile(imagePath, image);
+          subImages.push(result.path);
         }
       }
-    }
-  };
 
-  const handleDeleteBird = async () => {
-    if (!birdToDelete) return;
-
-    if (!isAuthenticated) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يرجى تسجيل الدخول أولاً للحصول على صلاحيات الحذف',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!canModify) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بحذف البيانات',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    try {
-      await deleteBirdMutation.mutateAsync(birdToDelete);
-      toast.success('✅ تم حذف البيانات بنجاح وتحديث جميع الأقسام فورًا', {
-        description: `تم حذف بيانات "${birdToDelete}" من الجدول والمعرض والخريطة`,
-        duration: 3000,
-        position: 'bottom-center',
-      });
-      setBirdToDelete(null);
-      
-      setTimeout(() => {
-        invalidateBirdData();
-        refetch();
-      }, 500);
-    } catch (error: any) {
-      console.error('Delete error:', error);
-      
-      if (error?.message?.includes('صلاحية') || error?.message?.includes('Unauthorized')) {
-        toast.error('⚠️ لا تملك صلاحية للإجراء', {
-          description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بحذف البيانات',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-      } else {
-        toast.error('❌ حدث خطأ أثناء الحذف، يرجى المحاولة مرة أخرى.', {
-          description: error?.message || 'فشل في حذف البيانات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    }
-  };
-
-  const handleRefresh = () => {
-    invalidateBirdData();
-    refetch();
-    if (isAuthenticated) {
-      refetchCanModify();
-    }
-    toast.success('✅ تم تحديث البيانات بنجاح', {
-      description: 'تم تحديث الجدول بأحدث البيانات من قاعدة البيانات',
-      duration: 2000,
-      position: 'bottom-center',
-    });
-  };
-
-  const handleOpenAddDataDialog = () => {
-    if (!isAuthenticated) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يرجى تسجيل الدخول أولاً للحصول على صلاحيات إضافة البيانات',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!canModify) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بإضافة البيانات',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    setShowAddDataDialog(true);
-  };
-
-  const handleCloseAddDataDialog = () => {
-    setShowAddDataDialog(false);
-    setAddDataForm({
-      arabicName: '',
-      scientificName: '',
-      englishName: '',
-      description: '',
-      notes: '',
-      latitude: '',
-      longitude: '',
-      location: '',
-      mountainName: '',
-      valleyName: '',
-      state: '',
-    });
-  };
-
-  const handleAddDataFormChange = (field: string, value: string) => {
-    setAddDataForm(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleAddData = async () => {
-    if (!isAuthenticated) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يرجى تسجيل الدخول أولاً للحصول على صلاحيات إضافة البيانات',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!canModify) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بإضافة البيانات',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!addDataForm.arabicName.trim()) {
-      toast.error('❌ الاسم المحلي مطلوب', {
-        description: 'يرجى إدخال الاسم المحلي للطائر',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!addDataForm.latitude.trim() || !addDataForm.longitude.trim()) {
-      toast.error('❌ الإحداثيات مطلوبة', {
-        description: 'يرجى إدخال خط العرض وخط الطول',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    const latitude = parseFloat(addDataForm.latitude);
-    const longitude = parseFloat(addDataForm.longitude);
-
-    if (isNaN(latitude) || isNaN(longitude)) {
-      toast.error('❌ إحداثيات غير صحيحة', {
-        description: 'يرجى إدخال أرقام صحيحة لخط العرض وخط الطول',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    const locationInfo = [
-      addDataForm.location && `الموقع: ${addDataForm.location}`,
-      addDataForm.mountainName && `اسم الجبل: ${addDataForm.mountainName}`,
-      addDataForm.valleyName && `اسم الوادي: ${addDataForm.valleyName}`,
-      addDataForm.state && `الولاية: ${addDataForm.state}`,
-    ].filter(Boolean).join(' | ');
-
-    const combinedNotes = [addDataForm.notes.trim(), locationInfo].filter(Boolean).join('\n\n');
-
-    try {
-      await addBirdWithDetailsMutation.mutateAsync({
-        arabicName: addDataForm.arabicName.trim(),
-        scientificName: addDataForm.scientificName.trim(),
-        englishName: addDataForm.englishName.trim(),
-        description: addDataForm.description.trim(),
-        notes: combinedNotes,
+      addBirdWithDetails({
+        arabicName: newBirdForm.arabicName,
+        scientificName: newBirdForm.scientificName,
+        englishName: newBirdForm.englishName,
+        description: newBirdForm.description,
+        notes: newBirdForm.notes,
         latitude,
         longitude,
-        audioFilePath: null,
-        subImages: [],
+        audioFilePath,
+        subImages,
       });
 
-      toast.success('✅ تم إضافة البيانات بنجاح وتحديث جميع الأقسام فورًا', {
-        description: 'تم إضافة بيانات الطائر إلى الجدول والمعرض والخريطة',
-        duration: 3000,
-        position: 'bottom-center',
+      setIsAddDialogOpen(false);
+      setNewBirdForm({
+        arabicName: '',
+        scientificName: '',
+        englishName: '',
+        description: '',
+        notes: '',
+        latitude: '',
+        longitude: '',
       });
-
-      handleCloseAddDataDialog();
-
-      setTimeout(() => {
-        invalidateBirdData();
-        refetch();
-      }, 500);
-    } catch (error: any) {
-      console.error('Add data error:', error);
-      
-      if (error?.message?.includes('صلاحية') || error?.message?.includes('Unauthorized')) {
-        toast.error('⚠️ لا تملك صلاحية للإجراء', {
-          description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بإضافة البيانات',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-      } else {
-        toast.error('❌ حدث خطأ أثناء الإضافة، يرجى المحاولة مرة أخرى.', {
-          description: error?.message || 'فشل في إضافة البيانات',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-      }
+      setUploadingImages([]);
+      setUploadingAudio(null);
+    } catch (error) {
+      toast.error(`فشل إضافة البيانات: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
     }
   };
 
-  const handleUploadMainImage = async (birdName: string, file: File) => {
-    if (!isAuthenticated) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يرجى تسجيل الدخول أولاً للحصول على صلاحيات رفع الصور',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!canModify) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين برفع الصور',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    setUploadingForBird(birdName);
-
-    try {
-      const imagePath = `birds/${birdName}/main/${Date.now()}_${file.name}`;
-      const { path } = await uploadFile(imagePath, file);
-      
-      await addSubImageMutation.mutateAsync({
-        birdName,
-        imagePath: path,
-      });
-
-      toast.success('✅ تم رفع الملف بنجاح!', {
-        description: 'تم إضافة الصورة إلى سجل الطائر والمعرض',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-
-      setTimeout(() => {
-        invalidateBirdData();
-        refetch();
-      }, 500);
-    } catch (error: any) {
-      console.error('Main image upload error:', error);
-      
-      if (error?.message?.includes('صلاحية') || error?.message?.includes('Unauthorized')) {
-        toast.error('⚠️ لا تملك صلاحية للإجراء', {
-          description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين برفع الصور',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-      } else {
-        toast.error('❌ فشل رفع الملف', {
-          description: error?.message || 'حدث خطأ أثناء رفع الصورة',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    } finally {
-      setUploadingForBird(null);
-    }
-  };
-
-  const handleUploadSubImage = async (birdName: string, file: File) => {
-    if (!isAuthenticated) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يرجى تسجيل الدخول أولاً للحصول على صلاحيات رفع الصور',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!canModify) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين برفع الصور',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    setUploadingForBird(birdName);
-
-    try {
-      const imagePath = `birds/${birdName}/sub/${Date.now()}_${file.name}`;
-      const { path } = await uploadFile(imagePath, file);
-      
-      await addSubImageMutation.mutateAsync({
-        birdName,
-        imagePath: path,
-      });
-
-      toast.success('✅ تم رفع الملف بنجاح!', {
-        description: 'تم إضافة الصورة إلى سجل الطائر والمعرض',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-
-      setTimeout(() => {
-        invalidateBirdData();
-        refetch();
-      }, 500);
-    } catch (error: any) {
-      console.error('Sub image upload error:', error);
-      
-      if (error?.message?.includes('صلاحية') || error?.message?.includes('Unauthorized')) {
-        toast.error('⚠️ لا تملك صلاحية للإجراء', {
-          description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين برفع الصور',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-      } else {
-        toast.error('❌ فشل رفع الملف', {
-          description: error?.message || 'حدث خطأ أثناء رفع الصورة',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    } finally {
-      setUploadingForBird(null);
-    }
-  };
-
-  const handleAudioUpload = async (birdName: string, file: File) => {
-    if (!isAuthenticated) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يرجى تسجيل الدخول أولاً للحصول على صلاحيات رفع الملفات الصوتية',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!canModify) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين برفع الملفات الصوتية',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    setUploadingForBird(birdName);
-
-    try {
-      const audioPath = `birds/${birdName}/audio/${Date.now()}_${file.name}`;
-      const { path } = await uploadFile(audioPath, file);
-      
-      await addAudioFileMutation.mutateAsync({
-        birdName,
-        audioFilePath: path,
-      });
-
-      toast.success('✅ تم رفع الملف بنجاح!', {
-        description: 'تم إضافة الملف الصوتي إلى سجل الطائر',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-
-      setTimeout(() => {
-        invalidateBirdData();
-        refetch();
-      }, 500);
-    } catch (error: any) {
-      console.error('Audio upload error:', error);
-      
-      if (error?.message?.includes('صلاحية') || error?.message?.includes('Unauthorized')) {
-        toast.error('⚠️ لا تملك صلاحية للإجراء', {
-          description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين برفع الملفات الصوتية',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-      } else {
-        toast.error('❌ فشل رفع الملف', {
-          description: error?.message || 'حدث خطأ أثناء رفع الملف الصوتي',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    } finally {
-      setUploadingForBird(null);
-    }
-  };
-
-  const handleSaveBird = async (birdName: string) => {
-    if (!isAuthenticated) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يرجى تسجيل الدخول أولاً للحصول على صلاحيات الحفظ',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!canModify) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بحفظ التغييرات',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    const birdEntry = allBirdData.find(([name]) => name === birdName);
-    if (!birdEntry) return;
-
-    setSavingBird(birdName);
-
-    try {
-      await saveChangesMutation.mutateAsync({
-        birdName,
-        updatedData: birdEntry[1],
-      });
-
-      toast.success('✅ تم حفظ التغييرات بنجاح!', {
-        description: 'تم تحديث بيانات الطائر وتحديث جميع الصفحات فورًا',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-
-      setTimeout(() => {
-        invalidateBirdData();
-        refetch();
-      }, 500);
-    } catch (error: any) {
-      console.error('Save error:', error);
-      
-      if (error?.message?.includes('صلاحية') || error?.message?.includes('Unauthorized')) {
-        toast.error('⚠️ لا تملك صلاحية للإجراء', {
-          description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بحفظ التغييرات',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-      } else {
-        toast.error('⚠️ لم يتم الحفظ', {
-          description: error?.message || 'حدث خطأ أثناء حفظ التغييرات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    } finally {
-      setSavingBird(null);
-    }
-  };
-
-  const handleEditBird = (birdName: string) => {
-    if (!isAuthenticated) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يرجى تسجيل الدخول أولاً للحصول على صلاحيات التحرير',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!canModify) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بتحرير البيانات',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    const birdEntry = allBirdData.find(([name]) => name === birdName);
-    if (birdEntry) {
-      setEditingBird({ name: birdName, data: birdEntry[1] });
-      toast.info('✏️ تم تفعيل وضع التحرير', {
-        description: `يمكنك الآن تعديل بيانات "${birdEntry[1].arabicName}"`,
-        duration: 2000,
-        position: 'bottom-center',
-      });
-    }
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingBird) return;
-
-    if (!isAuthenticated) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يرجى تسجيل الدخول أولاً للحصول على صلاحيات الحفظ',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    if (!canModify) {
-      toast.error('⚠️ لا تملك صلاحية للإجراء', {
-        description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بحفظ التغييرات',
-        duration: 4000,
-        position: 'bottom-center',
-      });
-      return;
-    }
-
-    setSavingBird(editingBird.name);
-
-    try {
-      await saveChangesMutation.mutateAsync({
-        birdName: editingBird.name,
-        updatedData: editingBird.data,
-      });
-
-      toast.success('✅ تم تعديل البيانات بنجاح وتحديث جميع الأقسام فورًا', {
-        description: 'تم تحديث بيانات الطائر وتحديث جميع الصفحات فورًا',
-        duration: 3000,
-        position: 'bottom-center',
-      });
-
-      setEditingBird(null);
-
-      setTimeout(() => {
-        invalidateBirdData();
-        refetch();
-      }, 500);
-    } catch (error: any) {
-      console.error('Save edit error:', error);
-      
-      if (error?.message?.includes('صلاحية') || error?.message?.includes('Unauthorized')) {
-        toast.error('⚠️ لا تملك صلاحية للإجراء', {
-          description: 'يُسمح فقط لمدير التطبيق والمستخدمين المخولين بحفظ التغييرات',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-      } else {
-        toast.error('⚠️ لم يتم الحفظ', {
-          description: error?.message || 'حدث خطأ أثناء حفظ التغييرات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    } finally {
-      setSavingBird(null);
-    }
-  };
-
-  const handleExportToExcel = () => {
-    exportToExcel(tableData, 'بيانات-الطيور.xlsx');
-  };
-
-  // Determine if buttons should be enabled
-  const buttonsEnabled = isAuthenticated && canModify && !isLoadingCanModify;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
+        <div className="text-center text-xl text-muted-foreground">جاري تحميل البيانات...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4 md:p-6" dir="rtl">
-      <Card className="w-full mx-auto shadow-2xl">
-        <CardHeader className="bg-gradient-to-r from-blue-600 to-green-600 text-white rounded-t-lg">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <CardTitle className="text-xl md:text-2xl font-bold flex items-center">
-              <User className="h-5 w-5 md:h-6 md:w-6 ml-2" />
-              جدول بيانات الطيور
-            </CardTitle>
-            <div className="flex items-center gap-2 md:gap-3">
-              <Button
-                onClick={handleRefresh}
-                variant="secondary"
-                size="sm"
-                disabled={isLoading}
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-              >
-                <RefreshCw className={`h-4 w-4 ml-2 ${isLoading ? 'animate-spin' : ''}`} />
-                تحديث
-              </Button>
-              <Button
-                onClick={handleAuth}
-                disabled={isLoggingIn}
-                variant="secondary"
-                size="sm"
-                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-              >
-                {isLoggingIn ? (
-                  <>
-                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                    جاري تسجيل الدخول...
-                  </>
-                ) : isAuthenticated ? (
-                  <>
-                    <LogOut className="h-4 w-4 ml-2" />
-                    تسجيل الخروج
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="h-4 w-4 ml-2" />
-                    تسجيل الدخول
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-          <p className="text-blue-100 mt-2 text-sm md:text-base">
-            {isAuthenticated 
-              ? canModify 
-                ? 'يمكنك الآن تعديل وحذف وإضافة البيانات' 
-                : 'يمكنك عرض البيانات فقط'
-              : 'قم بتسجيل الدخول للحصول على صلاحيات التعديل'
-            }
-          </p>
-        </CardHeader>
-
-        <CardContent className="p-4 md:p-6 bg-white">
-          {isLoading ? (
-            <div className="text-center py-12">
-              <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-              <p className="text-gray-600">جاري تحميل البيانات...</p>
-            </div>
-          ) : (
-            <>
-              <div className="mb-6 flex flex-wrap gap-3 justify-center">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={handleOpenAddDataDialog}
-                        disabled={!buttonsEnabled || addBirdWithDetailsMutation.isPending}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        <Plus className="h-5 w-5 ml-2" />
-                        إضافة البيانات
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>إضافة بيانات طائر جديد</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        onClick={handleExportToExcel}
-                        disabled={tableData.length === 0}
-                        className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-3 shadow-lg"
-                      >
-                        <Download className="h-5 w-5 ml-2" />
-                        تصدير إلى Excel
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>تنزيل البيانات بصيغة Excel</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-
-              {tableData.length === 0 ? (
-                <div className="text-center py-12 bg-white">
-                  <p className="text-gray-600 text-lg mb-4">لا توجد بيانات متاحة</p>
-                  <p className="text-gray-500 mb-6">ابدأ بإضافة بيانات الطيور من خلال زر "إضافة البيانات"</p>
-                  <Button
-                    onClick={handleOpenAddDataDialog}
-                    disabled={!buttonsEnabled}
-                    className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Plus className="h-5 w-5 ml-2" />
-                    إضافة أول طائر
+    <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex items-center justify-between">
+          <h1 className="text-4xl font-bold text-foreground">جدول بيانات الطيور</h1>
+          <div className="flex gap-3">
+            {isAuthenticated && canModify && (
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Plus className="h-5 w-5" />
+                    إضافة بيانات
                   </Button>
-                </div>
-              ) : (
-                <>
-                  <div className="text-center py-4 mb-6 bg-blue-50 rounded-lg border-2 border-blue-200">
-                    <p className="text-lg text-gray-700">
-                      إجمالي الأنواع: <span className="font-bold text-blue-600 text-2xl">{tableData.length}</span>
-                    </p>
+                </DialogTrigger>
+                <DialogContent className="max-h-[90vh] overflow-y-auto" dir="rtl">
+                  <DialogHeader>
+                    <DialogTitle>إضافة بيانات طائر جديد</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="arabicName">الاسم العربي *</Label>
+                      <Input
+                        id="arabicName"
+                        value={newBirdForm.arabicName}
+                        onChange={(e) => setNewBirdForm({ ...newBirdForm, arabicName: e.target.value })}
+                        placeholder="أدخل الاسم العربي"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="scientificName">الاسم العلمي</Label>
+                      <Input
+                        id="scientificName"
+                        value={newBirdForm.scientificName}
+                        onChange={(e) => setNewBirdForm({ ...newBirdForm, scientificName: e.target.value })}
+                        placeholder="أدخل الاسم العلمي"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="englishName">الاسم الإنجليزي</Label>
+                      <Input
+                        id="englishName"
+                        value={newBirdForm.englishName}
+                        onChange={(e) => setNewBirdForm({ ...newBirdForm, englishName: e.target.value })}
+                        placeholder="أدخل الاسم الإنجليزي"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="latitude">خط العرض *</Label>
+                        <Input
+                          id="latitude"
+                          type="number"
+                          step="any"
+                          value={newBirdForm.latitude}
+                          onChange={(e) => setNewBirdForm({ ...newBirdForm, latitude: e.target.value })}
+                          placeholder="24.123456"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="longitude">خط الطول *</Label>
+                        <Input
+                          id="longitude"
+                          type="number"
+                          step="any"
+                          value={newBirdForm.longitude}
+                          onChange={(e) => setNewBirdForm({ ...newBirdForm, longitude: e.target.value })}
+                          placeholder="55.123456"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="description">الوصف</Label>
+                      <Textarea
+                        id="description"
+                        value={newBirdForm.description}
+                        onChange={(e) => setNewBirdForm({ ...newBirdForm, description: e.target.value })}
+                        placeholder="أدخل وصف الطائر"
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="notes">ملاحظات</Label>
+                      <Textarea
+                        id="notes"
+                        value={newBirdForm.notes}
+                        onChange={(e) => setNewBirdForm({ ...newBirdForm, notes: e.target.value })}
+                        placeholder="أدخل ملاحظات إضافية"
+                        rows={3}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="images">الصور</Label>
+                      <Input
+                        id="images"
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => setUploadingImages(Array.from(e.target.files || []))}
+                      />
+                      {uploadingImages.length > 0 && (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          تم اختيار {uploadingImages.length} صورة
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="audio">الملف الصوتي</Label>
+                      <Input
+                        id="audio"
+                        type="file"
+                        accept="audio/*"
+                        onChange={(e) => setUploadingAudio(e.target.files?.[0] || null)}
+                      />
+                      {uploadingAudio && (
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          تم اختيار: {uploadingAudio.name}
+                        </p>
+                      )}
+                    </div>
                   </div>
-
-                  <div className="overflow-x-auto rounded-lg border-2 border-gray-300 shadow-xl">
-                    <table className="w-full border-collapse bg-white" style={{ minWidth: '2400px' }}>
-                      <thead>
-                        <tr className="bg-gradient-to-r from-blue-600 to-green-600">
-                          <th className="text-right font-bold text-white text-base px-3 py-4 border-l border-white/20" style={{ width: '10%' }}>الاسم المحلي</th>
-                          <th className="text-right font-bold text-white text-base px-3 py-4 border-l border-white/20" style={{ width: '10%' }}>الاسم العلمي</th>
-                          <th className="text-right font-bold text-white text-base px-3 py-4 border-l border-white/20" style={{ width: '8%' }}>الموقع</th>
-                          <th className="text-right font-bold text-white text-base px-3 py-4 border-l border-white/20" style={{ width: '8%' }}>اسم الجبل</th>
-                          <th className="text-right font-bold text-white text-base px-3 py-4 border-l border-white/20" style={{ width: '8%' }}>اسم الوادي</th>
-                          <th className="text-right font-bold text-white text-base px-3 py-4 border-l border-white/20" style={{ width: '7%' }}>الولاية</th>
-                          <th className="text-center font-bold text-white text-base px-3 py-4 border-l border-white/20" style={{ width: '6%' }}>خط العرض</th>
-                          <th className="text-center font-bold text-white text-base px-3 py-4 border-l border-white/20" style={{ width: '6%' }}>خط الطول</th>
-                          <th className="text-right font-bold text-white text-base px-3 py-4 border-l border-white/20" style={{ width: '10%' }}>الملاحظات</th>
-                          {buttonsEnabled && <th className="text-center font-bold text-white text-base px-3 py-4" style={{ width: '27%' }}>الإجراءات</th>}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tableData.map((row, index) => (
-                          <tr 
-                            key={row.birdName} 
-                            className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors border-b border-gray-200`}
-                          >
-                            <td className="font-bold text-gray-900 text-sm px-3 py-3 border-l border-gray-200">{row.arabicName}</td>
-                            <td className="text-gray-700 italic text-sm px-3 py-3 border-l border-gray-200">{row.scientificName || '-'}</td>
-                            <td className="text-gray-700 text-sm px-3 py-3 border-l border-gray-200">{row.location || '-'}</td>
-                            <td className="text-gray-700 text-sm px-3 py-3 border-l border-gray-200">{row.mountainName || '-'}</td>
-                            <td className="text-gray-700 text-sm px-3 py-3 border-l border-gray-200">{row.valleyName || '-'}</td>
-                            <td className="text-gray-700 text-sm px-3 py-3 border-l border-gray-200">{row.state || '-'}</td>
-                            <td className="text-gray-700 text-sm px-3 py-3 border-l border-gray-200 text-center font-mono">{row.latitude || '-'}</td>
-                            <td className="text-gray-700 text-sm px-3 py-3 border-l border-gray-200 text-center font-mono">{row.longitude || '-'}</td>
-                            <td className="text-gray-700 text-sm px-3 py-3 border-l border-gray-200 max-w-[150px] truncate" title={row.notes}>{row.notes || '-'}</td>
-                            {buttonsEnabled && (
-                              <td className="px-3 py-3">
-                                <div className="flex gap-1 flex-wrap items-center justify-center">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-2 py-1 shadow-md text-xs"
-                                          disabled={uploadingForBird === row.birdName || isUploading}
-                                          onClick={() => {
-                                            const input = document.createElement('input');
-                                            input.type = 'file';
-                                            input.accept = 'image/*';
-                                            input.onchange = (e: any) => {
-                                              const file = e.target?.files?.[0];
-                                              if (file) handleUploadMainImage(row.birdName, file);
-                                            };
-                                            input.click();
-                                          }}
-                                        >
-                                          {uploadingForBird === row.birdName ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                          ) : (
-                                            <>
-                                              <Camera className="h-3 w-3 ml-1" />
-                                              <span>رفع صورة رئيسية</span>
-                                            </>
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>📸 رفع صورة رئيسية</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          className="bg-green-600 hover:bg-green-700 text-white font-medium px-2 py-1 shadow-md text-xs"
-                                          disabled={uploadingForBird === row.birdName || isUploading}
-                                          onClick={() => {
-                                            const input = document.createElement('input');
-                                            input.type = 'file';
-                                            input.accept = 'image/*';
-                                            input.onchange = (e: any) => {
-                                              const file = e.target?.files?.[0];
-                                              if (file) handleUploadSubImage(row.birdName, file);
-                                            };
-                                            input.click();
-                                          }}
-                                        >
-                                          {uploadingForBird === row.birdName ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                          ) : (
-                                            <>
-                                              <ImageIcon className="h-3 w-3 ml-1" />
-                                              <span>رفع صورة فرعية</span>
-                                            </>
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>🖼️ رفع صورة فرعية</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          size="sm"
-                                          className="bg-orange-600 hover:bg-orange-700 text-white font-medium px-2 py-1 shadow-md text-xs"
-                                          disabled={uploadingForBird === row.birdName || isUploading}
-                                          onClick={() => {
-                                            const input = document.createElement('input');
-                                            input.type = 'file';
-                                            input.accept = 'audio/*';
-                                            input.onchange = (e: any) => {
-                                              const file = e.target?.files?.[0];
-                                              if (file) handleAudioUpload(row.birdName, file);
-                                            };
-                                            input.click();
-                                          }}
-                                        >
-                                          {uploadingForBird === row.birdName ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                          ) : (
-                                            <>
-                                              <Music className="h-3 w-3 ml-1" />
-                                              <span>إضافة صوت</span>
-                                            </>
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>🎤 إضافة صوت</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          onClick={() => handleEditBird(row.birdName)}
-                                          size="sm"
-                                          className="bg-yellow-600 hover:bg-yellow-700 text-white font-medium px-2 py-1 shadow-md text-xs"
-                                        >
-                                          <Edit className="h-3 w-3 ml-1" />
-                                          <span>تحرير</span>
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>✏️ تحرير</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          onClick={() => handleSaveBird(row.birdName)}
-                                          size="sm"
-                                          className="bg-teal-600 hover:bg-teal-700 text-white font-medium px-2 py-1 shadow-md text-xs"
-                                          disabled={savingBird === row.birdName}
-                                        >
-                                          {savingBird === row.birdName ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                          ) : (
-                                            <>
-                                              <Save className="h-3 w-3 ml-1" />
-                                              <span>حفظ</span>
-                                            </>
-                                          )}
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>💾 حفظ</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <Button
-                                          onClick={() => setBirdToDelete(row.birdName)}
-                                          size="sm"
-                                          variant="destructive"
-                                          className="bg-red-600 hover:bg-red-700 text-white font-medium px-2 py-1 shadow-md text-xs"
-                                        >
-                                          <Trash2 className="h-3 w-3 ml-1" />
-                                          <span>حذف</span>
-                                        </Button>
-                                      </TooltipTrigger>
-                                      <TooltipContent>🗑️ حذف</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!birdToDelete} onOpenChange={() => setBirdToDelete(null)}>
-        <AlertDialogContent dir="rtl" className="bg-white">
-          <AlertDialogHeader>
-            <AlertDialogTitle>هل أنت متأكد من حذف هذا الطائر؟</AlertDialogTitle>
-            <AlertDialogDescription>
-              سيتم حذف جميع بيانات "{birdToDelete}" نهائياً من قاعدة البيانات. لا يمكن التراجع عن هذا الإجراء.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>إلغاء</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDeleteBird}
-              className="bg-red-600 hover:bg-red-700"
-              disabled={deleteBirdMutation.isPending}
-            >
-              {deleteBirdMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                  جاري الحذف...
-                </>
-              ) : (
-                'حذف نهائياً'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Add Data Dialog */}
-      <Dialog open={showAddDataDialog} onOpenChange={setShowAddDataDialog}>
-        <DialogContent className="max-w-[95vw] md:max-w-4xl max-h-[90vh] overflow-y-auto bg-white" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-xl md:text-2xl font-bold flex items-center text-blue-600">
-              <Plus className="h-6 w-6 ml-2" />
-              إضافة بيانات طائر جديد
-            </DialogTitle>
-            <DialogDescription>
-              أدخل معلومات الطائر الجديد. الحقول المطلوبة: الاسم المحلي، خط العرض، وخط الطول.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="arabicName" className="text-right font-bold text-red-600">
-                  الاسم المحلي *
-                </Label>
-                <Input
-                  id="arabicName"
-                  value={addDataForm.arabicName}
-                  onChange={(e) => handleAddDataFormChange('arabicName', e.target.value)}
-                  placeholder="مثال: البومة النسارية"
-                  className="bg-white border-2 border-blue-300"
-                  dir="rtl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="scientificName" className="text-right font-bold">
-                  الاسم العلمي
-                </Label>
-                <Input
-                  id="scientificName"
-                  value={addDataForm.scientificName}
-                  onChange={(e) => handleAddDataFormChange('scientificName', e.target.value)}
-                  placeholder="مثال: Bubo bubo"
-                  className="bg-white border-2"
-                  dir="rtl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="location" className="text-right font-bold">
-                  الموقع
-                </Label>
-                <Input
-                  id="location"
-                  value={addDataForm.location}
-                  onChange={(e) => handleAddDataFormChange('location', e.target.value)}
-                  placeholder="مثال: جبل حفيت"
-                  className="bg-white border-2"
-                  dir="rtl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="mountainName" className="text-right font-bold">
-                  اسم الجبل
-                </Label>
-                <Input
-                  id="mountainName"
-                  value={addDataForm.mountainName}
-                  onChange={(e) => handleAddDataFormChange('mountainName', e.target.value)}
-                  placeholder="مثال: جبل حفيت"
-                  className="bg-white border-2"
-                  dir="rtl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="valleyName" className="text-right font-bold">
-                  اسم الوادي
-                </Label>
-                <Input
-                  id="valleyName"
-                  value={addDataForm.valleyName}
-                  onChange={(e) => handleAddDataFormChange('valleyName', e.target.value)}
-                  placeholder="مثال: وادي الجزي"
-                  className="bg-white border-2"
-                  dir="rtl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="state" className="text-right font-bold">
-                  الولاية
-                </Label>
-                <Input
-                  id="state"
-                  value={addDataForm.state}
-                  onChange={(e) => handleAddDataFormChange('state', e.target.value)}
-                  placeholder="مثال: البريمي"
-                  className="bg-white border-2"
-                  dir="rtl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="latitude" className="text-right font-bold text-red-600">
-                  خط العرض *
-                </Label>
-                <Input
-                  id="latitude"
-                  type="number"
-                  step="any"
-                  value={addDataForm.latitude}
-                  onChange={(e) => handleAddDataFormChange('latitude', e.target.value)}
-                  placeholder="مثال: 24.2500"
-                  className="bg-white border-2 border-blue-300"
-                  dir="rtl"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="longitude" className="text-right font-bold text-red-600">
-                  خط الطول *
-                </Label>
-                <Input
-                  id="longitude"
-                  type="number"
-                  step="any"
-                  value={addDataForm.longitude}
-                  onChange={(e) => handleAddDataFormChange('longitude', e.target.value)}
-                  placeholder="مثال: 55.7833"
-                  className="bg-white border-2 border-blue-300"
-                  dir="rtl"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-right font-bold">
-                الوصف
-              </Label>
-              <Textarea
-                id="description"
-                value={addDataForm.description}
-                onChange={(e) => handleAddDataFormChange('description', e.target.value)}
-                placeholder="أدخل وصف الطائر..."
-                className="bg-white border-2 min-h-[80px]"
-                dir="rtl"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes" className="text-right font-bold">
-                ملاحظات
-              </Label>
-              <Textarea
-                id="notes"
-                value={addDataForm.notes}
-                onChange={(e) => handleAddDataFormChange('notes', e.target.value)}
-                placeholder="أدخل ملاحظات إضافية..."
-                className="bg-white border-2 min-h-[80px]"
-                dir="rtl"
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="flex gap-3 pt-4 border-t-2">
-            <Button
-              variant="outline"
-              onClick={handleCloseAddDataDialog}
-              disabled={addBirdWithDetailsMutation.isPending}
-              className="px-8 py-3 font-bold"
-            >
-              إلغاء
-            </Button>
-            <Button
-              onClick={handleAddData}
-              disabled={addBirdWithDetailsMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3"
-            >
-              {addBirdWithDetailsMutation.isPending ? (
-                <>
-                  <Loader2 className="h-5 w-5 ml-2 animate-spin" />
-                  جاري الإضافة...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-5 w-5 ml-2" />
-                  إضافة البيانات
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Bird Dialog */}
-      {editingBird && (
-        <Dialog open={!!editingBird} onOpenChange={() => setEditingBird(null)}>
-          <DialogContent className="max-w-2xl bg-white" dir="rtl">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">تعديل بيانات: {editingBird.data.arabicName}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>الاسم العلمي</Label>
-                <Input
-                  value={editingBird.data.scientificName}
-                  onChange={(e) => setEditingBird({
-                    ...editingBird,
-                    data: { ...editingBird.data, scientificName: e.target.value }
-                  })}
-                  className="bg-white border-2"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>الوصف</Label>
-                <Textarea
-                  value={editingBird.data.description}
-                  onChange={(e) => setEditingBird({
-                    ...editingBird,
-                    data: { ...editingBird.data, description: e.target.value }
-                  })}
-                  className="bg-white border-2 min-h-[100px]"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditingBird(null)}>إلغاء</Button>
-              <Button
-                onClick={handleSaveEdit}
-                disabled={saveChangesMutation.isPending}
-                className="bg-green-600 hover:bg-green-700"
-              >
-                {saveChangesMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 ml-2 animate-spin" />
-                    جاري الحفظ...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-4 w-4 ml-2" />
-                    حفظ التغييرات
-                  </>
-                )}
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsAddDialogOpen(false);
+                        setNewBirdForm({
+                          arabicName: '',
+                          scientificName: '',
+                          englishName: '',
+                          description: '',
+                          notes: '',
+                          latitude: '',
+                          longitude: '',
+                        });
+                        setUploadingImages([]);
+                        setUploadingAudio(null);
+                      }}
+                    >
+                      إلغاء
+                    </Button>
+                    <Button onClick={handleAddBird} disabled={isAdding || isUploading}>
+                      {isAdding || isUploading ? 'جاري الإضافة...' : 'إضافة'}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            {canModify && (
+              <Button onClick={handleSaveAll} disabled={isSaving} variant="default">
+                {isSaving ? 'جاري الحفظ...' : 'حفظ الكل'}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+            )}
+            <Button onClick={handleExportExcel} variant="outline" className="gap-2">
+              <FileSpreadsheet className="h-5 w-5" />
+              تصدير Excel
+            </Button>
+            <Button onClick={handleExportPDF} variant="outline" className="gap-2">
+              <FileText className="h-5 w-5" />
+              تصدير PDF
+            </Button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-lg">
+          <table className="w-full border-collapse text-right">
+            <thead>
+              <tr className="border-b border-border bg-muted/50">
+                <th className="p-4 text-sm font-semibold text-foreground">المعرف</th>
+                <th className="p-4 text-sm font-semibold text-foreground">الاسم العربي</th>
+                <th className="p-4 text-sm font-semibold text-foreground">الاسم العلمي</th>
+                <th className="p-4 text-sm font-semibold text-foreground">الاسم الإنجليزي</th>
+                <th className="p-4 text-sm font-semibold text-foreground">الوصف</th>
+                <th className="p-4 text-sm font-semibold text-foreground">المواقع</th>
+                <th className="p-4 text-sm font-semibold text-foreground">الصور</th>
+                <th className="p-4 text-sm font-semibold text-foreground">الصوت</th>
+                <th className="p-4 text-sm font-semibold text-foreground">ملاحظات</th>
+                {canModify && <th className="p-4 text-sm font-semibold text-foreground">إجراءات</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {editingData.map((bird) => (
+                <tr key={bird.id.toString()} className="border-b border-border hover:bg-muted/30">
+                  <td className="p-4 text-sm text-muted-foreground">{bird.id.toString()}</td>
+                  <td className="p-4">
+                    <input
+                      type="text"
+                      value={bird.arabicName}
+                      onChange={(e) => handleFieldChange(bird.id, 'arabicName', e.target.value)}
+                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
+                      disabled={!canModify}
+                    />
+                  </td>
+                  <td className="p-4">
+                    <input
+                      type="text"
+                      value={bird.scientificName}
+                      onChange={(e) => handleFieldChange(bird.id, 'scientificName', e.target.value)}
+                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
+                      disabled={!canModify}
+                    />
+                  </td>
+                  <td className="p-4">
+                    <input
+                      type="text"
+                      value={bird.englishName}
+                      onChange={(e) => handleFieldChange(bird.id, 'englishName', e.target.value)}
+                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
+                      disabled={!canModify}
+                    />
+                  </td>
+                  <td className="p-4">
+                    <textarea
+                      value={bird.description}
+                      onChange={(e) => handleFieldChange(bird.id, 'description', e.target.value)}
+                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
+                      rows={2}
+                      disabled={!canModify}
+                    />
+                  </td>
+                  <td className="p-4">
+                    <div className="space-y-2">
+                      {bird.locations.map((loc, idx) => (
+                        <div key={idx} className="flex gap-2">
+                          <input
+                            type="number"
+                            step="any"
+                            value={loc.latitude}
+                            onChange={(e) => handleLocationChange(bird.id, idx, 'latitude', e.target.value)}
+                            className="w-24 rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
+                            placeholder="خط العرض"
+                            disabled={!canModify}
+                          />
+                          <input
+                            type="number"
+                            step="any"
+                            value={loc.longitude}
+                            onChange={(e) => handleLocationChange(bird.id, idx, 'longitude', e.target.value)}
+                            className="w-24 rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
+                            placeholder="خط الطول"
+                            disabled={!canModify}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="p-4 text-sm text-muted-foreground">{bird.subImages.length}</td>
+                  <td className="p-4 text-sm text-muted-foreground">{bird.audioFile ? 'نعم' : 'لا'}</td>
+                  <td className="p-4">
+                    <textarea
+                      value={bird.notes}
+                      onChange={(e) => handleFieldChange(bird.id, 'notes', e.target.value)}
+                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
+                      rows={2}
+                      disabled={!canModify}
+                    />
+                  </td>
+                  {canModify && (
+                    <td className="p-4">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => handleDelete(bird.id)}
+                        className="gap-2"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        حذف
+                      </Button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {deleteConfirmId !== null && (
+          <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
+            <DialogContent dir="rtl">
+              <DialogHeader>
+                <DialogTitle>تأكيد الحذف</DialogTitle>
+              </DialogHeader>
+              <p className="text-muted-foreground">هل أنت متأكد من حذف هذا الطائر؟ لا يمكن التراجع عن هذا الإجراء.</p>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
+                  إلغاء
+                </Button>
+                <Button variant="destructive" onClick={confirmDelete}>
+                  حذف
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+      </div>
     </div>
   );
 }
-

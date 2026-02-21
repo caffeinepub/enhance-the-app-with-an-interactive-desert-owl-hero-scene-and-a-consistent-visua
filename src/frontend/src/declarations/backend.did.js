@@ -124,6 +124,7 @@ export const idlService = IDL.Service({
   'birdExists' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'canCallerModifyData' : IDL.Func([], [IDL.Bool], ['query']),
   'deleteAudioFile' : IDL.Func([IDL.Text], [], []),
+  'deleteBirdById' : IDL.Func([IDL.Nat], [], []),
   'deleteBirdData' : IDL.Func([IDL.Text], [], []),
   'deleteImageFromBirdAndRegistry' : IDL.Func([IDL.Text, IDL.Text], [], []),
   'deleteImageFromGallery' : IDL.Func([IDL.Text], [], []),
@@ -192,6 +193,8 @@ export const idlService = IDL.Service({
       [],
       [],
     ),
+  'saveBirdData' : IDL.Func([BirdData], [], []),
+  'saveBirdDataArray' : IDL.Func([IDL.Vec(BirdData)], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   'saveChanges' : IDL.Func([IDL.Text, BirdData], [], []),
   'updateBirdDetails' : IDL.Func(
@@ -327,6 +330,7 @@ export const idlFactory = ({ IDL }) => {
     'birdExists' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'canCallerModifyData' : IDL.Func([], [IDL.Bool], ['query']),
     'deleteAudioFile' : IDL.Func([IDL.Text], [], []),
+    'deleteBirdById' : IDL.Func([IDL.Nat], [], []),
     'deleteBirdData' : IDL.Func([IDL.Text], [], []),
     'deleteImageFromBirdAndRegistry' : IDL.Func([IDL.Text, IDL.Text], [], []),
     'deleteImageFromGallery' : IDL.Func([IDL.Text], [], []),
@@ -399,6 +403,8 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'saveBirdData' : IDL.Func([BirdData], [], []),
+    'saveBirdDataArray' : IDL.Func([IDL.Vec(BirdData)], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
     'saveChanges' : IDL.Func([IDL.Text, BirdData], [], []),
     'updateBirdDetails' : IDL.Func(

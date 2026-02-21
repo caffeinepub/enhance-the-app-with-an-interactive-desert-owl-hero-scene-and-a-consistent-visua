@@ -2,10 +2,10 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-identify-the-root-cause-of-the-current-build-pipeline-failure-and-apply-the-minimal-code-config-changes-required-so-the-project-builds-successfully-end-to-end-frontend-build-canister-build-without-introducing-functional-regressions",
-      "featureTitle": "Identify the root cause of the current build/pipeline failure and apply the minimal code/config changes required so the project builds successfully end-to-end (frontend build + canister build) without introducing functional regressions.",
+      "featureId": "feature-restore-the-add-data-button-in-the-bird-data-table-page-birddatatable-tsx-that-allows-users-to-create-new-bird-records-with-fields-for-name-coordinates-images-audio-files-and-description",
+      "featureTitle": "Restore the Add Data button in the bird data table page (BirdDataTable.tsx) that allows users to create new bird records with fields for name, coordinates, images, audio files, and description",
       "files": [
-        "frontend/src/hooks/useQueries.ts"
+        "frontend/src/components/BirdDataTable.tsx"
       ],
       "components": [
         "authorization@1.0.1",
@@ -19,32 +19,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-lightweight-developer-facing-build-time-safeguards-to-prevent-the-same-build-failure-from-recurring-e-g-ensure-any-missing-imports-exports-missing-referenced-assets-or-invalid-route-component-lazy-imports-fail-fast-with-clear-errors-during-build",
-      "featureTitle": "Add lightweight, developer-facing build-time safeguards to prevent the same build failure from recurring (e.g., ensure any missing imports/exports, missing referenced assets, or invalid route/component lazy imports fail fast with clear errors during build).",
-      "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/DesertOwlScene.tsx",
-        "frontend/src/components/MainHeader.tsx",
-        "frontend/src/lib/requiredAssets.ts"
-      ],
-      "components": [
-        "authorization@1.0.1",
-        "blob-storage@1.1.2",
-        "qr-code@1.0.0",
-        "camera@1.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-6"
+        "REQ-1"
       ],
       "confidence": "high"
     }

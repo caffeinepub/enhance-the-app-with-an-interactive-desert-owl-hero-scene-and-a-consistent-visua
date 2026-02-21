@@ -76,37 +76,30 @@ actor {
 
     include BlobStorage(registry);
 
-    // Initialize auth system (first caller becomes admin)
     public shared ({ caller }) func initializeAccessControl() : async () {
         AccessControl.initialize(accessControlState, caller);
     };
 
-    // Get current caller's role
     public query ({ caller }) func getCallerUserRole() : async AccessControl.UserRole {
         AccessControl.getUserRole(accessControlState, caller);
     };
 
-    // Assign role to a user (admin-only, enforced inside AccessControl.assignRole)
     public shared ({ caller }) func assignCallerUserRole(user : Principal, role : AccessControl.UserRole) : async () {
         AccessControl.assignRole(accessControlState, caller, user, role);
     };
 
-    // Check if caller is admin
     public query ({ caller }) func isCallerAdmin() : async Bool {
         AccessControl.isAdmin(accessControlState, caller);
     };
 
-    // Check if caller is authorized user (has #user or #admin role)
     public query ({ caller }) func isCallerAuthorizedUser() : async Bool {
         AccessControl.hasPermission(accessControlState, caller, #user);
     };
 
-    // Check if caller can modify data (has #user or #admin role)
     public query ({ caller }) func canCallerModifyData() : async Bool {
         AccessControl.hasPermission(accessControlState, caller, #user);
     };
 
-    // Get caller's user profile (user-only)
     public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("يجب تسجيل الدخول لعرض الملف الشخصي");
@@ -114,7 +107,6 @@ actor {
         principalMap.get(userProfiles, caller);
     };
 
-    // Get another user's profile (admin or self only)
     public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
         if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("يمكنك فقط عرض ملفك الشخصي");
@@ -122,7 +114,6 @@ actor {
         principalMap.get(userProfiles, user);
     };
 
-    // Save caller's user profile (user-only)
     public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("يجب تسجيل الدخول لحفظ الملف الشخصي");
@@ -130,7 +121,6 @@ actor {
         userProfiles := principalMap.put(userProfiles, caller, profile);
     };
 
-    // Register file reference (authorized users only - #user or #admin)
     public shared ({ caller }) func registerFileReference(path : Text, hash : Text) : async () {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
@@ -138,17 +128,14 @@ actor {
         Registry.add(registry, path, hash);
     };
 
-    // Get file reference (public - no auth required)
     public query ({ caller }) func getFileReference(path : Text) : async Registry.FileReference {
         Registry.get(registry, path);
     };
 
-    // List file references (public - no auth required)
     public query ({ caller }) func listFileReferences() : async [Registry.FileReference] {
         Registry.list(registry);
     };
 
-    // Drop file reference (authorized users only - #user or #admin)
     public shared ({ caller }) func dropFileReference(path : Text) : async () {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
@@ -156,7 +143,6 @@ actor {
         Registry.remove(registry, path);
     };
 
-    // Upload map image (authorized users only - #user or #admin)
     public shared ({ caller }) func uploadMapImage(mapPath : Text) : async () {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
@@ -172,17 +158,14 @@ actor {
         activeMapReference := ?mapPath;
     };
 
-    // Get active map reference (public - no auth required)
     public query ({ caller }) func getActiveMapReference() : async ?Text {
         activeMapReference;
     };
 
-    // Get backup map reference (public - no auth required)
     public query ({ caller }) func getBackupMapReference() : async ?Text {
         backupMapReference;
     };
 
-    // Restore backup map (admin-only)
     public shared ({ caller }) func restoreBackupMap() : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("ليس لديك صلاحية لاستعادة نسخة الخريطة الاحتياطية - يُسمح فقط لمدير التطبيق");
@@ -200,7 +183,6 @@ actor {
         };
     };
 
-    // Public read-only queries (no authentication required - accessible to all including guests)
     public query ({ caller }) func getBirdNames() : async [Text] {
         let birdNames = Iter.toArray(textMap.keys(birdLocations));
         let normalizedNames = Array.map<Text, Text>(birdNames, func(name) { normalizeBirdName(name) });
@@ -372,7 +354,6 @@ actor {
         null;
     };
 
-    // Data modification functions (authorized users only - #user or #admin role)
     public shared ({ caller }) func addBirdData(birdName : Text, latitude : Float, longitude : Float) : async () {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
@@ -724,7 +705,6 @@ actor {
         };
     };
 
-    // Admin-only: This is a destructive operation that replaces ALL bird data
     public shared ({ caller }) func saveAllBirdData(birdDataArray : [(Text, BirdData)]) : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("ليس لديك صلاحية لحفظ جميع البيانات - يُسمح فقط لمدير التطبيق بهذه العملية الشاملة");
@@ -752,6 +732,46 @@ actor {
             case (?(originalName, _)) {
                 birdLocations := textMap.put(birdLocations, originalName, updatedData);
             };
+        };
+    };
+
+    public shared ({ caller }) func saveBirdData(birdData : BirdData) : async () {
+        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+            Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
+        };
+
+        let normalizedBirdName = normalizeBirdName(birdData.arabicName);
+        birdLocations := textMap.put(birdLocations, normalizedBirdName, birdData);
+    };
+
+    public shared ({ caller }) func deleteBirdById(birdId : Nat) : async () {
+        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+            Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
+        };
+
+        var found = false;
+        for ((_, birdData) in textMap.entries(birdLocations)) {
+            if (birdData.id == birdId) {
+                birdLocations := textMap.delete(birdLocations, normalizeBirdName(birdData.arabicName));
+                found := true;
+            };
+        };
+
+        if (not found) {
+            Debug.trap("لا يوجد طائر بالمعرف: " # debug_show (birdId));
+        };
+    };
+
+    public shared ({ caller }) func saveBirdDataArray(birdDataArray : [BirdData]) : async () {
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("ليس لديك صلاحية لحفظ جميع البيانات - يُسمح فقط لمدير التطبيق بهذه العملية الشاملة");
+        };
+
+        birdLocations := textMap.empty();
+
+        for (birdData in birdDataArray.vals()) {
+            let normalizedBirdName = normalizeBirdName(birdData.arabicName);
+            birdLocations := textMap.put(birdLocations, normalizedBirdName, birdData);
         };
     };
 };

@@ -108,6 +108,7 @@ export interface _SERVICE {
   'birdExists' : ActorMethod<[string], boolean>,
   'canCallerModifyData' : ActorMethod<[], boolean>,
   'deleteAudioFile' : ActorMethod<[string], undefined>,
+  'deleteBirdById' : ActorMethod<[bigint], undefined>,
   'deleteBirdData' : ActorMethod<[string], undefined>,
   'deleteImageFromBirdAndRegistry' : ActorMethod<[string, string], undefined>,
   'deleteImageFromGallery' : ActorMethod<[string], undefined>,
@@ -144,6 +145,8 @@ export interface _SERVICE {
   'registerFileReference' : ActorMethod<[string, string], undefined>,
   'restoreBackupMap' : ActorMethod<[], undefined>,
   'saveAllBirdData' : ActorMethod<[Array<[string, BirdData]>], undefined>,
+  'saveBirdData' : ActorMethod<[BirdData], undefined>,
+  'saveBirdDataArray' : ActorMethod<[Array<BirdData>], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveChanges' : ActorMethod<[string, BirdData], undefined>,
   'updateBirdDetails' : ActorMethod<

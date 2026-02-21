@@ -1,64 +1,34 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-13T13:59:31.414Z",
+  "generatedAt": "2026-02-21T02:32:12.502Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 2,
+    "total": 1,
+    "implemented": 1,
     "items": [
       {
-        "id": "REQ-5",
-        "summary": "Identify the root cause of the current build/pipeline failure and apply the minimal code/config changes required so the project builds successfully end-to-end (frontend build + canister build) without introducing functional regressions.",
+        "id": "REQ-1",
+        "summary": "Restore the Add Data button in the bird data table page (BirdDataTable.tsx) that allows users to create new bird records with fields for name, coordinates, images, audio files, and description",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/backend.d.ts",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/hooks/useActor.ts"
+          "frontend/src/components/BirdDataTable.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/backend.d.ts",
-          "frontend/src/hooks/useQueries.ts"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Add lightweight, developer-facing build-time safeguards to prevent the same build failure from recurring (e.g., ensure any missing imports/exports, missing referenced assets, or invalid route/component lazy imports fail fast with clear errors during build).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/lib/requiredAssets.ts",
-          "frontend/src/components/DesertOwlScene.tsx",
-          "frontend/src/components/MainHeader.tsx",
-          "frontend/src/App.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/lib/requiredAssets.ts",
-          "frontend/src/components/DesertOwlScene.tsx",
-          "frontend/src/components/MainHeader.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/components/BirdDataTable.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/DesertOwlScene.tsx",
-    "frontend/src/components/MainHeader.tsx",
-    "frontend/src/components/PermissionManagement.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/lib/requiredAssets.ts",
+    "frontend/src/components/BirdDataTable.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

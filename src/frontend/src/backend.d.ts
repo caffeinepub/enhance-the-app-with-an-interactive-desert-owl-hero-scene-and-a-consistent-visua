@@ -65,6 +65,7 @@ export interface backendInterface {
     birdExists(birdName: string): Promise<boolean>;
     canCallerModifyData(): Promise<boolean>;
     deleteAudioFile(birdName: string): Promise<void>;
+    deleteBirdById(birdId: bigint): Promise<void>;
     deleteBirdData(birdName: string): Promise<void>;
     deleteImageFromBirdAndRegistry(birdName: string, imagePath: string): Promise<void>;
     deleteImageFromGallery(imagePath: string): Promise<void>;
@@ -101,6 +102,8 @@ export interface backendInterface {
     registerFileReference(path: string, hash: string): Promise<void>;
     restoreBackupMap(): Promise<void>;
     saveAllBirdData(birdDataArray: Array<[string, BirdData]>): Promise<void>;
+    saveBirdData(birdData: BirdData): Promise<void>;
+    saveBirdDataArray(birdDataArray: Array<BirdData>): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveChanges(birdName: string, updatedData: BirdData): Promise<void>;
     updateBirdDetails(birdName: string, arabicName: string, scientificName: string, englishName: string, description: string, notes: string): Promise<void>;

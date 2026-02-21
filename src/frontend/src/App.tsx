@@ -19,28 +19,6 @@ const EagleOwlPage = lazy(() => import('./components/EagleOwlPage'));
 const PermissionManagement = lazy(() => import('./components/PermissionManagement'));
 const TeamDataTable = lazy(() => import('./components/TeamDataTable'));
 
-interface OwlTableRow {
-  id: string;
-  localName: string;
-  scientificName: string;
-  location: string;
-  mountainName: string;
-  valleyName: string;
-  state: string;
-  coordinate40R: string;
-  coordinateUTM: string;
-  notes: string;
-  birdName: string;
-  easting: string;
-  northing: string;
-  zone: string;
-  northernHemisphere: string;
-  latitude: number;
-  longitude: number;
-  associatedImage?: string;
-  briefDescription: string;
-}
-
 // OPTIMIZED: Enhanced loading fallback with static content
 function LoadingFallback({ message = 'جاري التحميل...' }: { message?: string }) {
   return (
@@ -112,10 +90,6 @@ function NotFoundRedirect() {
   return <LoadingFallback message="جاري إعادة التوجيه..." />;
 }
 
-// Global state for sharing data between routes
-let globalOwlTableData: OwlTableRow[] = [];
-let globalSelectedBirdForMap: string | null = null;
-
 // Root layout component with forced data sync
 function RootLayout() {
   const [showRecoveryNotification, setShowRecoveryNotification] = useState(false);
@@ -182,11 +156,7 @@ const dataTableRoute = createRoute({
   component: () => (
     <ErrorBoundary>
       <Suspense fallback={<LoadingFallback message="جاري تحميل جدول البيانات..." />}>
-        <BirdDataTable
-          owlTableData={globalOwlTableData}
-          onOwlDataUpdate={(newData: OwlTableRow[]) => { globalOwlTableData = newData; }}
-          uploadedFiles={[]}
-        />
+        <BirdDataTable />
       </Suspense>
     </ErrorBoundary>
   ),
@@ -198,10 +168,7 @@ const galleryRoute = createRoute({
   component: () => (
     <ErrorBoundary>
       <Suspense fallback={<LoadingFallback message="جاري تحميل المعرض..." />}>
-        <BirdGallery
-          onShowBirdOnMap={(birdName: string) => { globalSelectedBirdForMap = birdName; }}
-          birdTableData={globalOwlTableData}
-        />
+        <BirdGallery />
       </Suspense>
     </ErrorBoundary>
   ),
@@ -298,18 +265,12 @@ const router = createRouter({
 
 function App() {
   const [showSplash, setShowSplash] = useState(true);
-  const [owlTableData, setOwlTableData] = useState<OwlTableRow[]>([]);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
   const [forceShowApp, setForceShowApp] = useState(false);
   const [appError, setAppError] = useState<Error | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
 
   const { data: uploadedFiles = [], isLoading: filesLoading, error: filesError, refetch: refetchFiles } = useGetFileReferences();
-
-  // Update global state when data changes
-  useEffect(() => {
-    globalOwlTableData = owlTableData;
-  }, [owlTableData]);
 
   // Check if splash screen was already shown
   useEffect(() => {

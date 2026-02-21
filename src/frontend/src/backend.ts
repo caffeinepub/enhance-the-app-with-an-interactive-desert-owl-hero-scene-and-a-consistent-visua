@@ -163,6 +163,7 @@ export interface backendInterface {
     birdExists(birdName: string): Promise<boolean>;
     canCallerModifyData(): Promise<boolean>;
     deleteAudioFile(birdName: string): Promise<void>;
+    deleteBirdById(birdId: bigint): Promise<void>;
     deleteBirdData(birdName: string): Promise<void>;
     deleteImageFromBirdAndRegistry(birdName: string, imagePath: string): Promise<void>;
     deleteImageFromGallery(imagePath: string): Promise<void>;
@@ -199,6 +200,8 @@ export interface backendInterface {
     registerFileReference(path: string, hash: string): Promise<void>;
     restoreBackupMap(): Promise<void>;
     saveAllBirdData(birdDataArray: Array<[string, BirdData]>): Promise<void>;
+    saveBirdData(birdData: BirdData): Promise<void>;
+    saveBirdDataArray(birdDataArray: Array<BirdData>): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveChanges(birdName: string, updatedData: BirdData): Promise<void>;
     updateBirdDetails(birdName: string, arabicName: string, scientificName: string, englishName: string, description: string, notes: string): Promise<void>;
@@ -415,6 +418,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteAudioFile(arg0);
+            return result;
+        }
+    }
+    async deleteBirdById(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteBirdById(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteBirdById(arg0);
             return result;
         }
     }
@@ -922,6 +939,34 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async saveBirdData(arg0: BirdData): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveBirdData(to_candid_BirdData_n24(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveBirdData(to_candid_BirdData_n24(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async saveBirdDataArray(arg0: Array<BirdData>): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.saveBirdDataArray(to_candid_vec_n26(this._uploadFile, this._downloadFile, arg0));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.saveBirdDataArray(to_candid_vec_n26(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
     async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
         if (this.processError) {
             try {
@@ -1166,6 +1211,9 @@ function to_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint
 }
 function to_candid_vec_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<[string, BirdData]>): Array<[string, _BirdData]> {
     return value.map((x)=>to_candid_tuple_n23(_uploadFile, _downloadFile, x));
+}
+function to_candid_vec_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<BirdData>): Array<_BirdData> {
+    return value.map((x)=>to_candid_BirdData_n24(_uploadFile, _downloadFile, x));
 }
 export interface CreateActorOptions {
     agent?: Agent;

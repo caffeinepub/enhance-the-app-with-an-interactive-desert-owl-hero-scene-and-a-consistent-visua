@@ -477,6 +477,22 @@ export function useGetFileReferences() {
   );
 }
 
+export function useGetActiveMapReference() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<string | null>(
+    createOptimizedQuery(
+      ['activeMapReference'],
+      async () => {
+        if (!actor) return null;
+        return actor.getActiveMapReference();
+      },
+      !!actor && !isFetching,
+      { refetchInterval: 30000, staleTime: 10000 }
+    )
+  );
+}
+
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
   const { identity } = useInternetIdentity();
@@ -600,16 +616,16 @@ export function useAssignCallerUserRole() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['callerUserRole'] });
-      queryClient.invalidateQueries({ queryKey: ['canModifyData'] });
       queryClient.invalidateQueries({ queryKey: ['isAppManager'] });
-      toast.success('✅ تم تحديث الصلاحيات بنجاح', {
+      queryClient.invalidateQueries({ queryKey: ['canModifyData'] });
+      toast.success('✅ تم تعيين الدور بنجاح', {
         duration: 2000,
         position: 'bottom-center',
       });
     },
     onError: (error: any) => {
-      toast.error('❌ فشل تحديث الصلاحيات', {
-        description: error?.message || 'حدث خطأ أثناء تحديث الصلاحيات',
+      toast.error('❌ فشل تعيين الدور', {
+        description: error?.message || 'حدث خطأ أثناء تعيين الدور',
         duration: 3000,
         position: 'bottom-center',
       });
@@ -617,286 +633,172 @@ export function useAssignCallerUserRole() {
   });
 }
 
-export function useGetActiveMapReference() {
-  const { actor, isFetching } = useActor();
-
-  return useQuery<string | null>(
-    createOptimizedQuery(
-      ['activeMapReference'],
-      async () => {
-        if (!actor) return null;
-        return actor.getActiveMapReference();
-      },
-      !!actor && !isFetching
-    )
-  );
-}
-
-export function useAddBirdData() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ birdName, latitude, longitude }: { birdName: string; latitude: number; longitude: number }) => {
-      if (!actor) throw new Error('Actor not available');
-      
-      // Check if bird exists before adding
-      const exists = await actor.birdExists(birdName);
-      
-      // Add the bird data (backend will merge locations if bird exists)
-      await actor.addBirdData(birdName, latitude, longitude);
-      
-      // Return whether this was a merge or new addition
-      return { exists, birdName };
-    },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        toast.error('⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء', {
-          description: 'يرجى تسجيل الدخول أو الحصول على الصلاحيات المناسبة',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    onSuccess: async (data) => {
-      clearAllBirdCache(queryClient);
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-      
-      if (data.exists) {
-        toast.success('✅ تم إضافة الموقع بنجاح', {
-          description: `تم إضافة موقع جديد للطائر: ${data.birdName}`,
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      } else {
-        toast.success('✅ تم إضافة الطائر بنجاح', {
-          description: `تم إضافة طائر جديد: ${data.birdName}`,
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    },
-    onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل إضافة البيانات', {
-          description: error?.message || 'حدث خطأ أثناء إضافة البيانات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    },
-  });
-}
-
+// Mutation hooks
 export function useAddBirdWithDetails() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      arabicName, 
-      scientificName, 
-      englishName, 
-      description, 
-      notes, 
-      latitude, 
-      longitude, 
-      audioFilePath, 
-      subImages 
-    }: { 
-      arabicName: string; 
-      scientificName: string; 
-      englishName: string; 
-      description: string; 
-      notes: string; 
-      latitude: number; 
-      longitude: number; 
-      audioFilePath: string | null; 
+    mutationFn: async (params: {
+      arabicName: string;
+      scientificName: string;
+      englishName: string;
+      description: string;
+      notes: string;
+      latitude: number;
+      longitude: number;
+      audioFilePath: string | null;
       subImages: string[];
     }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.addBirdWithDetails(arabicName, scientificName, englishName, description, notes, latitude, longitude, audioFilePath, subImages);
+      return actor.addBirdWithDetails(
+        params.arabicName,
+        params.scientificName,
+        params.englishName,
+        params.description,
+        params.notes,
+        params.latitude,
+        params.longitude,
+        params.audioFilePath,
+        params.subImages
+      );
     },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     onSuccess: () => {
-      clearAllBirdCache(queryClient);
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-    },
-    onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل إضافة البيانات', {
-          description: error?.message || 'حدث خطأ أثناء إضافة البيانات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    },
-  });
-}
-
-export function useAddSubImage() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ birdName, imagePath }: { birdName: string; imagePath: string }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.addSubImage(birdName, imagePath);
-    },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        toast.error('⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء', {
-          description: 'يرجى تسجيل الدخول أو الحصول على الصلاحيات المناسبة',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    onSuccess: (message) => {
-      clearAllBirdCache(queryClient);
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-      
-      toast.success(message || '✅ تم إضافة الصورة بنجاح!', {
-        duration: 3000,
+      invalidateAllBirdQueries(queryClient);
+      toast.success('✅ تم إضافة بيانات الطائر بنجاح', {
+        duration: 2000,
         position: 'bottom-center',
       });
     },
     onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل إضافة الصورة', {
-          description: error?.message || 'حدث خطأ أثناء إضافة الصورة',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    },
-  });
-}
-
-export function useAddAudioFile() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ birdName, audioFilePath }: { birdName: string; audioFilePath: string }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.addAudioFile(birdName, audioFilePath);
-    },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        toast.error('⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء', {
-          description: 'يرجى تسجيل الدخول أو الحصول على الصلاحيات المناسبة',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    onSuccess: (message) => {
-      clearAllBirdCache(queryClient);
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-      
-      toast.success(message || '✅ تم حفظ الملف بنجاح!', {
+      console.error('Add bird error:', error);
+      toast.error('❌ فشل إضافة بيانات الطائر', {
+        description: error?.message || 'حدث خطأ أثناء إضافة البيانات',
         duration: 3000,
         position: 'bottom-center',
       });
     },
+  });
+}
+
+export function useDeleteBird() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (birdId: bigint) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.deleteBirdById(birdId);
+    },
+    onSuccess: () => {
+      invalidateAllBirdQueries(queryClient);
+      toast.success('✅ تم حذف الطائر بنجاح', {
+        duration: 2000,
+        position: 'bottom-center',
+      });
+    },
     onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل إضافة الملف الصوتي', {
-          description: error?.message || 'حدث خطأ أثناء إضافة الملف الصوتي',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
+      console.error('Delete bird error:', error);
+      toast.error('❌ فشل حذف الطائر', {
+        description: error?.message || 'حدث خطأ أثناء حذف الطائر',
+        duration: 3000,
+        position: 'bottom-center',
+      });
     },
   });
 }
 
-// Alias for useAddAudioFile
-export const useUploadAudio = useAddAudioFile;
+export function useSaveBirdData() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (birdData: BirdData) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.saveBirdData(birdData);
+    },
+    onSuccess: () => {
+      invalidateAllBirdQueries(queryClient);
+      toast.success('✅ تم حفظ بيانات الطائر بنجاح', {
+        duration: 2000,
+        position: 'bottom-center',
+      });
+    },
+    onError: (error: any) => {
+      console.error('Save bird data error:', error);
+      toast.error('❌ فشل حفظ بيانات الطائر', {
+        description: error?.message || 'حدث خطأ أثناء حفظ البيانات',
+        duration: 3000,
+        position: 'bottom-center',
+      });
+    },
+  });
+}
+
+export function useSaveBirdDataArray() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (birdDataArray: BirdData[]) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.saveBirdDataArray(birdDataArray);
+    },
+    onSuccess: () => {
+      invalidateAllBirdQueries(queryClient);
+      toast.success('✅ تم حفظ جميع البيانات بنجاح', {
+        duration: 2000,
+        position: 'bottom-center',
+      });
+    },
+    onError: (error: any) => {
+      console.error('Save bird data array error:', error);
+      toast.error('❌ فشل حفظ البيانات', {
+        description: error?.message || 'حدث خطأ أثناء حفظ البيانات',
+        duration: 3000,
+        position: 'bottom-center',
+      });
+    },
+  });
+}
 
 export function useUpdateBirdDetails() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ 
-      birdName, 
-      arabicName, 
-      scientificName, 
-      englishName, 
-      description, 
-      notes 
-    }: { 
-      birdName: string; 
-      arabicName: string; 
-      scientificName: string; 
-      englishName: string; 
-      description: string; 
+    mutationFn: async (params: {
+      birdName: string;
+      arabicName: string;
+      scientificName: string;
+      englishName: string;
+      description: string;
       notes: string;
     }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateBirdDetails(birdName, arabicName, scientificName, englishName, description, notes);
+      return actor.updateBirdDetails(
+        params.birdName,
+        params.arabicName,
+        params.scientificName,
+        params.englishName,
+        params.description,
+        params.notes
+      );
     },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        toast.error('⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء', {
-          description: 'يرجى تسجيل الدخول أو الحصول على الصلاحيات المناسبة',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     onSuccess: () => {
-      clearAllBirdCache(queryClient);
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-      
-      toast.success('✅ تم تحديث البيانات بنجاح', {
+      invalidateAllBirdQueries(queryClient);
+      toast.success('✅ تم تحديث بيانات الطائر بنجاح', {
         duration: 2000,
         position: 'bottom-center',
       });
     },
     onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل تحديث البيانات', {
-          description: error?.message || 'حدث خطأ أثناء تحديث البيانات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
+      console.error('Update bird details error:', error);
+      toast.error('❌ فشل تحديث بيانات الطائر', {
+        description: error?.message || 'حدث خطأ أثناء تحديث البيانات',
+        duration: 3000,
+        position: 'bottom-center',
+      });
     },
   });
 }
@@ -906,177 +808,86 @@ export function useUpdateDescriptionAndNotes() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ birdName, newDescription, newNotes }: { birdName: string; newDescription: string; newNotes: string }) => {
+    mutationFn: async (params: {
+      birdName: string;
+      newDescription: string;
+      newNotes: string;
+    }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.updateDescriptionAndNotes(birdName, newDescription, newNotes);
+      return actor.updateDescriptionAndNotes(
+        params.birdName,
+        params.newDescription,
+        params.newNotes
+      );
     },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        toast.error('⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء', {
-          description: 'يرجى تسجيل الدخول أو الحصول على الصلاحيات المناسبة',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     onSuccess: () => {
-      clearAllBirdCache(queryClient);
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-      
+      invalidateAllBirdQueries(queryClient);
       toast.success('✅ تم تحديث الوصف والملاحظات بنجاح', {
         duration: 2000,
         position: 'bottom-center',
       });
     },
     onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل تحديث البيانات', {
-          description: error?.message || 'حدث خطأ أثناء تحديث البيانات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
+      console.error('Update description and notes error:', error);
+      toast.error('❌ فشل تحديث الوصف والملاحظات', {
+        description: error?.message || 'حدث خطأ أثناء التحديث',
+        duration: 3000,
+        position: 'bottom-center',
+      });
     },
   });
 }
 
-export function useSaveChanges() {
+export function useAddAudioFile() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ birdName, updatedData }: { birdName: string; updatedData: BirdData }) => {
+    mutationFn: async (params: { birdName: string; audioFilePath: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.saveChanges(birdName, updatedData);
+      return actor.addAudioFile(params.birdName, params.audioFilePath);
     },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        toast.error('⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء', {
-          description: 'يرجى تسجيل الدخول أو الحصول على الصلاحيات المناسبة',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     onSuccess: () => {
-      clearAllBirdCache(queryClient);
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-      
-      toast.success('✅ تم حفظ التغييرات بنجاح', {
+      invalidateAllBirdQueries(queryClient);
+      toast.success('✅ تم إضافة الملف الصوتي بنجاح', {
         duration: 2000,
         position: 'bottom-center',
       });
     },
     onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل حفظ التغييرات', {
-          description: error?.message || 'حدث خطأ أثناء حفظ التغييرات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
+      console.error('Add audio file error:', error);
+      toast.error('❌ فشل إضافة الملف الصوتي', {
+        description: error?.message || 'حدث خطأ أثناء إضافة الملف',
+        duration: 3000,
+        position: 'bottom-center',
+      });
     },
   });
 }
 
-export function useSaveAllBirdData() {
+export function useAddSubImage() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (birdDataArray: [string, BirdData][]) => {
+    mutationFn: async (params: { birdName: string; imagePath: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.saveAllBirdData(birdDataArray);
+      return actor.addSubImage(params.birdName, params.imagePath);
     },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        toast.error('⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء', {
-          description: 'يُسمح فقط لمدير التطبيق بحفظ جميع البيانات',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     onSuccess: () => {
-      clearAllBirdCache(queryClient);
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-      
-      toast.success('✅ تم حفظ جميع البيانات بنجاح', {
+      invalidateAllBirdQueries(queryClient);
+      toast.success('✅ تم إضافة الصورة بنجاح', {
         duration: 2000,
         position: 'bottom-center',
       });
     },
     onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل حفظ البيانات', {
-          description: error?.message || 'حدث خطأ أثناء حفظ البيانات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
-    },
-  });
-}
-
-export function useDeleteBirdData() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (birdName: string) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.deleteBirdData(birdName);
-    },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        toast.error('⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء', {
-          description: 'يرجى تسجيل الدخول أو الحصول على الصلاحيات المناسبة',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
-    onSuccess: () => {
-      clearAllBirdCache(queryClient);
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-      
-      toast.success('✅ تم حذف البيانات بنجاح', {
-        duration: 2000,
+      console.error('Add sub image error:', error);
+      toast.error('❌ فشل إضافة الصورة', {
+        description: error?.message || 'حدث خطأ أثناء إضافة الصورة',
+        duration: 3000,
         position: 'bottom-center',
       });
-    },
-    onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل حذف البيانات', {
-          description: error?.message || 'حدث خطأ أثناء حذف البيانات',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
     },
   });
 }
@@ -1086,43 +897,24 @@ export function useDeleteSubImage() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ birdName, imagePath }: { birdName: string; imagePath: string }) => {
+    mutationFn: async (params: { birdName: string; imagePath: string }) => {
       if (!actor) throw new Error('Actor not available');
-      return actor.deleteImageFromBirdAndRegistry(birdName, imagePath);
+      return actor.deleteSubImage(params.birdName, params.imagePath);
     },
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('Unauthorized') || error?.message?.includes('not authorized') || error?.message?.includes('صلاحية')) {
-        toast.error('⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء', {
-          description: 'يرجى تسجيل الدخول أو الحصول على الصلاحيات المناسبة',
-          duration: 4000,
-          position: 'bottom-center',
-        });
-        return false;
-      }
-      return failureCount < 3;
-    },
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
     onSuccess: () => {
-      clearAllBirdCache(queryClient);
-      queryClient.invalidateQueries({ queryKey: ['fileReferences'] });
-      
-      setTimeout(() => {
-        invalidateAllBirdQueries(queryClient);
-      }, 100);
-      
+      invalidateAllBirdQueries(queryClient);
       toast.success('✅ تم حذف الصورة بنجاح', {
         duration: 2000,
         position: 'bottom-center',
       });
     },
     onError: (error: any) => {
-      if (!error?.message?.includes('صلاحية') && !error?.message?.includes('Unauthorized')) {
-        toast.error('❌ فشل حذف الصورة', {
-          description: error?.message || 'حدث خطأ أثناء حذف الصورة',
-          duration: 3000,
-          position: 'bottom-center',
-        });
-      }
+      console.error('Delete sub image error:', error);
+      toast.error('❌ فشل حذف الصورة', {
+        description: error?.message || 'حدث خطأ أثناء حذف الصورة',
+        duration: 3000,
+        position: 'bottom-center',
+      });
     },
   });
 }
