@@ -11,7 +11,9 @@ import Time "mo:base/Time";
 import Debug "mo:base/Debug";
 import Registry "blob-storage/registry";
 import BlobStorage "blob-storage/Mixin";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
     type Coordinate = {
         latitude : Float;
@@ -61,10 +63,10 @@ actor {
     let accessControlState = AccessControl.initState();
 
     transient let textMap = OrderedMap.Make<Text>(Text.compare);
-    var birdLocations = textMap.empty<BirdData>();
+    var birdLocations : OrderedMap.Map<Text, BirdData> = textMap.empty();
 
     transient let principalMap = OrderedMap.Make<Principal>(Principal.compare);
-    var userProfiles = principalMap.empty<UserProfile>();
+    var userProfiles : OrderedMap.Map<Principal, UserProfile> = principalMap.empty();
 
     var activeMapReference : ?Text = null;
     var backupMapReference : ?Text = null;
@@ -72,19 +74,22 @@ actor {
     var nextBirdId : Nat = 1;
 
     transient let teamMap = OrderedMap.Make<Int>(Int.compare);
-    var teamMembers = teamMap.empty<TeamMember>();
+    var teamMembers : OrderedMap.Map<Int, TeamMember> = teamMap.empty();
 
     include BlobStorage(registry);
 
+    // --- Initialize Access Control ---
     public shared ({ caller }) func initializeAccessControl() : async () {
         AccessControl.initialize(accessControlState, caller);
     };
 
+    // --- Get and Assign User Role ---
     public query ({ caller }) func getCallerUserRole() : async AccessControl.UserRole {
         AccessControl.getUserRole(accessControlState, caller);
     };
 
     public shared ({ caller }) func assignCallerUserRole(user : Principal, role : AccessControl.UserRole) : async () {
+        // Admin-only check happens inside AccessControl.assignRole
         AccessControl.assignRole(accessControlState, caller, user, role);
     };
 
@@ -100,6 +105,7 @@ actor {
         AccessControl.hasPermission(accessControlState, caller, #user);
     };
 
+    // --- User Profile Management ---
     public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("يجب تسجيل الدخول لعرض الملف الشخصي");
@@ -121,6 +127,7 @@ actor {
         userProfiles := principalMap.put(userProfiles, caller, profile);
     };
 
+    // --- File Reference Management (User-level for modifications) ---
     public shared ({ caller }) func registerFileReference(path : Text, hash : Text) : async () {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
@@ -128,10 +135,12 @@ actor {
         Registry.add(registry, path, hash);
     };
 
+    // Public read - no auth required
     public query ({ caller }) func getFileReference(path : Text) : async Registry.FileReference {
         Registry.get(registry, path);
     };
 
+    // Public read - no auth required
     public query ({ caller }) func listFileReferences() : async [Registry.FileReference] {
         Registry.list(registry);
     };
@@ -143,6 +152,7 @@ actor {
         Registry.remove(registry, path);
     };
 
+    // --- Map Image Management ---
     public shared ({ caller }) func uploadMapImage(mapPath : Text) : async () {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
@@ -158,10 +168,12 @@ actor {
         activeMapReference := ?mapPath;
     };
 
+    // Public read - no auth required
     public query ({ caller }) func getActiveMapReference() : async ?Text {
         activeMapReference;
     };
 
+    // Public read - no auth required
     public query ({ caller }) func getBackupMapReference() : async ?Text {
         backupMapReference;
     };
@@ -183,6 +195,7 @@ actor {
         };
     };
 
+    // --- Bird Data Retrieval (All public reads - no auth required) ---
     public query ({ caller }) func getBirdNames() : async [Text] {
         let birdNames = Iter.toArray(textMap.keys(birdLocations));
         let normalizedNames = Array.map<Text, Text>(birdNames, func(name) { normalizeBirdName(name) });
@@ -256,6 +269,7 @@ actor {
         List.toArray(allLocations);
     };
 
+    // --- Media File Management for Birds (Public reads) ---
     public query ({ caller }) func getSubImages(birdName : Text) : async ?[Text] {
         let normalizedBirdName = normalizeBirdName(birdName);
 
@@ -288,6 +302,7 @@ actor {
         };
     };
 
+    // --- Bird Data Existence and Details (Public reads) ---
     public query ({ caller }) func birdExists(birdName : Text) : async Bool {
         let normalizedBirdName = normalizeBirdName(birdName);
         switch (findBirdByNormalizedName(normalizedBirdName)) {
@@ -314,6 +329,7 @@ actor {
         normalizedNames;
     };
 
+    // --- Team Management (Public reads) ---
     public query ({ caller }) func getTeamMembers() : async [TeamMember] {
         Iter.toArray(teamMap.vals(teamMembers));
     };
@@ -327,6 +343,7 @@ actor {
         };
     };
 
+    // --- Name Normalization and Lookup ---
     func normalizeBirdName(birdName : Text) : Text {
         let trimmed = Text.trim(birdName, #char ' ');
         let noTashkeel = Text.map(trimmed, func c { if (c == '\u{0640}') { ' ' } else { c } });
@@ -345,6 +362,7 @@ actor {
         noSub;
     };
 
+    // Find bird data by normalized name
     func findBirdByNormalizedName(normalizedBirdName : Text) : ?(Text, BirdData) {
         for ((key, value) in textMap.entries(birdLocations)) {
             if (normalizeBirdName(key) == normalizedBirdName) {
@@ -354,6 +372,7 @@ actor {
         null;
     };
 
+    // --- CRUD Operations for Birds (User-level required) ---
     public shared ({ caller }) func addBirdData(birdName : Text, latitude : Float, longitude : Float) : async () {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
@@ -530,6 +549,7 @@ actor {
         "✅ تم إضافة الصورة بنجاح إلى المعرض!";
     };
 
+    // --- Team Member Management (Admin-only) ---
     public shared ({ caller }) func addTeamMember(fullNameTribe : Text, university : Text, specialization : Text, residence : Text, contactNumber : Text, number : Int) : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("ليس لديك صلاحية لإضافة أعضاء الفريق - يُسمح فقط لمدير التطبيق");
@@ -548,6 +568,7 @@ actor {
         teamMembers := teamMap.put(teamMembers, timestamp, newMember);
     };
 
+    // --- Update and Delete Bird Data (User-level required) ---
     public shared ({ caller }) func updateDescriptionAndNotes(birdName : Text, newDescription : Text, newNotes : Text) : async () {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
             Debug.trap("⚠️ لا تملك صلاحية لتنفيذ هذا الإجراء");
@@ -705,6 +726,7 @@ actor {
         };
     };
 
+    // --- Bulk Operations (Admin-only) ---
     public shared ({ caller }) func saveAllBirdData(birdDataArray : [(Text, BirdData)]) : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("ليس لديك صلاحية لحفظ جميع البيانات - يُسمح فقط لمدير التطبيق بهذه العملية الشاملة");
@@ -775,3 +797,4 @@ actor {
         };
     };
 };
+

@@ -2,10 +2,13 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-restore-the-add-data-button-in-the-bird-data-table-page-birddatatable-tsx-that-allows-users-to-create-new-bird-records-with-fields-for-name-coordinates-images-audio-files-and-description",
-      "featureTitle": "Restore the Add Data button in the bird data table page (BirdDataTable.tsx) that allows users to create new bird records with fields for name, coordinates, images, audio files, and description",
+      "featureId": "feature-investigate-why-uploaded-images-are-not-displaying-after-deployment-check-if-blob-storage-paths-file-references-or-asset-serving-mechanisms-have-changed-verify-that-image-blob-ids-stored-in-bird-records-still-resolve-to-accessible-image-data",
+      "featureTitle": "Investigate why uploaded images are not displaying after deployment. Check if blob storage paths, file references, or asset serving mechanisms have changed. Verify that image blob IDs stored in bird records still resolve to accessible image data.",
       "files": [
-        "frontend/src/components/BirdDataTable.tsx"
+        "frontend/src/components/AllLocationsMap.tsx",
+        "frontend/src/components/BirdDataTable.tsx",
+        "frontend/src/components/BirdDetailsPage.tsx",
+        "frontend/src/components/BirdGallery.tsx"
       ],
       "components": [
         "authorization@1.0.1",
@@ -19,7 +22,33 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-1"
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-frontend-error-handling-and-logging-to-display-specific-error-messages-when-data-fails-to-load-show-whether-the-issue-is-a-backend-connection-problem-empty-dataset-or-authentication-permission-error",
+      "featureTitle": "Add frontend error handling and logging to display specific error messages when data fails to load. Show whether the issue is a backend connection problem, empty dataset, or authentication/permission error.",
+      "files": [
+        "frontend/src/components/AllLocationsMap.tsx",
+        "frontend/src/components/BirdDataTable.tsx",
+        "frontend/src/components/BirdGallery.tsx",
+        "frontend/src/components/EagleOwlPage.tsx",
+        "frontend/src/components/StatisticsPage.tsx"
+      ],
+      "components": [
+        "authorization@1.0.1",
+        "blob-storage@1.1.2",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-5"
       ],
       "confidence": "high"
     }

@@ -1,172 +1,132 @@
-import React, { useState } from 'react';
-import { useGetAllBirdDetails, useDeleteBird, useSaveBirdDataArray, useAddBirdWithDetails, useCanModifyData } from '../hooks/useQueries';
-import { BirdData } from '../backend';
+import { useState, useMemo, useEffect } from 'react';
+import { Search, Plus, Eye, Trash2, FileSpreadsheet, FileText, Loader2, AlertCircle } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { useGetAllBirdDetails, useDeleteBird, useCanModifyData, useAddBirdWithDetails } from '../hooks/useQueries';
 import { exportBirdsToExcel } from '../lib/excelExport';
 import { exportBirdsToPDF } from '../lib/pdfExport';
-import { useFileUpload } from '../blob-storage/FileStorage';
-import { toast } from 'sonner';
-import { Trash2, FileSpreadsheet, FileText, Plus } from 'lucide-react';
 import { Button } from './ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from './ui/dialog';
 import { Input } from './ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Alert, AlertDescription } from './ui/alert';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { toast } from 'sonner';
+import type { BirdData } from '../backend';
 
 export default function BirdDataTable() {
-  const { data: birdDataEntries, isLoading } = useGetAllBirdDetails();
-  const { mutate: deleteBird } = useDeleteBird();
-  const { mutate: saveBirdDataArray, isPending: isSaving } = useSaveBirdDataArray();
-  const { mutate: addBirdWithDetails, isPending: isAdding } = useAddBirdWithDetails();
-  const { data: canModify } = useCanModifyData();
-  const { uploadFile, isUploading } = useFileUpload();
-  const { identity } = useInternetIdentity();
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [deleteConfirmBird, setDeleteConfirmBird] = useState<BirdData | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
-  const [editingData, setEditingData] = useState<BirdData[]>([]);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<bigint | null>(null);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [newBirdForm, setNewBirdForm] = useState({
+  const { data: allBirdData, isLoading, error: dataError } = useGetAllBirdDetails();
+  const { data: canModify } = useCanModifyData();
+  const deleteBirdMutation = useDeleteBird();
+  const addBirdMutation = useAddBirdWithDetails();
+
+  // Log data loading errors
+  useEffect(() => {
+    if (dataError) {
+      console.error('❌ Bird table data loading error:', {
+        error: dataError,
+        message: (dataError as any)?.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [dataError]);
+
+  // Log successful data load
+  useEffect(() => {
+    if (allBirdData && !isLoading) {
+      console.log('✅ Bird table data loaded successfully:', {
+        totalBirds: allBirdData.length,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [allBirdData, isLoading]);
+
+  const [newBird, setNewBird] = useState({
     arabicName: '',
     scientificName: '',
     englishName: '',
     description: '',
     notes: '',
     latitude: '',
-    longitude: '',
+    longitude: ''
   });
-  const [uploadingImages, setUploadingImages] = useState<File[]>([]);
-  const [uploadingAudio, setUploadingAudio] = useState<File | null>(null);
 
-  const isAuthenticated = !!identity;
+  const birdDataArray = useMemo(() => {
+    if (!allBirdData) return [];
+    return allBirdData.map(([_, data]) => data);
+  }, [allBirdData]);
 
-  React.useEffect(() => {
-    if (birdDataEntries) {
-      const birdDataArray = birdDataEntries.map(([_, data]) => data);
-      setEditingData(birdDataArray);
-    }
-  }, [birdDataEntries]);
-
-  const handleFieldChange = (id: bigint, field: keyof BirdData, value: string) => {
-    setEditingData((prev) =>
-      prev.map((bird) => (bird.id === id ? { ...bird, [field]: value } : bird))
+  const filteredBirds = useMemo(() => {
+    if (!searchTerm) return birdDataArray;
+    
+    return birdDataArray.filter(bird =>
+      bird.arabicName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bird.scientificName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      bird.englishName.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  };
+  }, [birdDataArray, searchTerm]);
 
-  const handleLocationChange = (id: bigint, index: number, field: 'latitude' | 'longitude', value: string) => {
-    setEditingData((prev) =>
-      prev.map((bird) => {
-        if (bird.id === id) {
-          const newLocations = [...bird.locations];
-          newLocations[index] = {
-            ...newLocations[index],
-            [field]: parseFloat(value) || 0,
-          };
-          return { ...bird, locations: newLocations };
-        }
-        return bird;
-      })
-    );
-  };
-
-  const handleSaveAll = () => {
-    if (!canModify) {
-      toast.error('ليس لديك صلاحية لحفظ البيانات');
-      return;
+  const handleDelete = async (birdId: bigint) => {
+    try {
+      await deleteBirdMutation.mutateAsync(birdId);
+      setDeleteConfirmBird(null);
+    } catch (error) {
+      console.error('Delete error:', error);
     }
-    saveBirdDataArray(editingData);
-  };
-
-  const handleDelete = (birdId: bigint) => {
-    if (!canModify) {
-      toast.error('ليس لديك صلاحية لحذف البيانات');
-      return;
-    }
-    setDeleteConfirmId(birdId);
-  };
-
-  const confirmDelete = () => {
-    if (deleteConfirmId !== null) {
-      deleteBird(deleteConfirmId);
-      setDeleteConfirmId(null);
-    }
-  };
-
-  const handleExportExcel = () => {
-    if (!birdDataEntries) return;
-    const birdDataArray = birdDataEntries.map(([_, data]) => data);
-    exportBirdsToExcel(birdDataArray);
-  };
-
-  const handleExportPDF = () => {
-    if (!birdDataEntries) return;
-    const birdDataArray = birdDataEntries.map(([_, data]) => data);
-    exportBirdsToPDF(birdDataArray);
   };
 
   const handleAddBird = async () => {
-    if (!canModify) {
-      toast.error('ليس لديك صلاحية لإضافة البيانات');
-      return;
-    }
-
-    if (!newBirdForm.arabicName || !newBirdForm.latitude || !newBirdForm.longitude) {
-      toast.error('يرجى ملء الحقول المطلوبة: الاسم العربي وخط العرض وخط الطول');
+    if (!newBird.arabicName || !newBird.latitude || !newBird.longitude) {
+      toast.error('❌ يرجى ملء الحقول المطلوبة', {
+        description: 'الاسم العربي وخط العرض وخط الطول مطلوبة',
+        duration: 3000,
+        position: 'bottom-center',
+      });
       return;
     }
 
     try {
-      const latitude = parseFloat(newBirdForm.latitude);
-      const longitude = parseFloat(newBirdForm.longitude);
-
-      if (isNaN(latitude) || isNaN(longitude)) {
-        toast.error('يرجى إدخال قيم صحيحة لخط العرض وخط الطول');
-        return;
-      }
-
-      let audioFilePath: string | null = null;
-      const subImages: string[] = [];
-
-      if (uploadingAudio) {
-        const audioPath = `audio/${Date.now()}_${uploadingAudio.name}`;
-        const result = await uploadFile(audioPath, uploadingAudio);
-        audioFilePath = result.path;
-      }
-
-      if (uploadingImages.length > 0) {
-        for (const image of uploadingImages) {
-          const imagePath = `images/${Date.now()}_${image.name}`;
-          const result = await uploadFile(imagePath, image);
-          subImages.push(result.path);
-        }
-      }
-
-      addBirdWithDetails({
-        arabicName: newBirdForm.arabicName,
-        scientificName: newBirdForm.scientificName,
-        englishName: newBirdForm.englishName,
-        description: newBirdForm.description,
-        notes: newBirdForm.notes,
-        latitude,
-        longitude,
-        audioFilePath,
-        subImages,
+      await addBirdMutation.mutateAsync({
+        arabicName: newBird.arabicName,
+        scientificName: newBird.scientificName,
+        englishName: newBird.englishName,
+        description: newBird.description,
+        notes: newBird.notes,
+        latitude: parseFloat(newBird.latitude),
+        longitude: parseFloat(newBird.longitude),
+        audioFilePath: null,
+        subImages: []
       });
 
-      setIsAddDialogOpen(false);
-      setNewBirdForm({
+      setShowAddDialog(false);
+      setNewBird({
         arabicName: '',
         scientificName: '',
         englishName: '',
         description: '',
         notes: '',
         latitude: '',
-        longitude: '',
+        longitude: ''
       });
-      setUploadingImages([]);
-      setUploadingAudio(null);
     } catch (error) {
-      toast.error(`فشل إضافة البيانات: ${error instanceof Error ? error.message : 'خطأ غير معروف'}`);
+      console.error('Add bird error:', error);
     }
+  };
+
+  const handleExportExcel = () => {
+    exportBirdsToExcel(birdDataArray);
+  };
+
+  const handleExportPDF = () => {
+    exportBirdsToPDF(birdDataArray);
+  };
+
+  const handleRetry = () => {
+    window.location.reload();
   };
 
   if (isLoading) {
@@ -177,299 +137,266 @@ export default function BirdDataTable() {
     );
   }
 
+  if (dataError) {
+    return (
+      <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
+        <div className="mx-auto max-w-2xl">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-right">
+              <div className="space-y-2">
+                <p className="font-semibold">فشل تحميل بيانات الجدول</p>
+                <p className="text-sm">تعذر الاتصال بالخادم أو قاعدة البيانات. يرجى المحاولة مرة أخرى.</p>
+                <Button onClick={handleRetry} variant="outline" size="sm" className="mt-2">
+                  إعادة المحاولة
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  if (!allBirdData || allBirdData.length === 0) {
+    return (
+      <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
+        <div className="mx-auto max-w-2xl">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-right">
+              <p>لا توجد بيانات طيور في قاعدة البيانات حالياً.</p>
+              {canModify && (
+                <Button onClick={() => setShowAddDialog(true)} className="mt-4">
+                  <Plus className="ml-2 h-5 w-5" />
+                  إضافة طائر جديد
+                </Button>
+              )}
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex items-center justify-between">
-          <h1 className="text-4xl font-bold text-foreground">جدول بيانات الطيور</h1>
-          <div className="flex gap-3">
-            {isAuthenticated && canModify && (
-              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button className="gap-2">
-                    <Plus className="h-5 w-5" />
-                    إضافة بيانات
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[90vh] overflow-y-auto" dir="rtl">
-                  <DialogHeader>
-                    <DialogTitle>إضافة بيانات طائر جديد</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="arabicName">الاسم العربي *</Label>
-                      <Input
-                        id="arabicName"
-                        value={newBirdForm.arabicName}
-                        onChange={(e) => setNewBirdForm({ ...newBirdForm, arabicName: e.target.value })}
-                        placeholder="أدخل الاسم العربي"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="scientificName">الاسم العلمي</Label>
-                      <Input
-                        id="scientificName"
-                        value={newBirdForm.scientificName}
-                        onChange={(e) => setNewBirdForm({ ...newBirdForm, scientificName: e.target.value })}
-                        placeholder="أدخل الاسم العلمي"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="englishName">الاسم الإنجليزي</Label>
-                      <Input
-                        id="englishName"
-                        value={newBirdForm.englishName}
-                        onChange={(e) => setNewBirdForm({ ...newBirdForm, englishName: e.target.value })}
-                        placeholder="أدخل الاسم الإنجليزي"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="latitude">خط العرض *</Label>
-                        <Input
-                          id="latitude"
-                          type="number"
-                          step="any"
-                          value={newBirdForm.latitude}
-                          onChange={(e) => setNewBirdForm({ ...newBirdForm, latitude: e.target.value })}
-                          placeholder="24.123456"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="longitude">خط الطول *</Label>
-                        <Input
-                          id="longitude"
-                          type="number"
-                          step="any"
-                          value={newBirdForm.longitude}
-                          onChange={(e) => setNewBirdForm({ ...newBirdForm, longitude: e.target.value })}
-                          placeholder="55.123456"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="description">الوصف</Label>
-                      <Textarea
-                        id="description"
-                        value={newBirdForm.description}
-                        onChange={(e) => setNewBirdForm({ ...newBirdForm, description: e.target.value })}
-                        placeholder="أدخل وصف الطائر"
-                        rows={3}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="notes">ملاحظات</Label>
-                      <Textarea
-                        id="notes"
-                        value={newBirdForm.notes}
-                        onChange={(e) => setNewBirdForm({ ...newBirdForm, notes: e.target.value })}
-                        placeholder="أدخل ملاحظات إضافية"
-                        rows={3}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="images">الصور</Label>
-                      <Input
-                        id="images"
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        onChange={(e) => setUploadingImages(Array.from(e.target.files || []))}
-                      />
-                      {uploadingImages.length > 0 && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          تم اختيار {uploadingImages.length} صورة
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="audio">الملف الصوتي</Label>
-                      <Input
-                        id="audio"
-                        type="file"
-                        accept="audio/*"
-                        onChange={(e) => setUploadingAudio(e.target.files?.[0] || null)}
-                      />
-                      {uploadingAudio && (
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          تم اختيار: {uploadingAudio.name}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setIsAddDialogOpen(false);
-                        setNewBirdForm({
-                          arabicName: '',
-                          scientificName: '',
-                          englishName: '',
-                          description: '',
-                          notes: '',
-                          latitude: '',
-                          longitude: '',
-                        });
-                        setUploadingImages([]);
-                        setUploadingAudio(null);
-                      }}
-                    >
-                      إلغاء
-                    </Button>
-                    <Button onClick={handleAddBird} disabled={isAdding || isUploading}>
-                      {isAdding || isUploading ? 'جاري الإضافة...' : 'إضافة'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            )}
-            {canModify && (
-              <Button onClick={handleSaveAll} disabled={isSaving} variant="default">
-                {isSaving ? 'جاري الحفظ...' : 'حفظ الكل'}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-6">جدول بيانات الطيور</h1>
+          
+          <div className="flex flex-col md:flex-row gap-4 mb-6">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="ابحث عن طائر..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pr-10"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              {canModify && (
+                <Button onClick={() => setShowAddDialog(true)} className="gap-2">
+                  <Plus className="h-5 w-5" />
+                  إضافة طائر جديد
+                </Button>
+              )}
+              <Button onClick={handleExportExcel} variant="outline" className="gap-2">
+                <FileSpreadsheet className="h-5 w-5" />
+                Excel
               </Button>
-            )}
-            <Button onClick={handleExportExcel} variant="outline" className="gap-2">
-              <FileSpreadsheet className="h-5 w-5" />
-              تصدير Excel
-            </Button>
-            <Button onClick={handleExportPDF} variant="outline" className="gap-2">
-              <FileText className="h-5 w-5" />
-              تصدير PDF
-            </Button>
+              <Button onClick={handleExportPDF} variant="outline" className="gap-2">
+                <FileText className="h-5 w-5" />
+                PDF
+              </Button>
+            </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-border bg-card shadow-lg">
-          <table className="w-full border-collapse text-right">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="p-4 text-sm font-semibold text-foreground">المعرف</th>
-                <th className="p-4 text-sm font-semibold text-foreground">الاسم العربي</th>
-                <th className="p-4 text-sm font-semibold text-foreground">الاسم العلمي</th>
-                <th className="p-4 text-sm font-semibold text-foreground">الاسم الإنجليزي</th>
-                <th className="p-4 text-sm font-semibold text-foreground">الوصف</th>
-                <th className="p-4 text-sm font-semibold text-foreground">المواقع</th>
-                <th className="p-4 text-sm font-semibold text-foreground">الصور</th>
-                <th className="p-4 text-sm font-semibold text-foreground">الصوت</th>
-                <th className="p-4 text-sm font-semibold text-foreground">ملاحظات</th>
-                {canModify && <th className="p-4 text-sm font-semibold text-foreground">إجراءات</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {editingData.map((bird) => (
-                <tr key={bird.id.toString()} className="border-b border-border hover:bg-muted/30">
-                  <td className="p-4 text-sm text-muted-foreground">{bird.id.toString()}</td>
-                  <td className="p-4">
-                    <input
-                      type="text"
-                      value={bird.arabicName}
-                      onChange={(e) => handleFieldChange(bird.id, 'arabicName', e.target.value)}
-                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
-                      disabled={!canModify}
-                    />
-                  </td>
-                  <td className="p-4">
-                    <input
-                      type="text"
-                      value={bird.scientificName}
-                      onChange={(e) => handleFieldChange(bird.id, 'scientificName', e.target.value)}
-                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
-                      disabled={!canModify}
-                    />
-                  </td>
-                  <td className="p-4">
-                    <input
-                      type="text"
-                      value={bird.englishName}
-                      onChange={(e) => handleFieldChange(bird.id, 'englishName', e.target.value)}
-                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
-                      disabled={!canModify}
-                    />
-                  </td>
-                  <td className="p-4">
-                    <textarea
-                      value={bird.description}
-                      onChange={(e) => handleFieldChange(bird.id, 'description', e.target.value)}
-                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
-                      rows={2}
-                      disabled={!canModify}
-                    />
-                  </td>
-                  <td className="p-4">
-                    <div className="space-y-2">
-                      {bird.locations.map((loc, idx) => (
-                        <div key={idx} className="flex gap-2">
-                          <input
-                            type="number"
-                            step="any"
-                            value={loc.latitude}
-                            onChange={(e) => handleLocationChange(bird.id, idx, 'latitude', e.target.value)}
-                            className="w-24 rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
-                            placeholder="خط العرض"
-                            disabled={!canModify}
-                          />
-                          <input
-                            type="number"
-                            step="any"
-                            value={loc.longitude}
-                            onChange={(e) => handleLocationChange(bird.id, idx, 'longitude', e.target.value)}
-                            className="w-24 rounded border border-input bg-background px-2 py-1 text-xs text-foreground"
-                            placeholder="خط الطول"
-                            disabled={!canModify}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="p-4 text-sm text-muted-foreground">{bird.subImages.length}</td>
-                  <td className="p-4 text-sm text-muted-foreground">{bird.audioFile ? 'نعم' : 'لا'}</td>
-                  <td className="p-4">
-                    <textarea
-                      value={bird.notes}
-                      onChange={(e) => handleFieldChange(bird.id, 'notes', e.target.value)}
-                      className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
-                      rows={2}
-                      disabled={!canModify}
-                    />
-                  </td>
-                  {canModify && (
-                    <td className="p-4">
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDelete(bird.id)}
-                        className="gap-2"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        حذف
-                      </Button>
-                    </td>
-                  )}
+        <div className="bg-card rounded-lg shadow-lg overflow-hidden border border-border">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">الاسم العربي</th>
+                  <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">الاسم العلمي</th>
+                  <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">الاسم الإنجليزي</th>
+                  <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">عدد المواقع</th>
+                  <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">عدد الصور</th>
+                  <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">صوت</th>
+                  <th className="px-6 py-3 text-right text-sm font-semibold text-foreground">الإجراءات</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredBirds.map((bird) => (
+                  <tr key={bird.id.toString()} className="hover:bg-muted/50">
+                    <td className="px-6 py-4 text-sm text-foreground">{bird.arabicName}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground italic" dir="ltr">{bird.scientificName || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground" dir="ltr">{bird.englishName || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-foreground">{bird.locations.length}</td>
+                    <td className="px-6 py-4 text-sm text-foreground">{bird.subImages.length}</td>
+                    <td className="px-6 py-4 text-sm text-foreground">{bird.audioFile ? 'نعم' : 'لا'}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex gap-2">
+                        <Button
+                          onClick={() => navigate({ to: '/bird/$birdName', params: { birdName: bird.arabicName } })}
+                          variant="outline"
+                          size="sm"
+                        >
+                          <Eye className="h-4 w-4 ml-1" />
+                          عرض
+                        </Button>
+                        {canModify && (
+                          <Button
+                            onClick={() => setDeleteConfirmBird(bird)}
+                            variant="destructive"
+                            size="sm"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {deleteConfirmId !== null && (
-          <Dialog open={deleteConfirmId !== null} onOpenChange={() => setDeleteConfirmId(null)}>
-            <DialogContent dir="rtl">
-              <DialogHeader>
-                <DialogTitle>تأكيد الحذف</DialogTitle>
-              </DialogHeader>
-              <p className="text-muted-foreground">هل أنت متأكد من حذف هذا الطائر؟ لا يمكن التراجع عن هذا الإجراء.</p>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>
-                  إلغاء
-                </Button>
-                <Button variant="destructive" onClick={confirmDelete}>
-                  حذف
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+        {filteredBirds.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-xl text-muted-foreground">لا توجد نتائج</p>
+          </div>
         )}
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={!!deleteConfirmBird} onOpenChange={() => setDeleteConfirmBird(null)}>
+          <DialogContent dir="rtl">
+            <DialogHeader>
+              <DialogTitle>تأكيد الحذف</DialogTitle>
+            </DialogHeader>
+            <p className="text-right">هل أنت متأكد من حذف هذا الطائر؟ لا يمكن التراجع عن هذا الإجراء.</p>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDeleteConfirmBird(null)}>
+                إلغاء
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (deleteConfirmBird) handleDelete(deleteConfirmBird.id);
+                }}
+              >
+                حذف
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Bird Dialog */}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogContent dir="rtl" className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>إضافة طائر جديد</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="arabicName">الاسم العربي *</Label>
+                <Input
+                  id="arabicName"
+                  value={newBird.arabicName}
+                  onChange={(e) => setNewBird({ ...newBird, arabicName: e.target.value })}
+                  className="text-right"
+                />
+              </div>
+              <div>
+                <Label htmlFor="scientificName">الاسم العلمي</Label>
+                <Input
+                  id="scientificName"
+                  value={newBird.scientificName}
+                  onChange={(e) => setNewBird({ ...newBird, scientificName: e.target.value })}
+                  className="text-right"
+                />
+              </div>
+              <div>
+                <Label htmlFor="englishName">الاسم الإنجليزي</Label>
+                <Input
+                  id="englishName"
+                  value={newBird.englishName}
+                  onChange={(e) => setNewBird({ ...newBird, englishName: e.target.value })}
+                  className="text-right"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="latitude">خط العرض *</Label>
+                  <Input
+                    id="latitude"
+                    type="number"
+                    step="any"
+                    value={newBird.latitude}
+                    onChange={(e) => setNewBird({ ...newBird, latitude: e.target.value })}
+                    className="text-right"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="longitude">خط الطول *</Label>
+                  <Input
+                    id="longitude"
+                    type="number"
+                    step="any"
+                    value={newBird.longitude}
+                    onChange={(e) => setNewBird({ ...newBird, longitude: e.target.value })}
+                    className="text-right"
+                  />
+                </div>
+              </div>
+              <div>
+                <Label htmlFor="description">الوصف</Label>
+                <Textarea
+                  id="description"
+                  value={newBird.description}
+                  onChange={(e) => setNewBird({ ...newBird, description: e.target.value })}
+                  className="text-right"
+                  rows={4}
+                />
+              </div>
+              <div>
+                <Label htmlFor="notes">ملاحظات</Label>
+                <Textarea
+                  id="notes"
+                  value={newBird.notes}
+                  onChange={(e) => setNewBird({ ...newBird, notes: e.target.value })}
+                  className="text-right"
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                إلغاء
+              </Button>
+              <Button onClick={handleAddBird} disabled={addBirdMutation.isPending}>
+                {addBirdMutation.isPending ? (
+                  <>
+                    <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                    جاري الإضافة...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="ml-2 h-4 w-4" />
+                    إضافة
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

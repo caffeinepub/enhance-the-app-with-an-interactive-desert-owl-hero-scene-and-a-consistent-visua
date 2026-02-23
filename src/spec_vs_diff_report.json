@@ -1,14 +1,72 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-21T02:32:12.499Z",
-  "summary": "The diff successfully implements REQ-1 by restoring the Add Data button in BirdDataTable.tsx with a complete form dialog for creating new bird records. All acceptance criteria appear to be met based on the available evidence.",
-  "missing_requirements": [],
-  "hallucinated_features": [],
-  "confidence": 0.95,
+  "generatedAt": "2026-02-23T09:30:31.237Z",
+  "summary": "The diff implements a migration system for stable memory transfer, adds comprehensive frontend error handling and logging, but does not directly verify or fix the root causes of missing data and images. The migration.mo file is created but may not restore data already lost. No evidence of actual asset serving verification, CORS configuration checks, or permissions verification in the live environment.",
+  "missing_requirements": [
+    {
+      "id": "REQ-1",
+      "requirement": "Investigate why previously added bird data is no longer displaying after the latest deployment to version 520. Check if the backend stable memory migration is correctly preserving existing bird records, user profiles, team data, and access control settings.",
+      "reason": "The diff adds migration.mo and logging, but provides no evidence of investigation into why existing data disappeared. No diagnostic code, no verification of existing stable memory state, no recovery mechanism for lost data. The migration system helps future deployments but does not address data already missing.",
+      "evidence": [
+        "backend/migration.mo",
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "Investigate why uploaded images are not displaying after deployment. Check if blob storage paths, file references, or asset serving mechanisms have changed. Verify that image blob IDs stored in bird records still resolve to accessible image data.",
+      "reason": "Frontend adds error logging for image loading failures, but no backend investigation of blob storage paths or verification that image blob IDs resolve correctly. No code checks if asset serving mechanisms changed or if blob storage is accessible.",
+      "evidence": [
+        "frontend/src/components/AllLocationsMap.tsx",
+        "frontend/src/components/BirdGallery.tsx"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "requirement": "Check if role-based access control and permissions are functioning correctly after deployment. Verify that the user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' still has admin privileges and can view/edit data.",
+      "reason": "No code verifies the specific principal ID's admin status or checks if permissions are functioning correctly after deployment. AccessControl functions exist in main.mo but no diagnostic or verification code for the specified principal.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "requirement": "Verify that the backend canister configuration and HTTP asset serving are correctly set up in the live environment. Check if CORS settings, asset certification, or canister permissions have changed compared to the draft environment.",
+      "reason": "No code checks CORS settings, asset certification, or canister HTTP response headers. No verification of live environment configuration. The BlobStorage mixin is included but no validation of its configuration.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "Frontend displays forced data synchronization mechanism with useForcedDataSync hook mentioned in frontend-file-summaries.txt",
+      "reason": "The BuildRequest does not ask for automatic data synchronization or cache clearing mechanisms. This is a new feature not requested in the investigation/fix scope.",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    },
+    {
+      "description": "Comprehensive WebGL detection and fallback system for 3D maps",
+      "reason": "BuildRequest explicitly states Non-goals: Adding new features or UI components. WebGL detection and 3D map fallback logic is unrelated to fixing missing data and images.",
+      "evidence": [
+        "frontend/src/components/AllLocationsMap.tsx",
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "confidence": 0.85,
   "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
+    "frontend/src/components/AllLocationsMap.tsx",
     "frontend/src/components/BirdDataTable.tsx",
+    "frontend/src/components/BirdDetailsPage.tsx",
+    "frontend/src/components/BirdGallery.tsx",
+    "frontend/src/components/EagleOwlPage.tsx",
+    "frontend/src/components/StatisticsPage.tsx",
     "project_state.json"
   ]
 }

@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { Search, FileSpreadsheet, FileText, Trash2, Edit, Save, X, Camera, Music, MapPin, Loader2 } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Search, FileSpreadsheet, FileText, Trash2, Edit, Save, X, Camera, Music, MapPin, Loader2, AlertCircle } from 'lucide-react';
 import { useBirdAudio, useAddAudioFile, useAllBirdData, useAddSubImage, useHasAudioFile, useCanModifyData, useDeleteSubImage, useInvalidateBirdData, useBirdExists, useDeleteBird, useSaveBirdData, useUpdateBirdDetails } from '../hooks/useQueries';
 import { useFileUrl, useFileUpload } from '../blob-storage/FileStorage';
 import { exportBirdsToExcel } from '../lib/excelExport';
@@ -9,6 +9,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Alert, AlertDescription } from './ui/alert';
 import { BirdData } from '../backend';
 
 export default function BirdGallery() {
@@ -19,7 +20,7 @@ export default function BirdGallery() {
   const [uploadingImage, setUploadingImage] = useState<string | null>(null);
   const [uploadingAudio, setUploadingAudio] = useState<string | null>(null);
 
-  const { data: allBirdData, isLoading } = useAllBirdData();
+  const { data: allBirdData, isLoading, error: dataError } = useAllBirdData();
   const { data: canModify } = useCanModifyData();
   const deleteBirdMutation = useDeleteBird();
   const saveBirdDataMutation = useSaveBirdData();
@@ -30,6 +31,29 @@ export default function BirdGallery() {
   const invalidateBirdData = useInvalidateBirdData();
 
   const [editedData, setEditedData] = useState<Record<string, BirdData>>({});
+
+  // Log data loading errors
+  useEffect(() => {
+    if (dataError) {
+      console.error('❌ Bird data loading error:', {
+        error: dataError,
+        message: (dataError as any)?.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [dataError]);
+
+  // Log successful data load
+  useEffect(() => {
+    if (allBirdData && !isLoading) {
+      console.log('✅ Bird data loaded successfully:', {
+        totalBirds: allBirdData.length,
+        birdsWithImages: allBirdData.filter(([_, bird]) => bird.subImages.length > 0).length,
+        birdsWithAudio: allBirdData.filter(([_, bird]) => bird.audioFile).length,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [allBirdData, isLoading]);
 
   const birdDataArray = useMemo(() => {
     if (!allBirdData) return [];
@@ -188,10 +212,50 @@ export default function BirdGallery() {
     exportBirdsToPDF(birdDataArray);
   };
 
+  const handleRetry = () => {
+    invalidateBirdData();
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
         <div className="text-center text-xl text-muted-foreground">جاري تحميل البيانات...</div>
+      </div>
+    );
+  }
+
+  if (dataError) {
+    return (
+      <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
+        <div className="mx-auto max-w-2xl">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-right">
+              <div className="space-y-2">
+                <p className="font-semibold">فشل تحميل بيانات الطيور</p>
+                <p className="text-sm">تعذر الاتصال بالخادم أو قاعدة البيانات. يرجى المحاولة مرة أخرى.</p>
+                <Button onClick={handleRetry} variant="outline" size="sm" className="mt-2">
+                  إعادة المحاولة
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  if (!allBirdData || allBirdData.length === 0) {
+    return (
+      <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
+        <div className="mx-auto max-w-2xl">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-right">
+              <p>لا توجد بيانات طيور في قاعدة البيانات حالياً.</p>
+            </AlertDescription>
+          </Alert>
+        </div>
       </div>
     );
   }
@@ -341,7 +405,7 @@ function BirdCard({
   return (
     <div className="bg-card rounded-lg shadow-lg overflow-hidden border border-border">
       {firstImage ? (
-        <BirdImage imagePath={firstImage} alt={displayData.arabicName} />
+        <BirdImage imagePath={firstImage} alt={displayData.arabicName} birdName={displayData.arabicName} />
       ) : (
         <div className="h-48 bg-muted flex items-center justify-center">
           <p className="text-muted-foreground">لا توجد صورة</p>
@@ -458,8 +522,39 @@ function BirdCard({
   );
 }
 
-function BirdImage({ imagePath, alt }: { imagePath: string; alt: string }) {
-  const { data: imageUrl, isLoading } = useFileUrl(imagePath);
+function BirdImage({ imagePath, alt, birdName }: { imagePath: string; alt: string; birdName: string }) {
+  const { data: imageUrl, isLoading, error } = useFileUrl(imagePath);
+  const [retryCount, setRetryCount] = useState(0);
+
+  // Log image loading details
+  useEffect(() => {
+    if (error) {
+      console.error('❌ Image loading error:', {
+        birdName,
+        imagePath,
+        error,
+        errorMessage: (error as any)?.message,
+        timestamp: new Date().toISOString(),
+        retryCount
+      });
+    }
+  }, [error, imagePath, birdName, retryCount]);
+
+  useEffect(() => {
+    if (imageUrl) {
+      console.log('✅ Image loaded successfully:', {
+        birdName,
+        imagePath,
+        imageUrl: imageUrl.substring(0, 50) + '...',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [imageUrl, imagePath, birdName]);
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+    window.location.reload();
+  };
 
   if (isLoading) {
     return (
@@ -469,10 +564,15 @@ function BirdImage({ imagePath, alt }: { imagePath: string; alt: string }) {
     );
   }
 
-  if (!imageUrl) {
+  if (error || !imageUrl) {
     return (
-      <div className="h-48 bg-muted flex items-center justify-center">
-        <p className="text-muted-foreground">فشل تحميل الصورة</p>
+      <div className="h-48 bg-muted flex flex-col items-center justify-center p-4 text-center">
+        <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+        <p className="text-sm text-muted-foreground mb-1">فشل تحميل الصورة</p>
+        <p className="text-xs text-muted-foreground mb-2" dir="ltr">{imagePath}</p>
+        <Button onClick={handleRetry} variant="outline" size="sm">
+          إعادة المحاولة
+        </Button>
       </div>
     );
   }
@@ -482,6 +582,14 @@ function BirdImage({ imagePath, alt }: { imagePath: string; alt: string }) {
       src={imageUrl}
       alt={alt}
       className="w-full h-48 object-cover"
+      onError={(e) => {
+        console.error('❌ Image render error:', {
+          birdName,
+          imagePath,
+          imageUrl,
+          timestamp: new Date().toISOString()
+        });
+      }}
     />
   );
 }

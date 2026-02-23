@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { MapPin, Loader2, Camera, Eye, EyeOff, Filter, Search, ChevronDown, Download, X, Play, Pause, Volume2, Home } from 'lucide-react';
+import { MapPin, Loader2, Camera, Eye, EyeOff, Filter, Search, ChevronDown, Download, X, Play, Pause, Volume2, Home, AlertCircle } from 'lucide-react';
 import { useFileUrl } from '../blob-storage/FileStorage';
 import { useBirdAudio, useHasAudioFile, useGetAllBirdDetails, useGetFileReferences } from '../hooks/useQueries';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { detectWebGL, normalizeBirdName, type WebGLSupport } from '../lib/webglDetector';
 import type { Coordinate, BirdData } from '../backend';
 
@@ -38,8 +40,32 @@ const isValidCoordinate = (lat: number, lng: number): boolean => {
 };
 
 // Component for displaying image in popup
-function PopupImage({ imagePath }: { imagePath: string }) {
-  const { data: imageUrl, isLoading } = useFileUrl(imagePath);
+function PopupImage({ imagePath, birdName }: { imagePath: string; birdName: string }) {
+  const { data: imageUrl, isLoading, error } = useFileUrl(imagePath);
+
+  // Log popup image loading details
+  useEffect(() => {
+    if (error) {
+      console.error('❌ Popup image loading error:', {
+        birdName,
+        imagePath,
+        error,
+        errorMessage: (error as any)?.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [error, imagePath, birdName]);
+
+  useEffect(() => {
+    if (imageUrl) {
+      console.log('✅ Popup image loaded successfully:', {
+        birdName,
+        imagePath,
+        imageUrl: imageUrl.substring(0, 50) + '...',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [imageUrl, imagePath, birdName]);
 
   if (isLoading) {
     return <div className="w-32 h-24 bg-gray-200 rounded flex items-center justify-center">
@@ -47,9 +73,11 @@ function PopupImage({ imagePath }: { imagePath: string }) {
     </div>;
   }
 
-  if (!imageUrl) {
-    return <div className="w-32 h-24 bg-gray-200 rounded flex items-center justify-center">
-      <Camera className="h-4 w-4 text-gray-400" />
+  if (error || !imageUrl) {
+    return <div className="w-32 h-24 bg-gray-200 rounded flex flex-col items-center justify-center p-1 text-center">
+      <AlertCircle className="h-4 w-4 text-red-500 mb-1" />
+      <p className="text-xs text-gray-600">فشل التحميل</p>
+      <p className="text-xs text-gray-400 break-all" dir="ltr">{imagePath.substring(0, 20)}...</p>
     </div>;
   }
 
@@ -59,6 +87,12 @@ function PopupImage({ imagePath }: { imagePath: string }) {
       alt="صورة الموقع" 
       className="w-32 h-24 object-cover rounded border border-gray-300"
       onError={(e) => {
+        console.error('❌ Popup image render error:', {
+          birdName,
+          imagePath,
+          imageUrl,
+          timestamp: new Date().toISOString()
+        });
         const target = e.target as HTMLImageElement;
         target.style.display = 'none';
       }}
@@ -211,7 +245,7 @@ function DetailsPanel({
                 <Camera className="h-4 w-4 ml-2 text-blue-600" />
                 الصورة الرئيسية
               </h4>
-              <ImageDisplay imagePath={location.associatedImage} />
+              <ImageDisplay imagePath={location.associatedImage} birdName={location.birdName} />
             </div>
           )}
 
@@ -224,7 +258,7 @@ function DetailsPanel({
               </h4>
               <div className="grid grid-cols-2 gap-2">
                 {birdData.subImages.map((imagePath, index) => (
-                  <ImageDisplay key={index} imagePath={imagePath} />
+                  <ImageDisplay key={index} imagePath={imagePath} birdName={location.birdName} />
                 ))}
               </div>
             </div>
@@ -265,8 +299,32 @@ function DetailsPanel({
 }
 
 // Image Display Component
-function ImageDisplay({ imagePath }: { imagePath: string }) {
-  const { data: imageUrl, isLoading } = useFileUrl(imagePath);
+function ImageDisplay({ imagePath, birdName }: { imagePath: string; birdName: string }) {
+  const { data: imageUrl, isLoading, error } = useFileUrl(imagePath);
+
+  // Log image display details
+  useEffect(() => {
+    if (error) {
+      console.error('❌ Image display loading error:', {
+        birdName,
+        imagePath,
+        error,
+        errorMessage: (error as any)?.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [error, imagePath, birdName]);
+
+  useEffect(() => {
+    if (imageUrl) {
+      console.log('✅ Image display loaded successfully:', {
+        birdName,
+        imagePath,
+        imageUrl: imageUrl.substring(0, 50) + '...',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [imageUrl, imagePath, birdName]);
 
   if (isLoading) {
     return (
@@ -276,10 +334,12 @@ function ImageDisplay({ imagePath }: { imagePath: string }) {
     );
   }
 
-  if (!imageUrl) {
+  if (error || !imageUrl) {
     return (
-      <div className="w-full aspect-video bg-gray-200 rounded-lg flex items-center justify-center">
-        <Camera className="h-6 w-6 text-gray-400" />
+      <div className="w-full aspect-video bg-gray-200 rounded-lg flex flex-col items-center justify-center p-2 text-center">
+        <AlertCircle className="h-6 w-6 text-red-500 mb-1" />
+        <p className="text-xs text-gray-600">فشل التحميل</p>
+        <p className="text-xs text-gray-400 break-all" dir="ltr">{imagePath.substring(0, 30)}...</p>
       </div>
     );
   }
@@ -290,6 +350,14 @@ function ImageDisplay({ imagePath }: { imagePath: string }) {
       alt="صورة الطائر"
       className="w-full aspect-video object-cover rounded-lg border border-gray-300 shadow-sm hover:shadow-md transition-shadow cursor-pointer"
       onClick={() => window.open(imageUrl, '_blank')}
+      onError={() => {
+        console.error('❌ Image display render error:', {
+          birdName,
+          imagePath,
+          imageUrl,
+          timestamp: new Date().toISOString()
+        });
+      }}
     />
   );
 }
@@ -334,8 +402,30 @@ export default function AllLocationsMap() {
   }, []);
 
   // Fetch data directly from backend using React Query
-  const { data: allBirdData = [], isLoading: birdDataLoading } = useGetAllBirdDetails();
+  const { data: allBirdData = [], isLoading: birdDataLoading, error: birdDataError } = useGetAllBirdDetails();
   const { data: uploadedFiles = [], isLoading: filesLoading } = useGetFileReferences();
+
+  // Log map data loading errors
+  useEffect(() => {
+    if (birdDataError) {
+      console.error('❌ Map bird data loading error:', {
+        error: birdDataError,
+        message: (birdDataError as any)?.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [birdDataError]);
+
+  // Log successful map data load
+  useEffect(() => {
+    if (allBirdData && !birdDataLoading) {
+      console.log('✅ Map bird data loaded successfully:', {
+        totalBirds: allBirdData.length,
+        totalLocations: allBirdData.reduce((sum, [_, bird]) => sum + bird.locations.length, 0),
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [allBirdData, birdDataLoading]);
 
   // Convert backend data to locations format with normalized bird names
   const allLocations = allBirdData.flatMap(([birdName, birdData]) => {
@@ -474,418 +564,116 @@ export default function AllLocationsMap() {
               className: 'custom-marker-with-image',
               html: `
                 <div class="marker-with-image">
-                  <div class="marker-pin" style="background: ${speciesColor}; border: 3px solid white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
-                  <div class="marker-camera-icon" style="position: absolute; top: -2px; right: -2px; width: 16px; height: 16px; background: #10b981; border: 2px solid white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 8px; color: white; box-shadow: 0 1px 4px rgba(0,0,0,0.3);">📷</div>
+                  <div class="marker-pin" style="background: ${speciesColor}; border: 3px solid white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-center; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
+                  <div class="marker-camera-icon" style="position: absolute; top: -2px; right: -2px; width: 16px; height: 16px; background: #10b981; border: 2px solid white; border-radius: 50%; display: flex; align-items: center; justify-center; font-size: 8px; color: white; box-shadow: 0 1px 4px rgba(0,0,0,0.2);">📷</div>
                 </div>
               `,
               iconSize: [30, 30],
               iconAnchor: [15, 15],
-              popupAnchor: [0, -15]
             });
-            markerIcon = L.marker([location.latitude, location.longitude], { icon: customIcon });
+            markerIcon = customIcon;
           } else {
             const customIcon = L.divIcon({
-              className: 'custom-colored-marker',
-              html: `
-                <div style="background: ${speciesColor}; border: 3px solid white; width: 24px; height: 24px; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>
-              `,
+              className: 'custom-marker',
+              html: `<div style="background: ${speciesColor}; border: 3px solid white; width: 24px; height: 24px; border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,0.3);"></div>`,
               iconSize: [24, 24],
               iconAnchor: [12, 12],
-              popupAnchor: [0, -12]
             });
-            markerIcon = L.marker([location.latitude, location.longitude], { icon: customIcon });
+            markerIcon = customIcon;
           }
 
-          // Add click event to show details panel
-          markerIcon.on('click', () => {
-            setSelectedLocation(location);
+          const marker = L.marker([location.latitude, location.longitude], {
+            icon: markerIcon
+          }).addTo(mapInstanceRef.current);
+
+          marker.on('click', () => {
+            const birdData = allBirdData.find(([_, bird]) => 
+              normalizeBirdName(bird.arabicName) === normalizeBirdName(location.birdName)
+            )?.[1];
+
+            setSelectedLocation({
+              ...location,
+              birdName: location.birdName,
+              associatedImage: location.associatedImage,
+              locationData: location.locationData
+            });
           });
 
-          markerIcon.addTo(mapInstanceRef.current);
-          markersRef.current.push(markerIcon);
+          markersRef.current.push(marker);
         }
       });
-
-      // Only fit bounds if there are markers, otherwise keep centered on Al Buraimi
-      if (markersRef.current.length > 0 && filteredLocations.length < allLocations.length) {
-        // Only auto-fit when filtering to specific species
-        const group = new L.featureGroup(markersRef.current);
-        mapInstanceRef.current.fitBounds(group.getBounds().pad(0.1));
-      } else if (markersRef.current.length > 0 && selectedSpeciesFilter === 'الكل') {
-        // When showing all, keep the static Al Buraimi view
-        mapInstanceRef.current.setView(AL_BURAIMI_CENTER, AL_BURAIMI_ZOOM);
-      }
-    } else {
-      // No markers - keep centered on Al Buraimi
-      mapInstanceRef.current.setView(AL_BURAIMI_CENTER, AL_BURAIMI_ZOOM);
     }
-  }, [filteredLocations, allLocations.length, selectedSpeciesFilter]);
+  }, [filteredLocations, allBirdData]);
 
-  const toggleSpeciesVisibility = (speciesName: string) => {
-    setHiddenSpecies(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(speciesName)) {
-        newSet.delete(speciesName);
-      } else {
-        newSet.add(speciesName);
-      }
-      return newSet;
-    });
-  };
-
-  const showAllSpecies = () => {
-    setHiddenSpecies(new Set());
-  };
-
-  const hideAllSpecies = () => {
-    setHiddenSpecies(new Set(uniqueSpecies));
-  };
-
-  const handleSpeciesFilterChange = (species: string) => {
-    setSelectedSpeciesFilter(species);
-    setHiddenSpecies(new Set());
-    setSearchTerm('');
-  };
-
-  const downloadMapAsImage = async () => {
-    if (!mapInstanceRef.current || isDownloading) return;
-
-    try {
-      setIsDownloading(true);
-
-      const mapElement = mapRef.current;
-      if (!mapElement) return;
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      const rect = mapElement.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = '#333333';
-      ctx.font = '16px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText('خريطة مواقع الطيور - محافظة البريمي', canvas.width / 2, 30);
-      
-      const filterText = selectedSpeciesFilter === 'الكل' 
-        ? `جميع المواقع (${filteredLocations.length} موقع)`
-        : `مواقع ${selectedSpeciesFilter} (${filteredLocations.length} موقع)`;
-      
-      ctx.font = '14px Arial';
-      ctx.fillText(filterText, canvas.width / 2, 55);
-
-      const now = new Date();
-      const timestamp = now.toLocaleDateString('ar-SA') + ' - ' + now.toLocaleTimeString('ar-SA');
-      ctx.font = '12px Arial';
-      ctx.fillText(timestamp, canvas.width / 2, canvas.height - 20);
-
-      const link = document.createElement('a');
-      const filename = selectedSpeciesFilter === 'الكل' 
-        ? `خريطة-جميع-مواقع-الطيور-${now.toISOString().split('T')[0]}.png`
-        : `خريطة-مواقع-${selectedSpeciesFilter}-${now.toISOString().split('T')[0]}.png`;
-      
-      link.download = filename;
-      link.href = canvas.toDataURL('image/png');
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setTimeout(() => {
-        alert('تم تحميل الخريطة بنجاح! ملاحظة: هذه نسخة مبسطة من الخريطة.');
-      }, 100);
-
-    } catch (error) {
-      console.error('Error downloading map:', error);
-      alert('حدث خطأ أثناء تحميل الخريطة. يرجى المحاولة مرة أخرى.');
-    } finally {
-      setIsDownloading(false);
-    }
-  };
-
-  const handleNavigateToHome = () => {
-    window.location.href = '/';
-  };
-
-  // Get bird data for selected location with normalized name matching
-  const selectedBirdData = selectedLocation && allBirdData 
-    ? allBirdData.find(([name]) => normalizeBirdName(name) === normalizeBirdName(selectedLocation.birdName))?.[1]
-    : undefined;
-
-  // Show loading state
-  if (birdDataLoading || filesLoading || !webglSupport) {
+  if (birdDataLoading || filesLoading) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-background p-8 flex items-center justify-center" dir="rtl">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-lg text-gray-700">جاري تحميل بيانات الخريطة...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-xl text-muted-foreground">جاري تحميل بيانات الخريطة...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (birdDataError) {
+    return (
+      <div className="min-h-screen bg-background p-8" dir="rtl">
+        <div className="mx-auto max-w-2xl">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-right">
+              <div className="space-y-2">
+                <p className="font-semibold">فشل تحميل بيانات الخريطة</p>
+                <p className="text-sm">تعذر الاتصال بالخادم أو قاعدة البيانات. يرجى المحاولة مرة أخرى.</p>
+                <Button onClick={() => window.location.reload()} variant="outline" size="sm" className="mt-2">
+                  إعادة المحاولة
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  if (!allBirdData || allBirdData.length === 0) {
+    return (
+      <div className="min-h-screen bg-background p-8" dir="rtl">
+        <div className="mx-auto max-w-2xl">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-right">
+              <p>لا توجد بيانات مواقع في قاعدة البيانات حالياً.</p>
+            </AlertDescription>
+          </Alert>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full relative flex flex-col">
-      {/* Map Statistics Section */}
-      <div className="bg-white border-b border-gray-200 p-4 z-[1000] shrink-0">
-        <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg shadow-md border border-blue-200 p-4 mb-4">
-          <div className="mb-3">
-            <h3 className="text-lg font-bold text-blue-900 mb-2 text-right">إحصائيات الخريطة</h3>
-            <p className="text-sm text-blue-700 text-right">
-              معلومات شاملة عن البيانات المعروضة
-              {webglSupport.shouldUseFallback && (
-                <span className="mr-2">
-                  {webglSupport.isMobile ? '📱 وضع الجوال - خريطة ثنائية الأبعاد' : '🗺️ خريطة ثنائية الأبعاد'}
-                </span>
-              )}
-            </p>
-          </div>
+    <div className="min-h-screen bg-background p-4 md:p-8" dir="rtl">
+      <div className="mx-auto max-w-7xl">
+        <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6 text-right">خريطة جميع المواقع</h1>
+        
+        <div className="relative">
+          <div 
+            ref={mapRef} 
+            className="w-full h-[600px] md:h-[700px] rounded-lg shadow-lg border border-border"
+          />
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-            <div className="bg-white rounded-lg p-3 border border-blue-200">
-              <div className="text-2xl font-bold text-blue-600">{allLocations.length}</div>
-              <div className="text-sm text-blue-800">إجمالي المواقع</div>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-green-200">
-              <div className="text-2xl font-bold text-green-600">{filteredLocations.length}</div>
-              <div className="text-sm text-green-800">المواقع المعروضة</div>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-purple-200">
-              <div className="text-2xl font-bold text-purple-600">{uniqueSpecies.length}</div>
-              <div className="text-sm text-purple-800">أنواع الطيور</div>
-            </div>
-            <div className="bg-white rounded-lg p-3 border border-orange-200">
-              <div className="text-2xl font-bold text-orange-600">
-                {filteredLocations.filter(loc => loc.associatedImage).length}
-              </div>
-              <div className="text-sm text-orange-800">المواقع المصورة</div>
-            </div>
-          </div>
-          
-          {selectedSpeciesFilter !== 'الكل' && (
-            <div className="mt-3 bg-yellow-50 rounded-lg p-3 border border-yellow-200">
-              <div className="text-center">
-                <span className="text-sm font-medium text-yellow-800">
-                  النوع المحدد: <span className="font-bold">{selectedSpeciesFilter}</span>
-                </span>
-              </div>
-            </div>
+          {selectedLocation && (
+            <DetailsPanel
+              location={selectedLocation}
+              locationData={selectedLocation.locationData}
+              birdData={allBirdData.find(([_, bird]) => 
+                normalizeBirdName(bird.arabicName) === normalizeBirdName(selectedLocation.birdName)
+              )?.[1]}
+              onClose={() => setSelectedLocation(null)}
+            />
           )}
         </div>
-
-        {/* Species Filter, Download, and Back to Home Controls */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1 max-w-md">
-            <div className="bg-white rounded-lg shadow-md border border-blue-200 p-4">
-              <div className="mb-3">
-                <label className="block text-sm font-medium text-gray-800 mb-2 text-right">
-                  اختر نوع الطائر
-                </label>
-                <div className="relative">
-                  <select
-                    value={selectedSpeciesFilter}
-                    onChange={(e) => handleSpeciesFilterChange(e.target.value)}
-                    className="w-full px-4 py-2 pr-10 bg-white border border-blue-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-200 focus:border-blue-500 transition-all appearance-none text-right text-base font-medium hover:border-blue-400"
-                    dir="rtl"
-                  >
-                    {speciesFilterOptions.map((species) => (
-                      <option key={species} value={species} className="text-right py-2">
-                        {species}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-blue-600 pointer-events-none" />
-                </div>
-              </div>
-              
-              <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                <p className="text-sm text-blue-800 text-right font-medium">
-                  {selectedSpeciesFilter === 'الكل' 
-                    ? `عرض جميع المواقع (${filteredLocations.length} موقع)` 
-                    : `عرض مواقع ${selectedSpeciesFilter} (${filteredLocations.length} موقع)`
-                  }
-                </p>
-                {uniqueSpecies.length > 0 && (
-                  <p className="text-sm text-blue-600 text-right mt-1">
-                    إجمالي الأنواع: {uniqueSpecies.length}
-                  </p>
-                )}
-              </div>
-              
-              {uniqueSpecies.length > 0 && selectedSpeciesFilter !== 'الكل' && (
-                <div className="mt-3">
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="w-full flex items-center justify-center px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"
-                    title="إظهار/إخفاء المرشحات المتقدمة"
-                  >
-                    <Filter className="h-4 w-4 ml-2" />
-                    {showFilters ? 'إخفاء المرشحات' : 'مرشحات متقدمة'}
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Back to Homepage Button */}
-            <button
-              onClick={handleNavigateToHome}
-              className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105 relative z-[1100]"
-              title="عودة إلى الصفحة الرئيسية"
-              aria-label="عودة إلى الصفحة الرئيسية"
-              style={{ 
-                pointerEvents: 'auto',
-                cursor: 'pointer',
-                touchAction: 'manipulation'
-              }}
-            >
-              <Home className="h-8 w-8" />
-            </button>
-
-            {/* Download Map Button */}
-            <button
-              onClick={downloadMapAsImage}
-              disabled={isDownloading}
-              className="visual-download-icon-button flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all duration-300 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105 disabled:hover:scale-100 relative z-[1100]"
-              title="تحميل الخريطة كصورة"
-              aria-label="تحميل الخريطة كصورة"
-              style={{ 
-                pointerEvents: 'auto',
-                cursor: isDownloading ? 'not-allowed' : 'pointer',
-                touchAction: 'manipulation'
-              }}
-            >
-              {isDownloading ? (
-                <Loader2 className="h-8 w-8 animate-spin" />
-              ) : (
-                <Download className="h-8 w-8" />
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Map Container */}
-      <div className="flex-1 relative">
-        <div ref={mapRef} className="h-full w-full" />
-        
-        {/* Details Panel */}
-        {selectedLocation && (
-          <DetailsPanel
-            location={selectedLocation}
-            locationData={selectedLocation.locationData}
-            birdData={selectedBirdData}
-            onClose={() => setSelectedLocation(null)}
-          />
-        )}
-        
-        {/* Advanced Filters Panel */}
-        {showFilters && uniqueSpecies.length > 0 && selectedSpeciesFilter !== 'الكل' && (
-          <div className="absolute bottom-4 right-4 bg-white rounded-lg shadow-lg border border-gray-200 z-[1000] max-w-xs">
-            <div className="p-4 border-b border-gray-200">
-              <h3 className="font-medium text-gray-900">مرشحات متقدمة</h3>
-            </div>
-
-            <div className="p-4">
-              <div className="mb-4">
-                <div className="relative">
-                  <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="البحث في أنواع الطيور..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pr-10 pl-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-right"
-                    dir="rtl"
-                  />
-                </div>
-              </div>
-
-              <div className="flex space-x-2 space-x-reverse mb-3">
-                <button
-                  onClick={showAllSpecies}
-                  className="flex-1 px-2 py-1 text-xs bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
-                >
-                  إظهار الكل
-                </button>
-                <button
-                  onClick={hideAllSpecies}
-                  className="flex-1 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
-                >
-                  إخفاء الكل
-                </button>
-              </div>
-
-              <div className="max-h-60 overflow-y-auto">
-                <h4 className="text-sm font-medium text-gray-900 mb-3">أنواع الطيور</h4>
-                <div className="space-y-2">
-                  {uniqueSpecies
-                    .filter(species => {
-                      if (selectedSpeciesFilter !== 'الكل' && normalizeBirdName(species) !== normalizeBirdName(selectedSpeciesFilter)) {
-                        return false;
-                      }
-                      return !searchTerm || species.toLowerCase().includes(searchTerm.toLowerCase());
-                    })
-                    .map((species) => {
-                      const isHidden = hiddenSpecies.has(species);
-                      const speciesColor = generateSpeciesColor(species);
-                      const speciesCount = allLocations.filter(loc => normalizeBirdName(loc.birdName) === normalizeBirdName(species)).length;
-                      const visibleCount = filteredLocations.filter(loc => normalizeBirdName(loc.birdName) === normalizeBirdName(species)).length;
-                      
-                      return (
-                        <div
-                          key={species}
-                          className={`flex items-center justify-between p-2 rounded cursor-pointer transition-colors ${
-                            isHidden ? 'bg-gray-100 opacity-50' : 'bg-white hover:bg-gray-50'
-                          }`}
-                          onClick={() => toggleSpeciesVisibility(species)}
-                        >
-                          <div className="flex items-center flex-1 min-w-0">
-                            <div
-                              className="w-4 h-4 rounded-full border-2 border-white shadow-sm shrink-0 ml-2"
-                              style={{ backgroundColor: speciesColor }}
-                            />
-                            <span className="text-sm text-gray-900 truncate" title={species}>
-                              {species}
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2 space-x-reverse shrink-0">
-                            <span className="text-xs text-gray-500">
-                              {isHidden ? 0 : visibleCount}/{speciesCount}
-                            </span>
-                            {isHidden ? (
-                              <EyeOff className="h-4 w-4 text-gray-400" />
-                            ) : (
-                              <Eye className="h-4 w-4 text-gray-600" />
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {allLocations.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50/80 z-[999]">
-            <div className="text-center bg-white p-8 rounded-lg shadow-lg border border-gray-200 max-w-md">
-              <MapPin className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">لا توجد مواقع مسجلة بعد</h3>
-              <p className="text-gray-600 mb-4">
-                يمكنك إضافة مواقع الطيور من خلال جدول البيانات لتظهر هنا على الخريطة
-              </p>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

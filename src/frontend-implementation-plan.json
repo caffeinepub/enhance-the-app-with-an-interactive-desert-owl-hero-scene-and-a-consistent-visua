@@ -1,23 +1,77 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix missing Add Data button in bird data table",
+  "title": "Frontend Investigation: Missing Data and Images After Deployment",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Restore the Add Data button in BirdDataTable.tsx that opens a dialog for creating new bird records with all required fields",
+      "id": "REQ-3",
+      "summary": "Investigate and display image loading errors in the frontend to diagnose why uploaded images are not displaying after deployment",
       "acceptanceCriteria": [
-        "Add Data button is visible in the BirdDataTable component",
-        "Clicking the button opens a dialog/form for creating new bird records",
-        "Form includes fields for bird name, coordinates, images, audio, and description",
-        "Users can successfully submit new bird data through the form",
-        "New records appear in the bird data table after creation"
+        "All previously uploaded bird images are visible in the gallery and details pages",
+        "Image blob IDs correctly resolve to image data",
+        "Image URLs are constructed correctly and return valid responses"
       ],
       "file_operations": [
         {
+          "path": "frontend/src/components/BirdGallery.tsx",
+          "operation": "modify",
+          "description": "Add comprehensive error handling and logging for image loading failures. Display specific error messages when images fail to load, including blob ID, constructed URL, and HTTP response status. Add retry logic for failed image loads and fallback UI showing the blob path when images cannot be displayed. Use the blob-storage component's useFileUrl hook and verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/BirdDetailsPage.tsx",
+          "operation": "modify",
+          "description": "Enhance image display error handling to show detailed diagnostics when bird images fail to load. Log blob storage paths, resolved URLs, and any network errors to the console. Add visual indicators showing which images are missing vs. loading vs. failed. Include the exact blob path in error messages to aid debugging. Use the blob-storage component's useFileUrl hook and verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/AllLocationsMap.tsx",
+          "operation": "modify",
+          "description": "Add error handling for popup images that fail to load on map markers. Display placeholder images or error messages in popups when bird images cannot be retrieved. Log image loading failures with blob paths and constructed URLs to help diagnose the issue. Use the blob-storage component's useFileUrl hook and verify the component's usage instructions before implementing."
+        },
+        {
           "path": "frontend/src/components/BirdDataTable.tsx",
           "operation": "modify",
-          "description": "Restore the Add Data button UI in the toolbar section. Verify the authorization component's usage instructions before implementing to ensure proper role-based access control is applied. The button should check canCallerModifyData() and be disabled for unauthorized users. Connect the button click handler to open the existing dialog state for creating new bird records. Ensure the dialog form includes all required fields: Arabic name, scientific name, English name, coordinates (latitude/longitude), image upload using the blob-storage component's useFileUpload hook, audio file upload, description, and notes. Wire the form submission to call the backend addBirdWithDetails method with all collected data. After successful creation, invalidate the bird data query cache to refresh the table. Maintain RTL Arabic layout and preserve existing inline editing and export functionality."
+          "description": "Add visual indicators in the data table showing which bird records have missing or broken image references. Display warning icons or status badges for birds with image loading errors. Log detailed information about failed image loads including blob paths and expected URLs to aid debugging."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Add frontend error handling and logging to display specific error messages when data fails to load",
+      "acceptanceCriteria": [
+        "Clear error messages are displayed when data loading fails",
+        "Users can distinguish between empty state and loading errors",
+        "Console logs provide debugging information about the failure cause"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Enhance all React Query hooks to log detailed error information to the console, including error type, message, and actor state. Add error metadata to distinguish between network failures, backend errors, authentication issues, and empty datasets. Include backend method names and parameters in error logs to aid debugging."
+        },
+        {
+          "path": "frontend/src/components/BirdGallery.tsx",
+          "operation": "modify",
+          "description": "Display user-friendly error messages when bird data fails to load. Show different messages for backend connection failures (unable to reach canister), empty datasets (no birds found), and permission errors (unauthorized access). Add a retry button that re-attempts the data fetch. Include technical details in console logs while showing simplified messages to users."
+        },
+        {
+          "path": "frontend/src/components/BirdDataTable.tsx",
+          "operation": "modify",
+          "description": "Add comprehensive error handling UI for data loading failures. Display specific error messages distinguishing between backend unavailable, authentication required, permission denied, and empty dataset states. Show a reload button for backend errors and a login prompt for authentication issues. Log detailed error information to console including query state and actor status."
+        },
+        {
+          "path": "frontend/src/components/StatisticsPage.tsx",
+          "operation": "modify",
+          "description": "Add error handling to display informative messages when statistics data fails to load. Show different UI states for backend errors, empty data, and permission issues. Include console logging with full error context (query keys, error types, actor state) to help diagnose the root cause of data loading failures."
+        },
+        {
+          "path": "frontend/src/components/AllLocationsMap.tsx",
+          "operation": "modify",
+          "description": "Enhance error handling to display specific messages when location data fails to load. Distinguish between backend connection failures, empty location datasets, and data parsing errors. Add console logging with detailed error context including the number of locations expected vs. received. Show a retry mechanism for transient errors."
+        },
+        {
+          "path": "frontend/src/components/EagleOwlPage.tsx",
+          "operation": "modify",
+          "description": "Add comprehensive error handling for eagle owl data loading failures. Display user-friendly error messages for backend unavailability, empty datasets, and permission errors. Log detailed diagnostic information to console including query state, actor availability, and error types to aid in debugging deployment issues."
         }
       ]
     }

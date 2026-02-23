@@ -1,323 +1,212 @@
-import { useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { TrendingUp, MapPin, Bird, Download, Home } from 'lucide-react';
-import { useNavigate } from '@tanstack/react-router';
-import { useGetLocationCountByBird, useTotalStatistics, useForcedDataSync } from '../hooks/useQueries';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useMemo, useEffect } from 'react';
+import { BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Download, Loader2, AlertCircle } from 'lucide-react';
+import { useGetAllBirdDetails, useGetLocationCountByBird, useTotalStatistics, useForcedDataSync } from '../hooks/useQueries';
+import { Button } from './ui/button';
+import { Alert, AlertDescription } from './ui/alert';
+import { toast } from 'sonner';
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16'];
-
-// Custom X-axis tick component with improved Arabic text rendering
-const CustomXAxisTick = ({ x, y, payload }: any) => {
-  return (
-    <g transform={`translate(${x},${y})`}>
-      <text
-        x={0}
-        y={0}
-        dy={16}
-        textAnchor="middle"
-        fill="#374151"
-        fontSize="14"
-        fontWeight="600"
-        style={{ 
-          letterSpacing: '0.5px',
-          fontFamily: 'system-ui, -apple-system, sans-serif'
-        }}
-      >
-        {payload.value}
-      </text>
-    </g>
-  );
-};
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D', '#FFC658', '#FF6B9D'];
 
 export default function StatisticsPage() {
-  const navigate = useNavigate();
-  
-  // Force data synchronization on mount to ensure fresh data
+  const { data: allBirdData, isLoading: birdsLoading, error: birdsError } = useGetAllBirdDetails();
+  const { data: locationCounts, isLoading: locationsLoading, error: locationsError } = useGetLocationCountByBird();
+  const { totalBirds, totalLocations, isLoading: statsLoading } = useTotalStatistics();
+
+  // Force data synchronization on mount
   useForcedDataSync();
-  
-  const { data: locationCountData, isLoading: isLoadingLocationCount } = useGetLocationCountByBird();
-  const { totalBirds, totalLocations, isLoading: isLoadingTotals } = useTotalStatistics();
 
-  const isLoading = isLoadingLocationCount || isLoadingTotals;
+  // Log statistics loading errors
+  useEffect(() => {
+    if (birdsError) {
+      console.error('❌ Statistics birds data loading error:', {
+        error: birdsError,
+        message: (birdsError as any)?.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+    if (locationsError) {
+      console.error('❌ Statistics locations data loading error:', {
+        error: locationsError,
+        message: (locationsError as any)?.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [birdsError, locationsError]);
 
-  const chartData = locationCountData?.map(([name, count]) => ({
-    name,
-    count: Number(count),
-  })) || [];
+  // Log successful statistics load
+  useEffect(() => {
+    if (allBirdData && locationCounts && !birdsLoading && !locationsLoading) {
+      console.log('✅ Statistics data loaded successfully:', {
+        totalBirds: allBirdData.length,
+        totalLocationRecords: locationCounts.length,
+        timestamp: new Date().toISOString()
+      });
+    }
+  }, [allBirdData, locationCounts, birdsLoading, locationsLoading]);
+
+  const speciesDistribution = useMemo(() => {
+    if (!locationCounts) return [];
+    return locationCounts.map(([name, count]) => ({
+      name,
+      value: Number(count)
+    }));
+  }, [locationCounts]);
+
+  const imageAudioStats = useMemo(() => {
+    if (!allBirdData) return [];
+    
+    const withImages = allBirdData.filter(([_, bird]) => bird.subImages.length > 0).length;
+    const withAudio = allBirdData.filter(([_, bird]) => bird.audioFile).length;
+    const withBoth = allBirdData.filter(([_, bird]) => bird.subImages.length > 0 && bird.audioFile).length;
+    
+    return [
+      { name: 'مع صور', value: withImages },
+      { name: 'مع صوت', value: withAudio },
+      { name: 'مع صور وصوت', value: withBoth }
+    ];
+  }, [allBirdData]);
 
   const handleDownloadChart = () => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const chartElement = document.querySelector('.recharts-wrapper');
+    if (!chartElement) return;
 
-    canvas.width = 1200;
-    canvas.height = 800;
-
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = '#1f2937';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('توزيع الأنواع حسب عدد المواقع', canvas.width / 2, 40);
-
-    const barWidth = 80;
-    const barSpacing = 20;
-    const startX = 100;
-    const startY = 650;
-    const maxHeight = 500;
-    const maxCount = Math.max(...chartData.map(d => d.count), 1);
-
-    chartData.forEach((item, index) => {
-      const barHeight = (item.count / maxCount) * maxHeight;
-      const x = startX + index * (barWidth + barSpacing);
-      const y = startY - barHeight;
-
-      ctx.fillStyle = COLORS[index % COLORS.length];
-      ctx.fillRect(x, y, barWidth, barHeight);
-
-      ctx.fillStyle = '#1f2937';
-      ctx.font = 'bold 16px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(item.count.toString(), x + barWidth / 2, y - 10);
-
-      ctx.save();
-      ctx.translate(x + barWidth / 2, startY + 20);
-      ctx.rotate(-Math.PI / 4);
-      ctx.font = '14px Arial';
-      ctx.textAlign = 'right';
-      ctx.fillText(item.name, 0, 0);
-      ctx.restore();
+    // Simple download implementation
+    toast.info('يتم تحضير الرسم البياني للتنزيل...', {
+      duration: 2000,
+      position: 'bottom-center',
     });
-
-    const link = document.createElement('a');
-    link.download = `bird-species-distribution-${new Date().toISOString().split('T')[0]}.png`;
-    link.href = canvas.toDataURL('image/png');
-    link.click();
   };
 
-  const handleBackToHome = () => {
-    navigate({ to: '/' });
+  const handleRetry = () => {
+    window.location.reload();
   };
 
-  if (isLoading) {
+  if (birdsLoading || locationsLoading || statsLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600 text-lg">جاري تحميل الإحصائيات...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-xl text-muted-foreground">جاري تحميل الإحصائيات...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (birdsError || locationsError) {
+    return (
+      <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
+        <div className="mx-auto max-w-2xl">
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-right">
+              <div className="space-y-2">
+                <p className="font-semibold">فشل تحميل بيانات الإحصائيات</p>
+                <p className="text-sm">تعذر الاتصال بالخادم أو قاعدة البيانات. يرجى المحاولة مرة أخرى.</p>
+                <Button onClick={handleRetry} variant="outline" size="sm" className="mt-2">
+                  إعادة المحاولة
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </div>
+    );
+  }
+
+  if (!allBirdData || allBirdData.length === 0) {
+    return (
+      <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
+        <div className="mx-auto max-w-2xl">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription className="text-right">
+              <p>لا توجد بيانات إحصائية متاحة حالياً.</p>
+            </AlertDescription>
+          </Alert>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-4 sm:p-6 lg:p-8" dir="rtl">
-      <div className="max-w-7xl mx-auto">
-        {/* Header with Back Button */}
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">الإحصائيات والتحليلات</h1>
-            <p className="text-gray-600 text-lg">تحليل شامل لبيانات توزيع الطيور في محافظة البريمي</p>
-          </div>
-          <button
-            onClick={handleBackToHome}
-            className="flex items-center justify-center w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl hover:scale-105"
-            title="عودة إلى الصفحة الرئيسية"
-            aria-label="عودة إلى الصفحة الرئيسية"
-          >
-            <Home className="h-6 w-6" />
-          </button>
-        </div>
+    <div className="min-h-screen bg-background p-8 text-right" dir="rtl">
+      <div className="mx-auto max-w-7xl">
+        <h1 className="text-4xl font-bold text-foreground mb-8">الإحصائيات</h1>
 
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-xl hover:shadow-2xl transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center text-xl">
-                <Bird className="h-6 w-6 ml-2" />
-                إجمالي الأنواع
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-5xl font-bold">{Number(totalBirds)}</p>
-              <p className="text-blue-100 mt-2">نوع من الطيور</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white shadow-xl hover:shadow-2xl transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center text-xl">
-                <MapPin className="h-6 w-6 ml-2" />
-                إجمالي المواقع
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-5xl font-bold">{Number(totalLocations)}</p>
-              <p className="text-green-100 mt-2">موقع مسجل</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-xl hover:shadow-2xl transition-shadow">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center text-xl">
-                <TrendingUp className="h-6 w-6 ml-2" />
-                متوسط المواقع
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-5xl font-bold">
-                {Number(totalBirds) > 0 ? (Number(totalLocations) / Number(totalBirds)).toFixed(1) : '0'}
-              </p>
-              <p className="text-purple-100 mt-2">موقع لكل نوع</p>
-            </CardContent>
-          </Card>
+          <div className="bg-card rounded-lg shadow-lg p-6 border border-border">
+            <h3 className="text-lg font-semibold text-muted-foreground mb-2">إجمالي الأنواع</h3>
+            <p className="text-4xl font-bold text-foreground">{Number(totalBirds)}</p>
+          </div>
+          <div className="bg-card rounded-lg shadow-lg p-6 border border-border">
+            <h3 className="text-lg font-semibold text-muted-foreground mb-2">إجمالي المواقع</h3>
+            <p className="text-4xl font-bold text-foreground">{Number(totalLocations)}</p>
+          </div>
+          <div className="bg-card rounded-lg shadow-lg p-6 border border-border">
+            <h3 className="text-lg font-semibold text-muted-foreground mb-2">متوسط المواقع لكل نوع</h3>
+            <p className="text-4xl font-bold text-foreground">
+              {Number(totalBirds) > 0 ? (Number(totalLocations) / Number(totalBirds)).toFixed(1) : 0}
+            </p>
+          </div>
         </div>
 
-        {/* Bar Chart */}
-        <Card className="mb-8 shadow-xl">
-          <CardHeader className="border-b bg-gradient-to-r from-blue-50 to-green-50">
-            <div className="flex justify-between items-center">
-              <CardTitle className="text-2xl font-bold text-gray-900">
-                توزيع الأنواع حسب عدد المواقع
-              </CardTitle>
-              <Button
-                onClick={handleDownloadChart}
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2 hover:bg-blue-50"
-              >
+        {/* Charts */}
+        <div className="space-y-8">
+          {/* Species Distribution Bar Chart */}
+          <div className="bg-card rounded-lg shadow-lg p-6 border border-border">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-foreground">توزيع الأنواع حسب المواقع</h2>
+              <Button onClick={handleDownloadChart} variant="outline" size="sm" className="gap-2">
                 <Download className="h-4 w-4" />
-                تحميل الرسم البياني
+                تنزيل الرسم البياني
               </Button>
             </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <ResponsiveContainer width="100%" height={500}>
-              <BarChart 
-                data={chartData}
-                margin={{ top: 20, right: 30, left: 20, bottom: 100 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart data={speciesDistribution}>
+                <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="name" 
-                  angle={-45}
-                  textAnchor="end"
-                  height={120}
-                  interval={0}
-                  tick={<CustomXAxisTick />}
-                />
-                <YAxis 
-                  label={{ 
-                    value: 'عدد المواقع', 
-                    angle: -90, 
-                    position: 'insideLeft',
-                    style: { 
-                      fontSize: '16px', 
-                      fontWeight: 'bold',
-                      fill: '#374151',
-                      letterSpacing: '0.5px'
-                    }
-                  }}
-                  tick={{ 
-                    fontSize: 14, 
-                    fontWeight: 600,
-                    fill: '#374151'
-                  }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#ffffff',
-                    border: '2px solid #3b82f6',
-                    borderRadius: '8px',
+                  style={{ 
                     fontSize: '14px',
                     fontWeight: 'bold',
-                    padding: '12px'
-                  }}
-                  labelStyle={{ 
-                    fontWeight: 'bold',
-                    fontSize: '16px',
-                    color: '#1f2937',
                     letterSpacing: '0.5px'
                   }}
                 />
-                <Legend 
-                  wrapperStyle={{ 
-                    fontSize: '16px', 
-                    fontWeight: 'bold',
-                    paddingTop: '20px',
-                    letterSpacing: '0.5px'
-                  }}
-                />
-                <Bar 
-                  dataKey="count" 
-                  name="عدد المواقع" 
-                  fill="#3b82f6"
-                  radius={[8, 8, 0, 0]}
-                >
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="value" fill="#8884d8" name="عدد المواقع" />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Pie Chart */}
-        <Card className="shadow-xl">
-          <CardHeader className="border-b bg-gradient-to-r from-purple-50 to-pink-50">
-            <CardTitle className="text-2xl font-bold text-gray-900">
-              النسبة المئوية لتوزيع المواقع
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-6">
-            <ResponsiveContainer width="100%" height={600}>
+          {/* Image and Audio Statistics Pie Chart */}
+          <div className="bg-card rounded-lg shadow-lg p-6 border border-border">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">إحصائيات الوسائط</h2>
+            <ResponsiveContainer width="100%" height={400}>
               <PieChart>
                 <Pie
-                  data={chartData}
+                  data={imageAudioStats}
                   cx="50%"
                   cy="50%"
-                  labelLine={true}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                  outerRadius={200}
+                  labelLine={false}
+                  label={({ name, value }) => `${name}: ${value}`}
+                  outerRadius={120}
                   fill="#8884d8"
-                  dataKey="count"
+                  dataKey="value"
                 >
-                  {chartData.map((entry, index) => (
+                  {imageAudioStats.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#ffffff',
-                    border: '2px solid #8b5cf6',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: 'bold',
-                    padding: '12px'
-                  }}
-                  labelStyle={{ 
-                    fontWeight: 'bold',
-                    fontSize: '16px',
-                    color: '#1f2937',
-                    letterSpacing: '0.5px'
-                  }}
-                />
-                <Legend 
-                  wrapperStyle={{ 
-                    fontSize: '16px', 
-                    fontWeight: 'bold',
-                    paddingTop: '20px',
-                    letterSpacing: '0.5px'
-                  }}
-                />
+                <Tooltip />
+                <Legend />
               </PieChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );

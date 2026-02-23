@@ -1,41 +1,129 @@
 {
   "kind": "build_request",
-  "title": "Fix missing Add Data button in bird data table",
-  "projectName": "Al Buraimi Owl Tracker",
+  "title": "Investigate and fix missing data and images after deployment",
   "priority": "high",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Restore the Add Data button in the bird data table page (BirdDataTable.tsx) that allows users to create new bird records with fields for name, coordinates, images, audio files, and description",
-      "target": "frontend",
+      "text": "Investigate why previously added bird data is no longer displaying after the latest deployment to version 520. Check if the backend stable memory migration is correctly preserving existing bird records, user profiles, team data, and access control settings.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-last"
         ],
         "quotes": [
-          "لا يوجد زر اضافة البيانات في صفحة جدول بيانات الطيور"
+          "After the latest update, the previously added data and images are no longer displaying"
         ]
       },
       "acceptanceCriteria": [
-        "Add Data button is visible in the BirdDataTable component",
-        "Clicking the button opens a dialog/form for creating new bird records",
-        "Form includes fields for bird name, coordinates, images, audio, and description",
-        "Users can successfully submit new bird data through the form",
-        "New records appear in the bird data table after creation"
+        "All bird records that existed before version 520 are visible in the data table and gallery",
+        "User profiles and access control settings are preserved",
+        "Team data is displayed correctly"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Verify that the migration.mo file correctly migrates stable storage from the old actor to the new actor. If migration logic is missing or incomplete, implement proper state transfer for all stable variables including birdData, nextId, users, teams, and blobStorage.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Could you please check if this is related to the database"
+        ]
+      },
+      "acceptanceCriteria": [
+        "migration.mo correctly transfers all stable variables from old actor to new actor",
+        "State is preserved across canister upgrades",
+        "No data loss occurs during deployment"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Investigate why uploaded images are not displaying after deployment. Check if blob storage paths, file references, or asset serving mechanisms have changed. Verify that image blob IDs stored in bird records still resolve to accessible image data.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "the previously added data and images are no longer displaying",
+          "Could you please check if this is related to the database, file paths"
+        ]
+      },
+      "acceptanceCriteria": [
+        "All previously uploaded bird images are visible in the gallery and details pages",
+        "Image blob IDs correctly resolve to image data",
+        "Image URLs are constructed correctly and return valid responses"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Check if role-based access control and permissions are functioning correctly after deployment. Verify that the user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' still has admin privileges and can view/edit data.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Could you please check if this is related to the database, file paths, permissions"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Admin users retain their permissions after deployment",
+        "The specified principal ID has admin access",
+        "Permission checks work correctly for all CRUD operations"
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Add frontend error handling and logging to display specific error messages when data fails to load. Show whether the issue is a backend connection problem, empty dataset, or authentication/permission error.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "the previously added data and images are no longer displaying"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Clear error messages are displayed when data loading fails",
+        "Users can distinguish between empty state and loading errors",
+        "Console logs provide debugging information about the failure cause"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Verify that the backend canister configuration and HTTP asset serving are correctly set up in the live environment. Check if CORS settings, asset certification, or canister permissions have changed compared to the draft environment.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "Could you please check if this is related to the database, file paths, permissions, or server configuration"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Asset serving works correctly for images and audio files",
+        "CORS headers are properly configured",
+        "Canister HTTP responses include correct content types and headers"
       ]
     }
   ],
   "constraints": [
-    "Do not modify backend schema or API endpoints",
-    "Maintain existing inline editing functionality in the table",
-    "Preserve RTL Arabic interface layout",
-    "Keep existing Excel/PDF export features intact"
+    "Do not modify Internet Identity integration (frontend/src/hooks/useInternetIdentity.ts is immutable)",
+    "Preserve all existing bird data and user records during any migration fixes",
+    "Maintain backward compatibility with existing blob storage format",
+    "Do not break RTL Arabic text rendering or accessibility features"
   ],
   "nonGoals": [
-    "Changing the overall table layout or structure",
-    "Adding new backend endpoints",
-    "Modifying authentication or authorization logic",
-    "Changing the data model or field types"
+    "Adding new features or UI components",
+    "Changing the authentication mechanism",
+    "Redesigning the data schema",
+    "Optimizing performance beyond fixing the data visibility issue"
   ],
   "imageRequirements": {
     "required": [],

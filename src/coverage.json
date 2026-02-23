@@ -1,34 +1,95 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-21T02:32:12.502Z",
+  "generatedAt": "2026-02-23T09:30:31.241Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 6,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Restore the Add Data button in the bird data table page (BirdDataTable.tsx) that allows users to create new bird records with fields for name, coordinates, images, audio files, and description",
+        "summary": "Investigate why previously added bird data is no longer displaying after the latest deployment to version 520. Check if the backend stable memory migration is correctly preserving existing bird records, user profiles, team data, and access control settings.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-2",
+        "summary": "Verify that the migration.mo file correctly migrates stable storage from the old actor to the new actor. If migration logic is missing or incomplete, implement proper state transfer for all stable variables including birdData, nextId, users, teams, and blobStorage.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-3",
+        "summary": "Investigate why uploaded images are not displaying after deployment. Check if blob storage paths, file references, or asset serving mechanisms have changed. Verify that image blob IDs stored in bird records still resolve to accessible image data.",
         "status": "implemented",
         "plannedFiles": [
+          "frontend/src/components/BirdGallery.tsx",
+          "frontend/src/components/BirdDetailsPage.tsx",
+          "frontend/src/components/AllLocationsMap.tsx",
           "frontend/src/components/BirdDataTable.tsx"
         ],
         "matchedFiles": [
+          "frontend/src/components/BirdGallery.tsx",
+          "frontend/src/components/BirdDetailsPage.tsx",
+          "frontend/src/components/AllLocationsMap.tsx",
           "frontend/src/components/BirdDataTable.tsx"
         ]
+      },
+      {
+        "id": "REQ-4",
+        "summary": "Check if role-based access control and permissions are functioning correctly after deployment. Verify that the user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' still has admin privileges and can view/edit data.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-5",
+        "summary": "Add frontend error handling and logging to display specific error messages when data fails to load. Show whether the issue is a backend connection problem, empty dataset, or authentication/permission error.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useQueries.ts",
+          "frontend/src/components/BirdGallery.tsx",
+          "frontend/src/components/BirdDataTable.tsx",
+          "frontend/src/components/StatisticsPage.tsx",
+          "frontend/src/components/AllLocationsMap.tsx",
+          "frontend/src/components/EagleOwlPage.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/BirdGallery.tsx",
+          "frontend/src/components/BirdDataTable.tsx",
+          "frontend/src/components/StatisticsPage.tsx",
+          "frontend/src/components/AllLocationsMap.tsx",
+          "frontend/src/components/EagleOwlPage.tsx"
+        ]
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Verify that the backend canister configuration and HTTP asset serving are correctly set up in the live environment. Check if CORS settings, asset certification, or canister permissions have changed compared to the draft environment.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/components/AllLocationsMap.tsx",
     "frontend/src/components/BirdDataTable.tsx",
+    "frontend/src/components/BirdDetailsPage.tsx",
+    "frontend/src/components/BirdGallery.tsx",
+    "frontend/src/components/EagleOwlPage.tsx",
+    "frontend/src/components/StatisticsPage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

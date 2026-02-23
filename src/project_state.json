@@ -1,26 +1,65 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 3,
-  "summary": "A bird data table project with an add data button feature",
-  "architectural_notes": [
-    "Bird data table page implementation"
-  ],
+  "projectStateVersion": 5,
+  "summary": "New project",
+  "architectural_notes": [],
   "known_issues": [
-    "Add data button missing from bird data table page"
+    "After deployment to live environment (version 520), previously added data and images are no longer displaying - possible database migration, file path, permissions, or server configuration issue"
   ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-restore-the-add-data-button-in-the-bird-data-table-page-birddatatable-tsx-that-allows-users-to-create-new-bird-records-with-fields-for-name-coordinates-images-audio-files-and-description",
-      "title": "Restore the Add Data button in the bird data table page (BirdDataTable.tsx) that allows users to create new bird records with fields for name, coordinates, images, audio files, and description",
+      "id": "feature-investigate-why-uploaded-images-are-not-displaying-after-deployment-check-if-blob-storage-paths-file-references-or-asset-serving-mechanisms-have-changed-verify-that-image-blob-ids-stored-in-bird-records-still-resolve-to-accessible-image-data",
+      "title": "Investigate why uploaded images are not displaying after deployment. Check if blob storage paths, file references, or asset serving mechanisms have changed. Verify that image blob IDs stored in bird records still resolve to accessible image data.",
       "reqIds": [
-        "REQ-1"
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-frontend-error-handling-and-logging-to-display-specific-error-messages-when-data-fails-to-load-show-whether-the-issue-is-a-backend-connection-problem-empty-dataset-or-authentication-permission-error",
+      "title": "Add frontend error handling and logging to display specific error messages when data fails to load. Show whether the issue is a backend connection problem, empty dataset, or authentication/permission error.",
+      "reqIds": [
+        "REQ-5"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [],
-  "projectName": "Al Buraimi Owl Tracker",
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Investigate why previously added bird data is no longer displaying after the latest deployment to version 520. Check if the backend stable memory migration is correctly preserving existing bird records, user profiles, team data, and access control settings.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Verify that the migration.mo file correctly migrates stable storage from the old actor to the new actor. If migration logic is missing or incomplete, implement proper state transfer for all stable variables including birdData, nextId, users, teams, and blobStorage.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Check if role-based access control and permissions are functioning correctly after deployment. Verify that the user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' still has admin privileges and can view/edit data.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Verify that the backend canister configuration and HTTP asset serving are correctly set up in the live environment. Check if CORS settings, asset certification, or canister permissions have changed compared to the draft environment.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    }
+  ],
+  "projectName": "Owl Distribution Tracker",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }
