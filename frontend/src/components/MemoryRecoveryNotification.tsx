@@ -1,50 +1,37 @@
 import { useEffect, useState } from 'react';
-import { AlertCircle, RefreshCw } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
-interface MemoryRecoveryNotificationProps {
-  show: boolean;
-  onDismiss?: () => void;
-}
-
-export default function MemoryRecoveryNotification({ show, onDismiss }: MemoryRecoveryNotificationProps) {
+export default function MemoryRecoveryNotification() {
+  const [show, setShow] = useState(false);
   const [countdown, setCountdown] = useState(5);
 
   useEffect(() => {
+    const recovered = sessionStorage.getItem('memoryRecovery');
+    if (recovered) {
+      sessionStorage.removeItem('memoryRecovery');
+      setShow(true);
+      setCountdown(5);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!show) return;
-
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          onDismiss?.();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [show, onDismiss]);
+    if (countdown <= 0) {
+      setShow(false);
+      return;
+    }
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [show, countdown]);
 
   if (!show) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[9999] max-w-md w-full px-4 animate-in slide-in-from-top duration-300">
-      <Alert className="bg-gradient-to-r from-blue-50 to-green-50 border-2 border-blue-400 shadow-2xl">
-        <div className="flex items-start gap-3">
-          <div className="bg-blue-500 rounded-full p-2 animate-pulse">
-            <RefreshCw className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1">
-            <AlertDescription className="text-blue-900 font-bold text-base" dir="rtl">
-              تم إعادة تحميل الواجهة لتفادي مشكلة الذاكرة، يرجى الانتظار لحظات…
-            </AlertDescription>
-            <p className="text-blue-700 text-sm mt-2" dir="rtl">
-              سيتم إغلاق هذه الرسالة تلقائياً خلال {countdown} ثوانٍ
-            </p>
-          </div>
-        </div>
-      </Alert>
+    <div
+      className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-amber-100 border border-amber-400 text-amber-900 px-6 py-3 rounded-xl shadow-lg text-sm font-medium"
+      dir="rtl"
+    >
+      <p>تم إعادة تحميل الواجهة لتفادي مشكلة الذاكرة، يرجى الانتظار لحظات…</p>
+      <p className="text-xs text-amber-700 mt-1 text-center">سيتم إغلاق هذا الإشعار خلال {countdown} ثوانٍ</p>
     </div>
   );
 }

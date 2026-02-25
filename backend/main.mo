@@ -11,8 +11,6 @@ import AccessControl "authorization/access-control";
 import Principal "mo:base/Principal";
 import Debug "mo:base/Debug";
 
-
-
 actor {
     type Coordinate = {
         latitude : Float;
@@ -135,6 +133,7 @@ actor {
     };
 
     public shared ({ caller }) func assignCallerUserRole(user : Principal, role : AccessControl.UserRole) : async () {
+        // Admin-only check happens inside AccessControl.assignRole
         AccessControl.assignRole(accessControlState, caller, user, role);
     };
 
@@ -147,7 +146,7 @@ actor {
     };
 
     public query ({ caller }) func canCallerModifyData() : async Bool {
-        AccessControl.hasPermission(accessControlState, caller, #user);
+        AccessControl.isAdmin(accessControlState, caller);
     };
 
     // --- User Profile Management ---
@@ -174,8 +173,8 @@ actor {
 
     // --- File Reference Management ---
     public shared ({ caller }) func registerFileReference(path : Text, hash : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can register file references");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can register file references");
         };
         Registry.add(registry, path, hash);
     };
@@ -189,16 +188,16 @@ actor {
     };
 
     public shared ({ caller }) func dropFileReference(path : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can remove file references");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can remove file references");
         };
         Registry.remove(registry, path);
     };
 
     // --- Map Image Management ---
     public shared ({ caller }) func uploadMapImage(mapPath : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can upload map images");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can upload map images");
         };
 
         switch (activeMapReference) {
@@ -423,10 +422,10 @@ actor {
         null;
     };
 
-    // --- CRUD Operations for Birds ---
+    // --- CRUD Operations for Birds (Admin-only) ---
     public shared ({ caller }) func addBirdData(birdName : Text, latitude : Float, longitude : Float) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can add bird data");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can add bird data");
         };
 
         let coordinate = { latitude; longitude };
@@ -465,8 +464,8 @@ actor {
     };
 
     public shared ({ caller }) func addBirdWithDetails(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, audioFilePath : ?Text, subImages : [Text]) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can add bird data");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can add bird data");
         };
 
         let coordinate = { latitude; longitude };
@@ -505,8 +504,8 @@ actor {
     };
 
     public shared ({ caller }) func addOrUpdateBird(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, audioFilePath : ?Text, subImages : [Text]) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can add or update bird data");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can add or update bird data");
         };
 
         let coordinate = { latitude; longitude };
@@ -545,8 +544,8 @@ actor {
     };
 
     public shared ({ caller }) func addAudioFile(birdName : Text, audioFilePath : Text) : async Text {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can add audio files");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can add audio files");
         };
 
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -585,8 +584,8 @@ actor {
     };
 
     public shared ({ caller }) func addSubImage(birdName : Text, imagePath : Text) : async Text {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can add sub images");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can add sub images");
         };
 
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -644,10 +643,10 @@ actor {
         teamMembers := teamMap.put(teamMembers, timestamp, newMember);
     };
 
-    // --- Update and Delete Bird Data ---
+    // --- Update and Delete Bird Data (Admin-only) ---
     public shared ({ caller }) func updateDescriptionAndNotes(birdName : Text, newDescription : Text, newNotes : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can update bird data");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can update bird data");
         };
 
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -666,8 +665,8 @@ actor {
     };
 
     public shared ({ caller }) func updateBirdDetails(birdName : Text, arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can update bird details");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can update bird details");
         };
 
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -689,8 +688,8 @@ actor {
     };
 
     public shared ({ caller }) func deleteBirdData(birdName : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can delete bird data");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can delete bird data");
         };
 
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -703,8 +702,8 @@ actor {
     };
 
     public shared ({ caller }) func deleteSubImage(birdName : Text, imagePath : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can delete sub images");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can delete sub images");
         };
 
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -723,8 +722,8 @@ actor {
     };
 
     public shared ({ caller }) func deleteAudioFile(birdName : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can delete audio files");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can delete audio files");
         };
 
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -742,8 +741,8 @@ actor {
     };
 
     public shared ({ caller }) func deleteImageFromBirdAndRegistry(birdName : Text, imagePath : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can delete images");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can delete images");
         };
 
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -764,16 +763,16 @@ actor {
     };
 
     public shared ({ caller }) func deleteImageFromGallery(imagePath : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can delete images from gallery");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can delete images from gallery");
         };
 
         Registry.remove(registry, imagePath);
     };
 
     public shared ({ caller }) func deleteImageFromGalleryAndBirds(imagePath : Text) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can delete images from gallery");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can delete images from gallery");
         };
 
         Registry.remove(registry, imagePath);
@@ -790,7 +789,7 @@ actor {
         };
     };
 
-    // --- Bulk Operations ---
+    // --- Bulk Operations (Admin-only) ---
     public shared ({ caller }) func saveAllBirdData(birdDataArray : [(Text, BirdData)]) : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("Unauthorized: Only admins can bulk save all bird data");
@@ -805,8 +804,8 @@ actor {
     };
 
     public shared ({ caller }) func saveChanges(birdName : Text, updatedData : BirdData) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can save changes");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can save changes");
         };
 
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -820,8 +819,8 @@ actor {
     };
 
     public shared ({ caller }) func saveBirdData(birdData : BirdData) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can save bird data");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can save bird data");
         };
 
         let normalizedBirdName = normalizeBirdName(birdData.arabicName);
@@ -829,8 +828,8 @@ actor {
     };
 
     public shared ({ caller }) func deleteBirdById(birdId : Nat) : async () {
-        if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can delete bird data");
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can delete bird data");
         };
 
         var found = false;

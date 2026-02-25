@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 41,
+  "projectStateVersion": 79,
   "summary": "Bird distribution tracker app for Al Buraimi Governorate. After multiple failed revert/restore attempts (versions 521-528), user is requesting restoration to version 510, which was an earlier stable version. The app title should be 'مواقع انتشار البوم بمحافظة البريمي'.",
   "architectural_notes": [
     "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)",
@@ -14,10 +14,11 @@
     "Version 528 deployment failed to restore correct app state — title was wrong and app did not match version 522 functionality; user is now requesting revert to version 510",
     "Version 529 may be missing the hamburger menu with navigation links (bird data, gallery, locations, statistics) that existed in version 510",
     "Dropdown menu 'البيانات' item does not navigate to the bird data page when selected",
-    "Version 534 deployment: Add/Edit/Delete/Save action buttons did not appear in BirdDataTable — user requesting re-implementation without changing any other part of the app",
-    "Version 538 deployment: Add/Edit/Delete/Save action buttons still did not appear in BirdDataTable — user requesting re-implementation again without changing any other part of the app"
+    "Version 542 deployment: All action buttons (Add/Edit/Save/Delete) were removed and the table size/font size were not changed — user requesting re-attempt with no other changes to the app",
+    "Version 543 deployment: Action buttons did not appear and table/font size were not changed — user requesting revert to version 541 state",
+    "Version 548 deployment: Action buttons (Add/Save/Edit/Delete/تحرير) still not appearing in the bird data page — user suspects equation/logic application issues and is requesting another attempt without changing anything else in the app"
   ],
-  "isFixRequest": true,
+  "isFixRequest": false,
   "existing_features": [
     {
       "id": "feature-investigate-why-uploaded-images-are-not-displaying-after-deployment-check-if-blob-storage-paths-file-references-or-asset-serving-mechanisms-have-changed-verify-that-image-blob-ids-stored-in-bird-records-still-resolve-to-accessible-image-data",
@@ -299,6 +300,182 @@
         "REQ-51"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-restore-frontend-src-components-birddatatable-tsx-to-its-exact-previous-structure-design-layout-and-functionality-as-it-existed-before-version-539-do-not-alter-any-column-definitions-styling-rtl-layout-data-fetching-logic-or-any-other-aspect-of-the-component-except-for-adding-the-action-buttons-described-in-req-53",
+      "title": "Restore frontend/src/components/BirdDataTable.tsx to its exact previous structure, design, layout, and functionality as it existed before version 539. Do not alter any column definitions, styling, RTL layout, data fetching logic, or any other aspect of the component except for adding the action buttons described in REQ-53.",
+      "reqIds": [
+        "REQ-52"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-the-following-action-buttons-exclusively-to-frontend-src-components-birddatatable-tsx-without-modifying-any-other-file-component-page-route-or-backend-file-1-an-add-button-in-the-table-toolbar-header-area-that-creates-a-new-empty-bird-record-row-for-inline-editing-2-an-edit-button-on-each-existing-data-row-that-switches-that-row-into-inline-edit-mode-3-a-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-the-changes-to-the-backend-4-a-delete-button-on-each-row-that-removes-the-record-from-the-backend-5-an-update-edit-button-on-each-row-distinct-from-edit-that-provides-an-alternative-edit-update-action-all-five-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-already-used-in-birddatatable-tsx-all-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-principal-role-check-logic-already-present-in-birddatatable-tsx",
+      "title": "Add the following action buttons exclusively to frontend/src/components/BirdDataTable.tsx, without modifying any other file, component, page, route, or backend file: (1) An 'Add' (إضافة) button in the table toolbar/header area that creates a new empty bird record row for inline editing. (2) An 'Edit' (تعديل) button on each existing data row that switches that row into inline edit mode. (3) A 'Save' (حفظ) button that replaces the Edit button when a row is in edit mode and commits the changes to the backend. (4) A 'Delete' (حذف) button on each row that removes the record from the backend. (5) An 'Update Edit' (تحرير) button on each row (distinct from Edit) that provides an alternative edit/update action. All five buttons must be styled consistently with the existing desert/amber RTL Arabic theme already used in BirdDataTable.tsx. All actions must be restricted to authenticated admin users only, using the same principal/role-check logic already present in BirdDataTable.tsx.",
+      "reqIds": [
+        "REQ-53"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-frontend-src-components-birddatatable-tsx-to-its-exact-previous-structure-design-layout-and-functionality-as-it-existed-before-version-539-this-means-restoring-the-original-column-definitions-local-name-scientific-name-english-name-location-coordinates-mountain-name-valley-name-governorate-notes-the-rtl-orientation-the-horizontal-scrolling-behavior-the-desert-amber-tailwind-styling-and-the-data-fetching-logic-exactly-as-they-were-do-not-change-any-column-widths-header-labels-row-styling-search-bar-or-any-other-aspect-of-the-component-beyond-what-is-explicitly-described-in-req-55",
+      "title": "Restore frontend/src/components/BirdDataTable.tsx to its exact previous structure, design, layout, and functionality as it existed before version 539. This means restoring the original column definitions (Local Name, Scientific Name, English Name, Location, Coordinates, Mountain Name, Valley Name, Governorate, Notes), the RTL orientation, the horizontal scrolling behavior, the desert/amber Tailwind styling, and the data-fetching logic — exactly as they were. Do NOT change any column widths, header labels, row styling, search bar, or any other aspect of the component beyond what is explicitly described in REQ-55.",
+      "reqIds": [
+        "REQ-54"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-after-restoring-birddatatable-tsx-to-its-pre-v539-state-req-54-add-the-following-five-action-buttons-exclusively-within-birddatatable-tsx-without-modifying-any-other-file-component-page-route-or-backend-file-1-an-add-button-in-the-table-toolbar-header-area-that-creates-a-new-empty-bird-record-row-for-inline-editing-2-an-edit-button-on-each-existing-data-row-that-switches-that-row-into-inline-edit-mode-3-a-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-the-changes-to-the-backend-4-a-delete-button-on-each-row-that-removes-the-record-from-the-backend-5-an-update-edit-button-on-each-row-distinct-from-edit-that-provides-an-alternative-update-action-all-five-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-already-used-in-birddatatable-tsx-all-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-principal-role-check-logic-already-present-in-birddatatable-tsx",
+      "title": "After restoring BirdDataTable.tsx to its pre-v539 state (REQ-54), add the following five action buttons exclusively within BirdDataTable.tsx without modifying any other file, component, page, route, or backend file: (1) An 'Add' (إضافة) button in the table toolbar/header area that creates a new empty bird record row for inline editing. (2) An 'Edit' (تعديل) button on each existing data row that switches that row into inline edit mode. (3) A 'Save' (حفظ) button that replaces the Edit button when a row is in edit mode and commits the changes to the backend. (4) A 'Delete' (حذف) button on each row that removes the record from the backend. (5) An 'Update/Edit' (تحرير) button on each row (distinct from Edit) that provides an alternative update action. All five buttons must be styled consistently with the existing desert/amber RTL Arabic theme already used in BirdDataTable.tsx. All actions must be restricted to authenticated admin users only using the same principal/role-check logic already present in BirdDataTable.tsx.",
+      "reqIds": [
+        "REQ-55"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-increase-the-overall-table-size-and-the-font-size-of-all-text-inside-the-table-header-cells-data-cells-search-bar-text-button-labels-and-any-other-text-rendered-within-the-table-component-do-not-change-the-table-s-column-definitions-layout-structure-rtl-orientation-horizontal-scrolling-behavior-color-scheme-admin-access-control-logic-data-fetching-logic-action-buttons-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-or-route",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, increase the overall table size and the font size of all text inside the table (header cells, data cells, search bar text, button labels, and any other text rendered within the table component). Do not change the table's column definitions, layout structure, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data fetching logic, action buttons, or any other aspect of the component. Do not modify any other file, component, page, or route.",
+      "reqIds": [
+        "REQ-56"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-restore-all-five-action-buttons-exactly-as-they-were-intended-1-an-add-button-in-the-table-toolbar-header-area-that-creates-a-new-empty-bird-record-row-for-inline-editing-2-an-edit-button-on-each-existing-data-row-that-switches-that-row-into-inline-edit-mode-3-a-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-the-changes-to-the-backend-4-a-delete-button-on-each-row-that-removes-the-record-from-the-backend-5-an-update-edit-button-on-each-row-distinct-from-edit-that-provides-an-alternative-update-action-all-five-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-all-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-principal-role-check-logic-already-present-in-birddatatable-tsx-additionally-increase-the-overall-table-size-and-the-font-size-of-all-text-inside-the-table-header-cells-data-cells-search-bar-text-button-labels-and-any-other-text-rendered-within-the-table-do-not-change-the-table-s-column-definitions-layout-structure-rtl-orientation-horizontal-scrolling-behavior-color-scheme-admin-access-control-logic-data-fetching-logic-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, restore all five action buttons exactly as they were intended: (1) An 'Add' (إضافة) button in the table toolbar/header area that creates a new empty bird record row for inline editing. (2) An 'Edit' (تعديل) button on each existing data row that switches that row into inline edit mode. (3) A 'Save' (حفظ) button that replaces the Edit button when a row is in edit mode and commits the changes to the backend. (4) A 'Delete' (حذف) button on each row that removes the record from the backend. (5) An 'Update/Edit' (تحرير) button on each row (distinct from Edit) that provides an alternative update action. All five buttons must be styled consistently with the existing desert/amber RTL Arabic theme. All actions must be restricted to authenticated admin users only using the same principal/role-check logic already present in BirdDataTable.tsx. Additionally, increase the overall table size and the font size of all text inside the table (header cells, data cells, search bar text, button labels, and any other text rendered within the table). Do NOT change the table's column definitions, layout structure, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data fetching logic, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-57"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-frontend-src-components-birddatatable-tsx-to-its-version-541-state-this-means-the-file-must-simultaneously-satisfy-all-of-the-following-1-preserve-the-original-pre-v539-table-structure-exactly-nine-columns-in-order-local-name-scientific-name-english-name-location-coordinates-mountain-name-valley-name-governorate-notes-rtl-orientation-horizontal-scrolling-on-smaller-screens-desert-amber-tailwind-color-scheme-and-data-fetching-logic-unchanged-2-include-all-five-admin-only-action-buttons-an-add-button-in-the-table-toolbar-header-area-that-inserts-a-new-empty-editable-row-an-edit-button-on-each-data-row-that-switches-that-row-into-inline-edit-mode-a-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-changes-to-the-backend-a-delete-button-on-each-row-that-removes-the-record-and-an-update-edit-button-on-each-row-providing-an-alternative-update-action-all-five-buttons-must-be-visually-present-and-styled-with-the-desert-amber-rtl-arabic-theme-all-five-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-principal-role-check-logic-3-increase-the-overall-table-size-and-font-size-of-all-text-within-the-table-header-cells-data-cells-search-bar-text-and-button-labels-to-be-clearly-readable-minimum-text-base-text-lg-sizing-do-not-change-any-other-file-component-page-route-or-backend-file",
+      "title": "Rewrite frontend/src/components/BirdDataTable.tsx to its version 541 state. This means the file must simultaneously satisfy ALL of the following: (1) Preserve the original pre-v539 table structure exactly — nine columns in order (Local Name الاسم المحلي, Scientific Name الاسم العلمي, English Name الاسم بالانجليزي, Location الموقع, Coordinates الاحداثيات, Mountain Name اسم الجبل, Valley Name اسم الوادي, Governorate الولاية, Notes ملاحظات), RTL orientation, horizontal scrolling on smaller screens, desert/amber Tailwind color scheme, and data-fetching logic unchanged. (2) Include ALL five admin-only action buttons: an 'Add' (إضافة) button in the table toolbar/header area that inserts a new empty editable row; an 'Edit' (تعديل) button on each data row that switches that row into inline edit mode; a 'Save' (حفظ) button that replaces the Edit button when a row is in edit mode and commits changes to the backend; a 'Delete' (حذف) button on each row that removes the record; and an 'Update/Edit' (تحرير) button on each row providing an alternative update action. All five buttons must be visually present and styled with the desert/amber RTL Arabic theme. All five actions must be restricted to authenticated admin users only using the principal/role-check logic. (3) Increase the overall table size and font size of ALL text within the table — header cells, data cells, search bar text, and button labels — to be clearly readable (minimum text-base / text-lg sizing). Do NOT change any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-58"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-restore-all-five-admin-only-action-buttons-to-their-exact-previous-positions-and-functionality-1-an-add-button-in-the-table-toolbar-header-area-that-creates-a-new-empty-bird-record-row-for-inline-editing-2-an-edit-button-on-each-existing-data-row-that-switches-that-row-into-inline-edit-mode-3-a-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-the-changes-to-the-backend-4-a-delete-button-on-each-row-that-removes-the-record-from-the-backend-5-an-update-edit-button-on-each-row-providing-an-alternative-update-action-all-five-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-already-in-the-file-all-five-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-principal-role-check-logic-already-present-in-birddatatable-tsx-do-not-restructure-rewrite-or-refactor-the-component-only-re-add-the-buttons-if-they-are-missing-or-broken",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, restore all five admin-only action buttons to their exact previous positions and functionality: (1) An 'Add' (إضافة) button in the table toolbar/header area that creates a new empty bird record row for inline editing. (2) An 'Edit' (تعديل) button on each existing data row that switches that row into inline edit mode. (3) A 'Save' (حفظ) button that replaces the Edit button when a row is in edit mode and commits the changes to the backend. (4) A 'Delete' (حذف) button on each row that removes the record from the backend. (5) An 'Update/Edit' (تحرير) button on each row providing an alternative update action. All five buttons must be styled consistently with the existing desert/amber RTL Arabic theme already in the file. All five actions must be restricted to authenticated admin users only using the same principal/role-check logic already present in BirdDataTable.tsx. Do NOT restructure, rewrite, or refactor the component — only re-add the buttons if they are missing or broken.",
+      "reqIds": [
+        "REQ-59"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-increase-the-overall-table-size-and-the-font-size-of-all-text-rendered-within-the-table-header-cells-data-cells-search-bar-text-button-labels-and-any-other-text-inside-the-component-use-a-minimum-of-text-base-text-lg-tailwind-sizing-classes-do-not-change-column-definitions-layout-structure-rtl-orientation-horizontal-scrolling-behavior-color-scheme-admin-access-control-logic-data-fetching-logic-action-buttons-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, increase the overall table size and the font size of all text rendered within the table: header cells, data cells, search bar text, button labels, and any other text inside the component. Use a minimum of text-base / text-lg Tailwind sizing classes. Do NOT change column definitions, layout structure, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data fetching logic, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-60"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-ensure-all-five-admin-only-action-buttons-are-present-visible-and-fully-functional-1-an-add-button-in-the-table-toolbar-header-area-that-creates-a-new-empty-bird-record-row-for-inline-editing-2-an-edit-button-on-each-existing-data-row-that-switches-that-row-into-inline-edit-mode-3-a-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-the-changes-to-the-backend-4-a-delete-button-on-each-row-that-removes-the-record-from-the-backend-5-an-update-edit-button-on-each-row-providing-an-alternative-update-action-all-five-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-already-in-the-file-all-five-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-principal-role-check-logic-already-present-in-birddatatable-tsx-do-not-restructure-rewrite-refactor-or-change-any-other-aspect-of-the-component-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-data-fetching-logic-and-all-other-existing-functionality-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, ensure all five admin-only action buttons are present, visible, and fully functional: (1) An 'Add' (إضافة) button in the table toolbar/header area that creates a new empty bird record row for inline editing. (2) An 'Edit' (تعديل) button on each existing data row that switches that row into inline edit mode. (3) A 'Save' (حفظ) button that replaces the Edit button when a row is in edit mode and commits the changes to the backend. (4) A 'Delete' (حذف) button on each row that removes the record from the backend. (5) An 'Update/Edit' (تحرير) button on each row providing an alternative update action. All five buttons must be styled consistently with the existing desert/amber RTL Arabic theme already in the file. All five actions must be restricted to authenticated admin users only using the same principal/role-check logic already present in BirdDataTable.tsx. Do NOT restructure, rewrite, refactor, or change any other aspect of the component — column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, data-fetching logic, and all other existing functionality must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-61"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-ensure-all-five-admin-only-action-buttons-are-present-visible-and-fully-functional-1-an-add-button-in-the-table-toolbar-header-area-that-creates-a-new-empty-bird-record-row-for-inline-editing-2-an-edit-button-on-each-existing-data-row-that-switches-that-row-into-inline-edit-mode-3-a-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-the-changes-to-the-backend-4-a-delete-button-on-each-row-that-removes-the-record-from-the-backend-5-an-update-edit-button-on-each-row-providing-an-alternative-update-action-all-five-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-already-in-the-file-all-five-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-principal-role-check-logic-already-present-in-birddatatable-tsx-the-overall-table-size-and-font-size-of-all-text-within-the-table-header-cells-data-cells-search-bar-text-button-labels-must-be-clearly-readable-using-minimum-text-base-text-lg-tailwind-sizing-do-not-change-column-definitions-layout-structure-rtl-orientation-horizontal-scrolling-behavior-color-scheme-data-fetching-logic-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, ensure all five admin-only action buttons are present, visible, and fully functional: (1) An 'Add' (إضافة) button in the table toolbar/header area that creates a new empty bird record row for inline editing. (2) An 'Edit' (تعديل) button on each existing data row that switches that row into inline edit mode. (3) A 'Save' (حفظ) button that replaces the Edit button when a row is in edit mode and commits the changes to the backend. (4) A 'Delete' (حذف) button on each row that removes the record from the backend. (5) An 'Update/Edit' (تحرير) button on each row providing an alternative update action. All five buttons must be styled consistently with the existing desert/amber RTL Arabic theme already in the file. All five actions must be restricted to authenticated admin users only using the same principal/role-check logic already present in BirdDataTable.tsx. The overall table size and font size of all text within the table (header cells, data cells, search bar text, button labels) must be clearly readable using minimum text-base / text-lg Tailwind sizing. Do NOT change column definitions, layout structure, RTL orientation, horizontal scrolling behavior, color scheme, data-fetching logic, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-62"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-frontend-src-components-birddatatable-tsx-from-scratch-as-a-single-self-contained-file-that-simultaneously-satisfies-all-of-the-following-without-modifying-any-other-file-component-page-route-or-backend-file-1-structure-preserve-the-original-nine-column-table-structure-exactly-columns-in-order-local-name-scientific-name-english-name-location-coordinates-mountain-name-valley-name-governorate-notes-maintain-rtl-orientation-dir-rtl-horizontal-scrolling-on-smaller-screens-desert-amber-tailwind-color-scheme-search-bar-and-all-existing-data-fetching-logic-via-useactor-and-react-query-2-action-buttons-all-five-must-be-rendered-unconditionally-in-the-dom-when-the-user-is-an-authenticated-admin-principal-role-check-already-in-the-file-and-must-be-visually-distinct-with-amber-desert-styling-a-add-button-in-the-table-toolbar-header-area-inserts-a-new-empty-editable-row-at-the-top-of-the-table-for-inline-data-entry-b-edit-button-on-each-existing-data-row-switches-that-specific-row-into-inline-edit-mode-showing-input-fields-c-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-commits-the-edited-row-s-data-to-the-backend-via-the-existing-mutation-actor-call-d-delete-button-on-each-row-removes-the-record-from-the-backend-via-the-existing-mutation-actor-call-e-update-edit-button-on-each-row-distinct-from-edit-provides-an-alternative-update-action-for-the-row-3-font-size-all-text-within-the-table-header-cells-data-cells-search-bar-text-and-button-labels-must-use-a-minimum-of-text-base-1rem-text-lg-1-125rem-tailwind-sizing-classes-to-ensure-clear-readability-4-admin-guard-all-five-button-actions-must-be-restricted-exclusively-to-authenticated-admin-users-using-the-same-principal-role-check-logic-already-present-in-birddatatable-tsx-non-admin-and-unauthenticated-users-must-not-see-the-action-buttons-5-no-other-changes-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Rewrite frontend/src/components/BirdDataTable.tsx from scratch as a single self-contained file that simultaneously satisfies ALL of the following — without modifying any other file, component, page, route, or backend file:\n\n(1) STRUCTURE: Preserve the original nine-column table structure exactly — columns in order: Local Name (الاسم المحلي), Scientific Name (الاسم العلمي), English Name (الاسم بالانجليزي), Location (الموقع), Coordinates (الاحداثيات), Mountain Name (اسم الجبل), Valley Name (اسم الوادي), Governorate (الولاية), Notes (ملاحظات). Maintain RTL orientation (dir='rtl'), horizontal scrolling on smaller screens, desert/amber Tailwind color scheme, search bar, and all existing data-fetching logic via useActor and React Query.\n\n(2) ACTION BUTTONS — all five must be rendered unconditionally in the DOM when the user is an authenticated admin (principal/role check already in the file), and must be visually distinct with amber/desert styling:\n   a. 'إضافة' (Add) button in the table toolbar/header area — inserts a new empty editable row at the top of the table for inline data entry.\n   b. 'تعديل' (Edit) button on each existing data row — switches that specific row into inline edit mode, showing input fields.\n   c. 'حفظ' (Save) button that replaces the Edit button when a row is in edit mode — commits the edited row's data to the backend via the existing mutation/actor call.\n   d. 'حذف' (Delete) button on each row — removes the record from the backend via the existing mutation/actor call.\n   e. 'تحرير' (Update/Edit) button on each row (distinct from Edit) — provides an alternative update action for the row.\n\n(3) FONT & SIZE: All text within the table — header cells, data cells, search bar text, and button labels — must use a minimum of text-base (1rem) / text-lg (1.125rem) Tailwind sizing classes to ensure clear readability.\n\n(4) ADMIN GUARD: All five button actions must be restricted exclusively to authenticated admin users using the same principal/role-check logic already present in BirdDataTable.tsx. Non-admin and unauthenticated users must not see the action buttons.\n\n(5) NO OTHER CHANGES: Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-63"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-frontend-src-components-birddatatable-tsx-as-a-single-self-contained-file-that-makes-all-five-admin-only-action-buttons-visible-and-functional-for-authenticated-admin-users-without-changing-any-other-file-component-page-route-or-backend-file-the-component-must-satisfy-all-of-the-following-simultaneously-1-structure-nine-columns-in-order-local-name-scientific-name-english-name-location-coordinates-mountain-name-valley-name-governorate-notes-rtl-orientation-dir-rtl-horizontal-scrolling-on-smaller-screens-desert-amber-tailwind-color-scheme-search-bar-and-all-existing-data-fetching-logic-via-useactor-and-react-query-must-be-preserved-exactly-2-action-buttons-rendered-in-the-dom-whenever-the-user-is-an-authenticated-admin-use-the-principal-role-check-logic-already-in-the-file-the-admin-check-must-be-evaluated-correctly-at-render-time-do-not-gate-on-any-asynchronous-condition-that-resolves-after-mount-without-a-re-render-a-add-button-in-the-table-toolbar-header-inserts-a-new-empty-editable-row-at-the-top-of-the-table-b-edit-button-on-each-data-row-switches-that-row-into-inline-edit-mode-c-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-commits-changes-to-the-backend-d-delete-button-on-each-row-removes-the-record-from-the-backend-e-update-edit-button-on-each-row-distinct-from-edit-alternative-update-action-all-five-buttons-must-be-styled-with-amber-desert-tailwind-classes-and-be-visually-distinct-3-admin-guard-the-isadmin-role-check-must-use-react-state-that-triggers-a-re-render-when-the-identity-actor-resolves-if-the-current-implementation-evaluates-the-principal-synchronously-before-the-actor-is-ready-fix-the-guard-to-use-a-usestate-useeffect-pattern-so-that-the-buttons-appear-once-the-admin-identity-is-confirmed-4-font-size-all-text-within-the-table-header-cells-data-cells-search-bar-button-labels-must-use-minimum-text-base-text-lg-tailwind-sizing-5-no-other-changes-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Rewrite frontend/src/components/BirdDataTable.tsx as a single self-contained file that makes all five admin-only action buttons visible and functional for authenticated admin users, without changing any other file, component, page, route, or backend file. The component must satisfy ALL of the following simultaneously:\n\n(1) STRUCTURE: Nine columns in order — Local Name (الاسم المحلي), Scientific Name (الاسم العلمي), English Name (الاسم بالانجليزي), Location (الموقع), Coordinates (الاحداثيات), Mountain Name (اسم الجبل), Valley Name (اسم الوادي), Governorate (الولاية), Notes (ملاحظات). RTL orientation (dir='rtl'), horizontal scrolling on smaller screens, desert/amber Tailwind color scheme, search bar, and all existing data-fetching logic via useActor and React Query must be preserved exactly.\n\n(2) ACTION BUTTONS — rendered in the DOM whenever the user is an authenticated admin (use the principal/role-check logic already in the file). The admin check must be evaluated correctly at render time — do not gate on any asynchronous condition that resolves after mount without a re-render:\n   a. 'إضافة' (Add) button in the table toolbar/header — inserts a new empty editable row at the top of the table.\n   b. 'تعديل' (Edit) button on each data row — switches that row into inline edit mode.\n   c. 'حفظ' (Save) button that replaces the Edit button when a row is in edit mode — commits changes to the backend.\n   d. 'حذف' (Delete) button on each row — removes the record from the backend.\n   e. 'تحرير' (Update/Edit) button on each row (distinct from Edit) — alternative update action.\n   All five buttons must be styled with amber/desert Tailwind classes and be visually distinct.\n\n(3) ADMIN GUARD: The isAdmin / role check must use React state that triggers a re-render when the identity/actor resolves. If the current implementation evaluates the principal synchronously before the actor is ready, fix the guard to use a useState + useEffect pattern so that the buttons appear once the admin identity is confirmed.\n\n(4) FONT & SIZE: All text within the table (header cells, data cells, search bar, button labels) must use minimum text-base / text-lg Tailwind sizing.\n\n(5) NO OTHER CHANGES: Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-64"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-remove-the-current-map-page-component-frontend-src-components-alllocationsmap-tsx-and-its-route-registration-from-app-tsx-the-existing-map-page-content-must-be-fully-replaced-by-the-new-interactive-map-feature-described-in-req-66-and-req-67-do-not-change-any-other-route-component-page-or-backend-file",
+      "title": "Remove the current Map page component (frontend/src/components/AllLocationsMap.tsx) and its route registration from App.tsx. The existing map page content must be fully replaced by the new interactive map feature described in REQ-66 and REQ-67. Do not change any other route, component, page, or backend file.",
+      "reqIds": [
+        "REQ-65"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-new-map-page-component-at-frontend-src-components-alllocationsmap-tsx-that-replaces-the-old-map-page-the-page-must-include-1-a-show-map-button-or-toggle-that-when-clicked-reveals-the-map-display-area-2-a-list-or-dropdown-of-individual-bird-names-derived-from-the-backend-bird-records-clicking-a-bird-name-filters-the-map-to-show-only-the-location-pin-s-for-that-bird-3-an-all-option-that-when-selected-displays-all-bird-location-pins-on-the-map-simultaneously-the-map-display-must-use-the-existing-static-al-buraimi-map-image-as-the-base-and-render-clickable-pins-at-the-coordinates-stored-in-each-bird-record-consistent-with-the-existing-desert-amber-rtl-arabic-theme-include-a-return-to-home-button-styled-consistently-with-the-rest-of-the-app-do-not-change-any-other-component-page-route-or-backend-file",
+      "title": "Create a new map page component at frontend/src/components/AllLocationsMap.tsx that replaces the old map page. The page must include: (1) A 'Show Map' button or toggle that, when clicked, reveals the map display area. (2) A list or dropdown of individual bird names derived from the backend bird records — clicking a bird name filters the map to show only the location pin(s) for that bird. (3) An 'All' option that, when selected, displays all bird location pins on the map simultaneously. The map display must use the existing static Al Buraimi map image as the base and render clickable pins at the coordinates stored in each bird record, consistent with the existing desert/amber RTL Arabic theme. Include a 'Return to Home' button styled consistently with the rest of the app. Do not change any other component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-66"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-five-admin-only-action-buttons-exclusively-to-frontend-src-components-birdgallery-tsx-without-modifying-any-other-file-component-page-route-or-backend-file-the-buttons-must-be-1-an-add-button-in-the-gallery-toolbar-header-area-that-allows-an-admin-to-add-a-new-bird-record-or-upload-a-new-image-entry-2-a-edit-button-on-each-existing-gallery-card-entry-that-switches-that-entry-into-an-editable-state-3-a-save-button-that-replaces-the-edit-button-when-an-entry-is-in-edit-mode-and-commits-the-changes-to-the-backend-via-the-existing-mutation-actor-call-4-a-delete-button-on-each-gallery-card-entry-that-removes-the-record-from-the-backend-via-the-existing-mutation-actor-call-5-a-update-edit-button-on-each-gallery-card-entry-distinct-from-edit-that-provides-an-alternative-update-action-all-five-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-tailwind-theme-already-used-in-birdgallery-tsx-all-five-actions-must-be-restricted-exclusively-to-authenticated-admin-users-using-the-same-principal-role-check-logic-pattern-already-present-in-the-codebase-usestate-useeffect-pattern-to-avoid-synchronous-evaluation-before-actor-resolves-non-admin-and-unauthenticated-users-must-not-see-any-of-the-action-buttons-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Add five admin-only action buttons exclusively to frontend/src/components/BirdGallery.tsx without modifying any other file, component, page, route, or backend file. The buttons must be: (1) An 'إضافة' (Add) button in the gallery toolbar/header area that allows an admin to add a new bird record or upload a new image entry. (2) A 'تعديل' (Edit) button on each existing gallery card/entry that switches that entry into an editable state. (3) A 'حفظ' (Save) button that replaces the Edit button when an entry is in edit mode and commits the changes to the backend via the existing mutation/actor call. (4) A 'حذف' (Delete) button on each gallery card/entry that removes the record from the backend via the existing mutation/actor call. (5) A 'تحرير' (Update/Edit) button on each gallery card/entry (distinct from Edit) that provides an alternative update action. All five buttons must be styled consistently with the existing desert/amber RTL Arabic Tailwind theme already used in BirdGallery.tsx. All five actions must be restricted exclusively to authenticated admin users using the same principal/role-check logic pattern already present in the codebase (useState + useEffect pattern to avoid synchronous evaluation before actor resolves). Non-admin and unauthenticated users must not see any of the action buttons. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-68"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rewrite-frontend-src-components-birdgallery-tsx-as-a-single-self-contained-file-that-makes-all-four-admin-only-action-buttons-visible-and-fully-functional-for-authenticated-admin-users-the-component-must-satisfy-all-of-the-following-simultaneously-1-action-buttons-rendered-in-the-dom-whenever-the-user-is-an-authenticated-admin-use-a-usestate-useeffect-pattern-to-avoid-synchronous-evaluation-before-the-actor-resolves-so-buttons-appear-once-admin-identity-is-confirmed-a-add-button-in-the-gallery-toolbar-header-area-opens-a-form-modal-that-allows-the-admin-to-upload-a-main-image-and-an-unlimited-number-of-sub-images-for-a-new-bird-record-then-commits-the-new-record-to-the-backend-b-save-button-on-each-gallery-card-entry-commits-any-pending-edits-for-that-entry-to-the-backend-via-the-existing-mutation-actor-call-c-delete-button-on-each-gallery-card-entry-removes-the-record-from-the-backend-via-the-existing-mutation-actor-call-d-update-edit-button-on-each-gallery-card-entry-switches-that-entry-into-an-editable-state-allowing-the-admin-to-update-the-main-image-and-or-sub-images-2-image-upload-the-add-form-must-support-selecting-one-main-image-file-and-any-number-of-additional-sub-image-files-all-selected-images-must-be-uploaded-as-blobs-to-the-backend-before-the-bird-record-is-created-the-resulting-blob-ids-must-be-stored-in-the-bird-record-s-images-array-3-admin-guard-the-isadmin-check-must-use-react-state-usestate-useeffect-that-triggers-a-re-render-when-the-identity-actor-resolves-non-admin-and-unauthenticated-users-must-not-see-any-action-buttons-4-styling-all-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-tailwind-theme-already-used-in-birdgallery-tsx-5-preserve-existing-functionality-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-and-data-fetching-logic-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Rewrite frontend/src/components/BirdGallery.tsx as a single self-contained file that makes all four admin-only action buttons visible and fully functional for authenticated admin users. The component must satisfy ALL of the following simultaneously:\n\n(1) ACTION BUTTONS — rendered in the DOM whenever the user is an authenticated admin (use a useState + useEffect pattern to avoid synchronous evaluation before the actor resolves, so buttons appear once admin identity is confirmed):\n   a. 'إضافة' (Add) button in the gallery toolbar/header area — opens a form/modal that allows the admin to upload a main image (صورة رئيسية) and an unlimited number of sub-images (صور فرعية) for a new bird record, then commits the new record to the backend.\n   b. 'حفظ' (Save) button on each gallery card/entry — commits any pending edits for that entry to the backend via the existing mutation/actor call.\n   c. 'حذف' (Delete) button on each gallery card/entry — removes the record from the backend via the existing mutation/actor call.\n   d. 'تحرير' (Update/Edit) button on each gallery card/entry — switches that entry into an editable state allowing the admin to update the main image and/or sub-images.\n\n(2) IMAGE UPLOAD: The Add form must support selecting one main image file and any number of additional sub-image files. All selected images must be uploaded as blobs to the backend before the bird record is created. The resulting blob IDs must be stored in the bird record's images array.\n\n(3) ADMIN GUARD: The isAdmin check must use React state (useState + useEffect) that triggers a re-render when the identity/actor resolves. Non-admin and unauthenticated users must not see any action buttons.\n\n(4) STYLING: All buttons must be styled consistently with the existing desert/amber RTL Arabic Tailwind theme already used in BirdGallery.tsx.\n\n(5) PRESERVE EXISTING FUNCTIONALITY: The gallery's existing search, card layout, image display, RTL orientation, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-69"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-click-handler-to-each-gallery-card-image-in-frontend-src-components-birdgallery-tsx-so-that-when-a-user-clicks-on-a-bird-image-the-corresponding-bird-data-record-is-displayed-in-a-modal-overlay-panel-the-modal-must-show-the-bird-s-full-data-fields-local-name-scientific-name-english-name-location-coordinates-mountain-name-valley-name-governorate-and-notes-fetched-from-the-already-loaded-bird-records-data-the-modal-must-be-dismissible-close-button-or-click-outside-do-not-change-any-existing-layout-styling-components-data-fetching-logic-admin-buttons-search-card-structure-rtl-orientation-or-any-other-aspect-of-birdgallery-tsx-beyond-adding-this-click-handler-and-modal-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Add a click handler to each gallery card/image in frontend/src/components/BirdGallery.tsx so that when a user clicks on a bird image, the corresponding bird data record is displayed in a modal overlay panel. The modal must show the bird's full data fields (local name, scientific name, English name, location, coordinates, mountain name, valley name, governorate, and notes) fetched from the already-loaded bird records data. The modal must be dismissible (close button or click-outside). Do NOT change any existing layout, styling, components, data-fetching logic, admin buttons, search, card structure, RTL orientation, or any other aspect of BirdGallery.tsx beyond adding this click handler and modal. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-70"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-homepage-tsx-only-add-an-onclick-event-handler-to-the-bird-of-the-day-image-element-so-that-clicking-it-plays-the-audio-file-at-owl-mp3-use-the-minimal-required-code-create-an-audio-instance-with-the-owl-mp3-path-and-call-play-inside-the-handler-do-not-refactor-redesign-or-alter-any-existing-ui-layout-styling-logic-or-component-structure-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/pages/HomePage.tsx only, add an onClick event handler to the 'Bird of the Day' image element so that clicking it plays the audio file at /owl.mp3. Use the minimal required code: create an Audio instance with the owl.mp3 path and call .play() inside the handler. Do not refactor, redesign, or alter any existing UI layout, styling, logic, or component structure. Do not modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-71"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-rebuild-and-redeploy-the-current-project-state-without-any-code-changes-ensure-the-backend-backend-main-mo-compiles-and-deploys-correctly-and-all-frontend-source-files-are-bundled-and-served-without-errors-the-deployment-must-restore-the-app-to-its-last-intended-state-including-the-nine-column-birddatatable-with-all-five-admin-only-action-buttons-visible-and-functional-for-authenticated-admin-users-the-interactive-alllocationsmap-with-bird-filtering-and-show-hide-toggle-the-birdgallery-with-admin-action-buttons-and-image-click-modal-the-homepage-with-splash-screen-hero-section-navigation-cards-static-map-and-team-table-and-all-tanstack-router-routes-correctly-registered-data-gallery-map-bird-name-eagle-owl-statistics-image-view-permissions",
+      "title": "Rebuild and redeploy the current project state without any code changes. Ensure the backend (backend/main.mo) compiles and deploys correctly, and all frontend source files are bundled and served without errors. The deployment must restore the app to its last intended state including: the nine-column BirdDataTable with all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) visible and functional for authenticated admin users; the interactive AllLocationsMap with bird filtering and show/hide toggle; the BirdGallery with admin action buttons and image click modal; the HomePage with splash screen, hero section, navigation cards, static map, and team table; and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions).",
+      "reqIds": [
+        "REQ-72"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-hamburger-dropdown-menu-in-frontend-src-components-hamburgermenu-tsx-so-that-it-is-visible-and-functional-in-the-app-header-the-menu-must-render-a-hamburger-icon-button-in-the-header-that-opens-a-dropdown-containing-navigation-links-to-all-main-app-sections-bird-data-photo-gallery-locations-map-statistics-and-any-other-links-previously-present-the-menu-must-close-when-a-navigation-item-is-selected-or-when-clicking-outside-the-component-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-ensure-that-mainheader-tsx-correctly-imports-and-renders-the-hamburgermenu-component-so-it-is-visible-in-the-app-header-do-not-modify-any-other-file-component-page-route-or-backend-file-beyond-hamburgermenu-tsx-and-mainheader-tsx",
+      "title": "Restore the hamburger dropdown menu in frontend/src/components/HamburgerMenu.tsx so that it is visible and functional in the app header. The menu must render a hamburger icon button in the header that opens a dropdown containing navigation links to all main app sections (Bird Data / البيانات, Photo Gallery / معرض الصور, Locations Map / المواقع, Statistics / الاحصائيات, and any other links previously present). The menu must close when a navigation item is selected or when clicking outside. The component must be styled consistently with the existing desert/amber RTL Arabic theme. Ensure that MainHeader.tsx correctly imports and renders the HamburgerMenu component so it is visible in the app header. Do NOT modify any other file, component, page, route, or backend file beyond HamburgerMenu.tsx and MainHeader.tsx.",
+      "reqIds": [
+        "REQ-73"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-alllocationsmap-tsx-only-remove-the-existing-static-map-image-the-base-map-background-image-element-currently-displayed-on-the-bird-locations-map-page-do-not-change-any-other-aspect-of-the-component-all-bird-filtering-logic-show-hide-toggle-pin-rendering-return-to-home-button-rtl-orientation-styling-and-all-other-functionality-must-remain-exactly-as-they-are-the-user-will-upload-the-correct-map-image-themselves-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/AllLocationsMap.tsx only, remove the existing static map image (the base map background/image element currently displayed on the bird locations map page). Do not change any other aspect of the component — all bird filtering logic, show/hide toggle, pin rendering, return-to-home button, RTL orientation, styling, and all other functionality must remain exactly as they are. The user will upload the correct map image themselves. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-75"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -473,6 +650,76 @@
     {
       "id": "AR-33",
       "summary": "Without changing anything else, add Save (حفظ), Edit (تعديل), Delete (حذف), and Edit/Modify (تحرير) action buttons to the bird data table in the data page (BirdDataTable.tsx).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-34",
+      "summary": "Increase the table size and font size in BirdDataTable.tsx only. Do not change layout, structure, design, or functionality of any other part of the app.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-35",
+      "summary": "Remove the current incorrect Map page. Add a new interactive map feature: a button/option to display the map, ability to click on a specific bird name (e.g., owl) to see its location markers on the map, and an 'All' option to display all points on the map. Do not change anything else in the app.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-38",
+      "summary": "Register the new AllLocationsMap component at the existing /map route in frontend/src/App.tsx, replacing the previous map route target. Use the same lazy-loading and ErrorBoundary wrapping pattern already used for other routes in App.tsx. Do not change any other route or file.",
+      "reqIds": [
+        "REQ-67"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-39",
+      "summary": "Add Add (إضافة), Delete (حذف), Edit (تعديل), Save (حفظ), and Update/Edit (تحرير) action buttons to the photo gallery page (BirdGallery.tsx). Buttons must be styled consistently with the existing desert/amber RTL Arabic theme and restricted to authenticated admin users only.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-40",
+      "summary": "Fix the gallery action buttons in BirdGallery.tsx so they appear for authenticated admin users. The Add (إضافة) button must allow uploading a main image and unlimited sub-images. Also include Save (حفظ), Delete (حذف), and Update/Edit (تحرير) buttons. All buttons must be restricted to admin users only.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-41",
+      "summary": "Synchronize Gallery images with the Data Table: when a user clicks on an image in the gallery, the corresponding bird data record must be displayed. Must be implemented as an addition only — no existing code, layout, styling, components, or functionality may be changed. Only add the minimum necessary code.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-42",
+      "summary": "Add an onClick event to the 'Bird of the Day' image that plays an owl sound (owl.mp3). Only add the minimal required code — do not refactor, redesign, or alter any existing UI, logic, or structure.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-43",
+      "summary": "Restore the hamburger dropdown menu (with page navigation links: bird data, gallery, map, statistics) that disappeared after version 555 deployment — without changing anything else in the app.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-44",
+      "summary": "Revert/restore the app to version 555 without changing anything else in the app.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-45",
+      "summary": "Revert the entire project — both backend (backend/main.mo, backend/migration.mo) and all frontend source files — to the exact state of Draft Version 555. No new modifications, fixes, or feature additions should be applied during this revert. The result must be a faithful restoration of the Draft Version 555 codebase, including all bird records, blob storage, role-based access control, navigation buttons, image display pipelines, splash screen, hamburger menu, BirdDataTable with all five admin-only action buttons, interactive AllLocationsMap with bird filtering and show/hide toggle, BirdGallery with admin action buttons and image click modal, HomePage with splash screen, hero section, navigation cards, static map and team table, and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions) that were present and functional at that version.",
+      "reqIds": [
+        "REQ-74"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-46",
+      "summary": "Remove the existing static map image from the bird locations map page (AllLocationsMap.tsx) without changing anything else in the app. The user will upload the correct map image themselves.",
       "reqIds": [],
       "status": "pending"
     }

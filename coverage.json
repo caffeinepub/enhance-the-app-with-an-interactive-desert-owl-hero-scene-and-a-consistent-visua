@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T03:42:39.670Z",
+  "generatedAt": "2026-02-25T19:44:46.923Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -11,14 +11,14 @@
     "implemented": 1,
     "items": [
       {
-        "id": "REQ-51",
-        "summary": "Fix frontend/src/components/BirdDataTable.tsx so that the Add (إضافة), Edit (تعديل), Save (حفظ), and Delete (حذف) action buttons are visible and fully functional for authenticated admin users. The Add button must appear in the table toolbar/header area. Each data row must show an Edit button that switches the row into inline edit mode; in edit mode the Edit button is replaced by a Save button that commits the changes to the backend. Each row must also have a Delete button. All buttons must be styled using the existing desert/amber RTL Arabic theme already present in the file. All four actions must be restricted to authenticated admin users only using the same principal/role-check logic already in BirdDataTable.tsx. This change must be isolated exclusively to BirdDataTable.tsx — no other file, component, page, route, or backend file may be modified.",
+        "id": "REQ-75",
+        "summary": "In frontend/src/components/AllLocationsMap.tsx only, remove the existing static map image (the base map background/image element currently displayed on the bird locations map page). Do not change any other aspect of the component — all bird filtering logic, show/hide toggle, pin rendering, return-to-home button, RTL orientation, styling, and all other functionality must remain exactly as they are. The user will upload the correct map image themselves. Do NOT modify any other file, component, page, route, or backend file.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
+          "frontend/src/components/AllLocationsMap.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
+          "frontend/src/components/AllLocationsMap.tsx"
         ]
       }
     ]
@@ -28,7 +28,7 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/BirdDataTable.tsx",
+    "frontend/src/components/AllLocationsMap.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

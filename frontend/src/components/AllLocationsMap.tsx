@@ -1,205 +1,183 @@
 import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { Home, X, MapPin } from 'lucide-react';
-import { useGetAllBirdData } from '../hooks/useQueries';
+import { Link } from '@tanstack/react-router';
+import { useGetAllLocationsWithNames, useGetBirdNames } from '../hooks/useQueries';
 import { useFileUrl } from '../blob-storage/FileStorage';
-import { BirdData } from '../backend';
+
+interface Pin {
+  birdName: string;
+  x: number;
+  y: number;
+}
 
 // Al Buraimi approximate bounding box
 const MAP_BOUNDS = {
-  minLat: 23.9,
-  maxLat: 24.4,
-  minLng: 55.7,
-  maxLng: 56.2,
+  minLat: 23.5,
+  maxLat: 24.5,
+  minLng: 55.5,
+  maxLng: 56.5,
 };
 
-function coordToPercent(lat: number, lng: number) {
+function coordToPercent(lat: number, lng: number): { x: number; y: number } {
   const x = ((lng - MAP_BOUNDS.minLng) / (MAP_BOUNDS.maxLng - MAP_BOUNDS.minLng)) * 100;
   const y = ((MAP_BOUNDS.maxLat - lat) / (MAP_BOUNDS.maxLat - MAP_BOUNDS.minLat)) * 100;
-  return { x: Math.max(2, Math.min(98, x)), y: Math.max(2, Math.min(98, y)) };
+  return {
+    x: Math.max(2, Math.min(98, x)),
+    y: Math.max(2, Math.min(98, y)),
+  };
 }
 
-interface BirdImageThumbProps {
-  path: string;
-  alt: string;
-}
-
-function BirdImageThumb({ path, alt }: BirdImageThumbProps) {
-  const { data: url } = useFileUrl(path);
-  if (!url) return <div className="w-full h-full bg-muted flex items-center justify-center"><span>🦉</span></div>;
-  return <img src={url} alt={alt} className="w-full h-full object-cover" />;
-}
-
-interface PinEntry {
-  key: string;
-  birdData: BirdData;
-  latitude: number;
-  longitude: number;
-  pinIndex: number;
+function BirdThumbnail({ birdName }: { birdName: string }) {
+  const { data: url } = useFileUrl(`birds/${birdName}/main.jpg`);
+  if (!url) return <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-2xl">🦅</div>;
+  return <img src={url} alt={birdName} className="w-12 h-12 object-cover rounded-lg" />;
 }
 
 export default function AllLocationsMap() {
-  const navigate = useNavigate();
-  const { data: allBirdData, isLoading } = useGetAllBirdData();
-  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const { data: locations, isLoading } = useGetAllLocationsWithNames();
+  const { data: birdNames } = useGetBirdNames();
+  const [showMap, setShowMap] = useState(true);
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
 
-  // Derive all location pins from bird data directly for consistent key matching
-  const pins: PinEntry[] = [];
-  if (allBirdData) {
-    allBirdData.forEach(([key, bird]) => {
-      if (!bird.locations || bird.locations.length === 0) return;
-      bird.locations.forEach((coord, idx) => {
-        if (
-          typeof coord.latitude === 'number' &&
-          typeof coord.longitude === 'number' &&
-          !isNaN(coord.latitude) &&
-          !isNaN(coord.longitude)
-        ) {
-          pins.push({
-            key,
-            birdData: bird,
-            latitude: coord.latitude,
-            longitude: coord.longitude,
-            pinIndex: idx,
-          });
-        }
-      });
-    });
-  }
+  const filteredLocations = (locations || []).filter((loc) => {
+    if (selectedFilter === 'all') return true;
+    return loc.birdName === selectedFilter;
+  });
 
-  const selectedBirdData = selectedKey
-    ? allBirdData?.find(([k]) => k === selectedKey)?.[1]
-    : null;
+  const pins: Pin[] = filteredLocations.map((loc) => {
+    const { x, y } = coordToPercent(loc.coordinate.latitude, loc.coordinate.longitude);
+    return { birdName: loc.birdName, x, y };
+  });
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      {/* Header */}
-      <div className="bg-card border-b border-border px-4 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <button
-            onClick={() => navigate({ to: '/' })}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary transition-colors font-arabic text-sm"
+    <main dir="rtl" className="min-h-screen bg-background text-foreground">
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl md:text-3xl font-bold text-primary">خريطة مواقع الطيور</h1>
+          <Link
+            to="/"
+            className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium"
           >
-            <Home className="w-4 h-4" />
+            <span>←</span>
             <span>الرئيسية</span>
-          </button>
-          <h1 className="text-xl font-bold text-foreground font-arabic">خريطة مواقع الانتشار</h1>
+          </Link>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {isLoading && (
-          <div className="text-center py-16">
-            <div className="text-5xl mb-4">🗺️</div>
-            <p className="text-foreground/60 font-arabic">جاري تحميل الخريطة...</p>
-          </div>
-        )}
-
-        {!isLoading && (
-          <div className="relative">
-            {/* Map Container */}
-            <div className="relative rounded-2xl overflow-hidden border border-border shadow-lg">
-              <img
-                src="/assets/generated/al-buraimi-official-static-map.dim_1024x768.png"
-                alt="خريطة محافظة البريمي"
-                className="w-full h-auto"
-              />
-
-              {/* Location Pins derived from bird data */}
-              {pins.map((pin, idx) => {
-                const { x, y } = coordToPercent(pin.latitude, pin.longitude);
-                const isSelected = selectedKey === pin.key;
-                return (
-                  <button
-                    key={`${pin.key}-${pin.pinIndex}-${idx}`}
-                    onClick={() => setSelectedKey(isSelected ? null : pin.key)}
-                    className="absolute transform -translate-x-1/2 -translate-y-1/2 group"
-                    style={{ left: `${x}%`, top: `${y}%` }}
-                    title={pin.birdData.arabicName || pin.key}
-                  >
-                    <div className={`w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center transition-transform group-hover:scale-125 ${
-                      isSelected ? 'bg-primary scale-125' : 'bg-destructive'
-                    }`}>
-                      <MapPin className="w-3 h-3 text-white" />
-                    </div>
-                    <div className="absolute bottom-full mb-1 right-1/2 translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity font-arabic pointer-events-none">
-                      {pin.birdData.arabicName || pin.key}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Legend */}
-            <div className="mt-4 flex items-center gap-4 text-sm font-arabic text-foreground/70">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-destructive border-2 border-white shadow" />
-                <span>موقع رصد</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full bg-primary border-2 border-white shadow" />
-                <span>محدد</span>
-              </div>
-              <span className="mr-auto">إجمالي المواقع: {pins.length}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Bird Detail Popup */}
-        {selectedKey && selectedBirdData && (
-          <div className="mt-6 bg-card border border-border rounded-2xl p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-foreground font-arabic">{selectedBirdData.arabicName}</h2>
-                {selectedBirdData.englishName && (
-                  <p className="text-sm text-foreground/60 font-arabic">{selectedBirdData.englishName}</p>
-                )}
-                {selectedBirdData.scientificName && (
-                  <p className="text-xs text-foreground/50 italic">{selectedBirdData.scientificName}</p>
-                )}
-              </div>
-              <button
-                onClick={() => setSelectedKey(null)}
-                className="p-1 hover:bg-muted rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {selectedBirdData.subImages && selectedBirdData.subImages.length > 0 && (
-              <div className="flex gap-3 mb-4 overflow-x-auto pb-2">
-                {selectedBirdData.subImages.map((imgPath, idx) => (
-                  <div key={idx} className="flex-shrink-0 w-24 h-24 rounded-xl overflow-hidden bg-muted">
-                    <BirdImageThumb path={imgPath} alt={`${selectedBirdData.arabicName} ${idx + 1}`} />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {selectedBirdData.description && (
-              <p className="text-foreground/70 font-arabic text-sm mb-4">{selectedBirdData.description}</p>
-            )}
-
-            <button
-              onClick={() => navigate({ to: '/bird/$name', params: { name: selectedKey } })}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-arabic hover:bg-primary/90 transition-colors"
-            >
-              عرض التفاصيل الكاملة
-            </button>
-          </div>
-        )}
-
-        {/* Return to Home */}
-        <div className="text-center mt-8">
+        {/* Controls */}
+        <div className="flex flex-wrap items-center gap-3 mb-6">
           <button
-            onClick={() => navigate({ to: '/' })}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl font-arabic font-semibold hover:bg-primary/90 transition-colors"
+            onClick={() => setShowMap(!showMap)}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
           >
-            <Home className="w-5 h-5" />
-            <span>العودة إلى الرئيسية</span>
+            {showMap ? '🙈 إخفاء الخريطة' : '🗺️ إظهار الخريطة'}
           </button>
+
+          <select
+            value={selectedFilter}
+            onChange={(e) => setSelectedFilter(e.target.value)}
+            className="px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+          >
+            <option value="all">جميع الطيور</option>
+            {(birdNames || []).map((name) => (
+              <option key={name} value={name}>{name}</option>
+            ))}
+          </select>
+
+          <span className="text-sm text-muted-foreground">
+            {pins.length} موقع
+          </span>
+        </div>
+
+        {/* Map */}
+        {showMap && (
+          <div className="relative rounded-2xl overflow-hidden border border-border shadow-lg bg-muted" style={{ minHeight: '400px' }}>
+
+            {/* Pins */}
+            {pins.map((pin, index) => (
+              <button
+                key={`${pin.birdName}-${index}`}
+                onClick={() => setSelectedPin(selectedPin?.birdName === pin.birdName && selectedPin?.x === pin.x ? null : pin)}
+                className="absolute transform -translate-x-1/2 -translate-y-1/2 hover:scale-125 transition-transform z-10"
+                style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
+                title={pin.birdName}
+              >
+                <div className="w-6 h-6 bg-primary rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+                  <span className="text-xs text-primary-foreground">🐦</span>
+                </div>
+              </button>
+            ))}
+
+            {/* Selected Pin Popup */}
+            {selectedPin && (
+              <div
+                className="absolute z-20 bg-card border border-border rounded-xl shadow-xl p-3 min-w-[160px]"
+                style={{
+                  left: `${Math.min(selectedPin.x, 75)}%`,
+                  top: `${Math.max(selectedPin.y - 20, 5)}%`,
+                }}
+              >
+                <button
+                  onClick={() => setSelectedPin(null)}
+                  className="absolute top-1 left-1 text-muted-foreground hover:text-foreground text-xs"
+                >
+                  ✕
+                </button>
+                <div className="flex items-center gap-2 mt-1">
+                  <BirdThumbnail birdName={selectedPin.birdName} />
+                  <div>
+                    <p className="font-bold text-foreground text-sm">{selectedPin.birdName}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedPin.x.toFixed(1)}%, {selectedPin.y.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/50">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Locations List */}
+        <div className="mt-8">
+          <h2 className="text-xl font-bold text-foreground mb-4">قائمة المواقع</h2>
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
+          ) : filteredLocations.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">لا توجد مواقع متاحة</div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredLocations.map((loc, index) => (
+                <div key={index} className="bg-card border border-border rounded-xl p-4">
+                  <p className="font-bold text-foreground mb-1">{loc.birdName}</p>
+                  <p className="text-xs text-muted-foreground">
+                    خط العرض: {loc.coordinate.latitude.toFixed(4)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    خط الطول: {loc.coordinate.longitude.toFixed(4)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Return */}
+        <div className="mt-8 text-center">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors font-medium"
+          >
+            <span>←</span>
+            <span>العودة للرئيسية</span>
+          </Link>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

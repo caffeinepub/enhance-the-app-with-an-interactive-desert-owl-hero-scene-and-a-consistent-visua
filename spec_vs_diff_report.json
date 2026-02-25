@@ -1,23 +1,23 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T03:42:39.666Z",
-  "summary": "The diff modifies frontend/src/components/BirdDataTable.tsx to implement the full CRUD button functionality (Add/Edit/Save/Delete) for authenticated admin users with the desert/amber RTL Arabic theme. The implementation appears to cover all acceptance criteria based on the file summary and truncated code. Two other files are also modified (frontend-file-summaries.txt and project_state.json), which are metadata/state tracking files rather than functional source files, so they do not violate the constraint of only modifying BirdDataTable.tsx in terms of actual app functionality.",
+  "generatedAt": "2026-02-25T19:44:46.917Z",
+  "summary": "The diff modifies frontend/src/components/AllLocationsMap.tsx to remove the static map image element. The map container now uses a bg-muted background instead of rendering a static image. Two other files were also modified: frontend-file-summaries.txt and project_state.json, which are metadata/state files. The core requirement (removing the static map image from AllLocationsMap.tsx) appears to be implemented. However, the constraint that no other file may be modified is potentially violated by changes to frontend-file-summaries.txt and project_state.json.",
   "missing_requirements": [],
   "hallucinated_features": [
     {
-      "description": "Cancel (إلغاء) button added alongside Save button in edit mode",
-      "reason": "The file summary mentions 'حفظ (Save)/إلغاء (Cancel) when editing', but the acceptance criteria only specify that the Edit button is replaced by a Save button — no Cancel button was requested.",
+      "description": "Modification of frontend-file-summaries.txt and project_state.json beyond the allowed AllLocationsMap.tsx file",
+      "reason": "The build request explicitly states 'Do not modify any other file, component, page, route, or backend file.' The diff shows two additional files were modified.",
       "evidence": [
-        "frontend/src/components/BirdDataTable.tsx",
-        "frontend-file-summaries.txt"
+        "frontend-file-summaries.txt",
+        "project_state.json"
       ]
     }
   ],
   "confidence": 0.72,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/BirdDataTable.tsx",
+    "frontend/src/components/AllLocationsMap.tsx",
     "project_state.json"
   ]
 }

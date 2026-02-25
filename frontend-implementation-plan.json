@@ -1,28 +1,25 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Add/Edit/Save/Delete buttons in BirdDataTable without changing anything else",
+  "title": "Remove static map image from AllLocationsMap page",
   "requirements": [
     {
-      "id": "REQ-51",
-      "summary": "Fix frontend/src/components/BirdDataTable.tsx to make Add (إضافة), Edit (تعديل), Save (حفظ), and Delete (حذف) action buttons visible and fully functional for authenticated admin users using the existing desert/amber RTL Arabic theme and principal/role-check logic already present in the file",
+      "id": "REQ-75",
+      "summary": "Remove the static map image element from AllLocationsMap.tsx while preserving all other functionality including bird filtering, pin rendering, show/hide toggle, return-to-home button, RTL orientation, and styling",
       "acceptanceCriteria": [
-        "An 'إضافة' (Add) button is visible in the table toolbar/header area when the authenticated user is an admin.",
-        "Clicking 'إضافة' inserts a new empty editable row into the table.",
-        "Each existing data row displays a 'تعديل' (Edit) button when not in edit mode.",
-        "Clicking 'تعديل' on a row switches that row into inline edit mode with editable fields.",
-        "When a row is in edit mode, the 'تعديل' button is replaced by a 'حفظ' (Save) button.",
-        "Clicking 'حفظ' commits the edited row data to the backend and exits edit mode.",
-        "Each data row displays a 'حذف' (Delete) button that removes the record from the backend.",
-        "All four buttons are hidden or disabled for unauthenticated users and non-admin users.",
-        "Button styles use the existing desert/amber RTL Arabic theme already in BirdDataTable.tsx.",
+        "The static map image element is no longer rendered on the bird locations map page (AllLocationsMap.tsx).",
+        "The map area appears empty or shows a neutral background placeholder where the map image was.",
+        "All bird filtering controls (bird name list/dropdown, 'All' option, show/hide toggle) remain present and functional.",
+        "Bird location pins still render in the correct positions when a bird or 'All' is selected.",
+        "The 'Return to Home' button remains present and functional.",
+        "RTL orientation, desert/amber styling, and all other UI elements are unchanged.",
         "No other file, component, page, route, or backend file is modified."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/BirdDataTable.tsx",
+          "path": "frontend/src/components/AllLocationsMap.tsx",
           "operation": "modify",
-          "description": "Add visible and functional Add (إضافة), Edit (تعديل), Save (حفظ), and Delete (حذف) action buttons for authenticated admin users. The Add button must appear in the table toolbar/header area. Each data row must show an Edit button that switches the row into inline edit mode (with editable input fields); when in edit mode, the Edit button is replaced by a Save button that commits changes to the backend via existing mutations. Each row must also display a Delete button that removes the record. All buttons must use the existing desert/amber RTL Arabic theme (amber-600, hover:amber-700, disabled:opacity-50, rounded-lg, px-3, py-1.5) already present in BirdDataTable.tsx. All four actions must be restricted to authenticated admin users only using the existing isCallerAdmin check already in the file. Implement inline row editing state (track editing row ID, original data for cancel, edited field values). Wire the Add button to insert a new empty editable row at the top of the table. Wire the Edit button to toggle a row into edit mode with input fields for arabicName, scientificName, englishName, description, notes, and coordinate fields. Wire the Save button to call the existing saveBirdData or addOrUpdateBird mutation with the edited values and exit edit mode on success. Wire the Delete button to call the existing deleteBirdById mutation with confirmation. Ensure buttons are only visible when isAdmin is true. Do not modify any other part of the file including search, export, pagination, or existing table structure. Do not change any other component, page, route, or backend file."
+          "description": "Remove the static map image element (img tag or image component) that serves as the base map background. Locate the image element displaying the map and remove it from the JSX structure. Ensure the container for bird location pins remains intact with its existing dimensions and styling so pins continue to render at their correct coordinate positions. All other functionality including bird filtering dropdown, 'All birds' option, show/hide pins toggle, bird name display, return-to-home navigation button, RTL text direction, and desert/amber color scheme must remain completely unchanged. The map area should display a neutral or empty background where the image was previously shown."
         }
       ]
     }

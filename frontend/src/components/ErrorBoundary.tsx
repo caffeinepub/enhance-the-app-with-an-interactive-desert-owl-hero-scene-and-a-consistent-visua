@@ -1,145 +1,92 @@
-import React, { Component, ReactNode } from 'react';
-import { AlertCircle, RefreshCw, Home } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-
-interface Props {
-  children: ReactNode;
-  fallback?: ReactNode;
-}
+import React from 'react';
+import { Link } from '@tanstack/react-router';
 
 interface State {
   hasError: boolean;
   error: Error | null;
-  errorInfo: React.ErrorInfo | null;
   retryCount: number;
 }
 
-class ErrorBoundary extends Component<Props, State> {
-  private retryTimeout: NodeJS.Timeout | null = null;
+export default class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  State
+> {
+  private retryTimer: ReturnType<typeof setTimeout> | null = null;
 
-  constructor(props: Props) {
+  constructor(props: { children: React.ReactNode }) {
     super(props);
-    this.state = {
-      hasError: false,
-      error: null,
-      errorInfo: null,
-      retryCount: 0,
-    };
+    this.state = { hasError: false, error: null, retryCount: 0 };
   }
 
   static getDerivedStateFromError(error: Error): Partial<State> {
-    return {
-      hasError: true,
-      error,
-    };
+    return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
-    this.setState({
-      error,
-      errorInfo,
-    });
-
-    // Automatic retry after 3 seconds (only once)
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('ErrorBoundary caught:', error, info);
+    // Auto-retry once after 3 seconds
     if (this.state.retryCount === 0) {
-      this.retryTimeout = setTimeout(() => {
-        this.handleRetry();
+      this.retryTimer = setTimeout(() => {
+        this.setState((prev) => ({
+          hasError: false,
+          error: null,
+          retryCount: prev.retryCount + 1,
+        }));
       }, 3000);
     }
   }
 
   componentWillUnmount() {
-    if (this.retryTimeout) {
-      clearTimeout(this.retryTimeout);
+    if (this.retryTimer) {
+      clearTimeout(this.retryTimer);
     }
   }
 
   handleRetry = () => {
-    if (this.retryTimeout) {
-      clearTimeout(this.retryTimeout);
-      this.retryTimeout = null;
-    }
-
-    this.setState((prevState) => ({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-      retryCount: prevState.retryCount + 1,
-    }));
-  };
-
-  handleGoHome = () => {
-    window.location.href = '/';
+    this.setState({ hasError: false, error: null });
   };
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
       return (
-        <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4" dir="rtl">
-          <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl p-8">
-            <Alert className="border-2 border-red-400 bg-red-50 mb-6">
-              <AlertCircle className="h-6 w-6 text-red-600" />
-              <AlertDescription className="text-red-900 font-bold text-xl">
-                حدث خطأ أثناء تحميل الواجهة، يرجى إعادة المحاولة
-              </AlertDescription>
-            </Alert>
-
-            <div className="space-y-4 mb-6">
-              <p className="text-gray-700 text-lg font-medium">
-                عذراً، حدث خطأ غير متوقع أثناء عرض هذه الصفحة. نحن نعمل على إصلاح المشكلة.
-              </p>
-              
-              {this.state.retryCount === 0 && (
-                <p className="text-blue-600 text-base">
-                  ⏳ سيتم إعادة المحاولة تلقائياً خلال 3 ثوانٍ...
-                </p>
-              )}
-
-              {this.state.error && (
-                <details className="mt-4 p-4 bg-gray-100 rounded-lg">
-                  <summary className="cursor-pointer text-gray-700 font-medium mb-2">
-                    تفاصيل الخطأ التقنية
-                  </summary>
-                  <pre className="text-xs text-gray-600 overflow-auto max-h-40 mt-2 p-2 bg-white rounded">
-                    {this.state.error.toString()}
-                    {this.state.errorInfo && this.state.errorInfo.componentStack}
-                  </pre>
-                </details>
-              )}
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                onClick={this.handleRetry}
-                size="lg"
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold"
-              >
-                <RefreshCw className="h-5 w-5 ml-2" />
-                إعادة المحاولة الآن
-              </Button>
-              <Button
-                onClick={this.handleGoHome}
-                variant="outline"
-                size="lg"
-                className="flex-1 border-2 border-gray-300 hover:bg-gray-100 font-bold"
-              >
-                <Home className="h-5 w-5 ml-2" />
-                العودة للصفحة الرئيسية
-              </Button>
-            </div>
-
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800">
-                💡 <strong>نصيحة:</strong> إذا استمرت المشكلة، حاول تحديث الصفحة أو مسح ذاكرة التخزين المؤقت للمتصفح.
-              </p>
-            </div>
+        <div
+          className="flex flex-col items-center justify-center min-h-[50vh] p-8 text-center"
+          dir="rtl"
+        >
+          <div className="text-5xl mb-4">🦉</div>
+          <h2 className="text-xl font-bold text-destructive mb-2">
+            حدث خطأ أثناء تحميل الواجهة
+          </h2>
+          <p className="text-muted-foreground mb-6 max-w-md">
+            يرجى إعادة المحاولة. إذا استمر الخطأ، يرجى تحديث الصفحة.
+          </p>
+          {this.state.error && (
+            <details className="mb-4 text-xs text-muted-foreground">
+              <summary className="cursor-pointer">تفاصيل الخطأ</summary>
+              <pre className="mt-2 p-2 bg-muted rounded text-left overflow-auto max-w-sm">
+                {this.state.error.message}
+              </pre>
+            </details>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={this.handleRetry}
+              className="px-6 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors font-medium"
+            >
+              إعادة المحاولة
+            </button>
+            <Link
+              to="/"
+              className="px-6 py-2 bg-secondary text-secondary-foreground rounded-full hover:bg-secondary/80 transition-colors font-medium"
+            >
+              الرئيسية
+            </Link>
           </div>
+          {this.state.retryCount === 0 && (
+            <p className="mt-4 text-xs text-muted-foreground">
+              سيتم إعادة المحاولة تلقائياً خلال 3 ثوانٍ...
+            </p>
+          )}
         </div>
       );
     }
@@ -147,5 +94,3 @@ class ErrorBoundary extends Component<Props, State> {
     return this.props.children;
   }
 }
-
-export default ErrorBoundary;
