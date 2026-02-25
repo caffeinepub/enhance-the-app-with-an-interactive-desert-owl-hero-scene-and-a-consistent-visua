@@ -10,13 +10,18 @@ export type Option<T> = Some<T> | None;
 export interface BirdData {
     id: bigint;
     subImages: Array<string>;
+    localName: string;
     description: string;
     audioFile?: string;
+    valleyName: string;
     arabicName: string;
+    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
     locations: Array<Coordinate>;
+    governorate: string;
+    location: string;
 }
 export interface TeamGroup {
     members: Array<string>;

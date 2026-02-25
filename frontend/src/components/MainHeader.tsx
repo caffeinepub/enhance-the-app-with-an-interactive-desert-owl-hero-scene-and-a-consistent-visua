@@ -1,17 +1,16 @@
 import { useState } from 'react';
-import { useNavigate, useRouter } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { Menu, X, RefreshCw, LogIn, LogOut, Shield } from 'lucide-react';
+import { RefreshCw, LogIn, LogOut, Shield } from 'lucide-react';
+import HamburgerMenu from './HamburgerMenu';
 
 const ADMIN_PRINCIPAL = '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe';
 
 export default function MainHeader() {
   const navigate = useNavigate();
-  const router = useRouter();
   const queryClient = useQueryClient();
   const { login, clear, loginStatus, identity } = useInternetIdentity();
-  const [menuOpen, setMenuOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isAuthenticated = !!identity;
@@ -42,7 +41,7 @@ export default function MainHeader() {
     }
   };
 
-  const navLinks = [
+  const desktopNavLinks = [
     { label: 'الرئيسية', path: '/', icon: '🏠' },
     { label: 'معرض الصور', path: '/gallery', icon: '🖼️' },
     { label: 'خريطة المواقع', path: '/map', icon: '🗺️' },
@@ -71,7 +70,7 @@ export default function MainHeader() {
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-1">
-          {navLinks.map((link) => (
+          {desktopNavLinks.map((link) => (
             <button
               key={link.path}
               onClick={() => navigate({ to: link.path as '/' })}
@@ -99,6 +98,7 @@ export default function MainHeader() {
             onClick={handleRefresh}
             className="p-2 rounded-lg hover:bg-accent transition-colors text-foreground/70 hover:text-foreground"
             title="تحديث البيانات"
+            aria-label="تحديث البيانات"
           >
             <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
           </button>
@@ -125,48 +125,10 @@ export default function MainHeader() {
             </span>
           </button>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="lg:hidden p-2 rounded-lg hover:bg-accent transition-colors"
-          >
-            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          {/* Hamburger Menu - always visible, contains main nav links */}
+          <HamburgerMenu />
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      {menuOpen && (
-        <div className="lg:hidden border-t border-border bg-card/98 backdrop-blur-sm">
-          <nav className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-1">
-            {navLinks.map((link) => (
-              <button
-                key={link.path}
-                onClick={() => {
-                  navigate({ to: link.path as '/' });
-                  setMenuOpen(false);
-                }}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-arabic text-foreground/80 hover:text-foreground hover:bg-accent transition-colors text-right"
-              >
-                <span className="text-lg">{link.icon}</span>
-                <span>{link.label}</span>
-              </button>
-            ))}
-            {isAdmin && (
-              <button
-                onClick={() => {
-                  navigate({ to: '/permissions' });
-                  setMenuOpen(false);
-                }}
-                className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-arabic text-primary hover:bg-primary/10 transition-colors text-right"
-              >
-                <Shield className="w-5 h-5" />
-                <span>إدارة الصلاحيات</span>
-              </button>
-            )}
-          </nav>
-        </div>
-      )}
     </header>
   );
 }

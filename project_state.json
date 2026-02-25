@@ -1,16 +1,21 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 21,
+  "projectStateVersion": 41,
   "summary": "Bird distribution tracker app for Al Buraimi Governorate. After multiple failed revert/restore attempts (versions 521-528), user is requesting restoration to version 510, which was an earlier stable version. The app title should be 'مواقع انتشار البوم بمحافظة البريمي'.",
   "architectural_notes": [
-    "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)"
+    "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)",
+    "App should include a hamburger menu with navigation links: bird data (البيانات), photo gallery (معرض الصور), locations/map (المواقع), and statistics (الاحصائيات)"
   ],
   "known_issues": [
     "After version 521 deployment, only one image is displaying; other uploaded images are still missing",
     "After version 523 deployment, previously added data and images are no longer displaying, and page navigation buttons are missing from the interface",
     "After version 524 deployment, all data, images, and the home page have disappeared — full regression reported by user",
     "User requested immediate revert to Draft Version 522 after version 526 deployment",
-    "Version 528 deployment failed to restore correct app state — title was wrong and app did not match version 522 functionality; user is now requesting revert to version 510"
+    "Version 528 deployment failed to restore correct app state — title was wrong and app did not match version 522 functionality; user is now requesting revert to version 510",
+    "Version 529 may be missing the hamburger menu with navigation links (bird data, gallery, locations, statistics) that existed in version 510",
+    "Dropdown menu 'البيانات' item does not navigate to the bird data page when selected",
+    "Version 534 deployment: Add/Edit/Delete/Save action buttons did not appear in BirdDataTable — user requesting re-implementation without changing any other part of the app",
+    "Version 538 deployment: Add/Edit/Delete/Save action buttons still did not appear in BirdDataTable — user requesting re-implementation again without changing any other part of the app"
   ],
   "isFixRequest": true,
   "existing_features": [
@@ -198,6 +203,102 @@
         "REQ-37"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-restore-the-hamburger-menu-mobile-responsive-navigation-drawer-in-the-app-that-contains-navigation-links-to-bird-data-photo-gallery-locations-map-and-statistics-the-menu-must-be-accessible-via-a-hamburger-icon-button-in-the-header-open-as-a-dropdown-or-side-drawer-on-click-and-close-when-a-navigation-item-is-selected-style-it-consistently-with-the-existing-desert-amber-rtl-arabic-theme-as-it-existed-in-version-510",
+      "title": "Restore the hamburger menu (mobile/responsive navigation drawer) in the app that contains navigation links to: Bird Data (البيانات), Photo Gallery (معرض الصور), Locations/Map (المواقع), and Statistics (الاحصائيات). The menu must be accessible via a hamburger icon button in the header, open as a dropdown or side drawer on click, and close when a navigation item is selected. Style it consistently with the existing desert/amber RTL Arabic theme as it existed in version 510.",
+      "reqIds": [
+        "REQ-38"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-horizontal-scrollable-data-table-to-the-bird-data-page-birddatatable-tsx-or-homepage-tsx-bird-data-section-with-the-following-columns-in-order-local-name-scientific-name-english-name-location-coordinates-mountain-name-valley-name-governorate-notes-the-table-must-be-rtl-oriented-horizontally-scrollable-on-smaller-screens-and-styled-consistently-with-the-existing-desert-amber-theme",
+      "title": "Add a horizontal scrollable data table to the bird data page (BirdDataTable.tsx or HomePage.tsx bird data section) with the following columns in order: Local Name (الاسم المحلي), Scientific Name (الاسم العلمي), English Name (الاسم بالانجليزي), Location (الموقع), Coordinates (الاحداثيات), Mountain Name (اسم الجبل), Valley Name (اسم الوادي), Governorate (الولاية), Notes (ملاحظات). The table must be RTL-oriented, horizontally scrollable on smaller screens, and styled consistently with the existing desert/amber theme.",
+      "reqIds": [
+        "REQ-39"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-create-a-new-standalone-page-component-at-frontend-src-pages-birddatapage-tsx-that-renders-the-birddatatable-component-frontend-src-components-birddatatable-tsx-in-a-full-page-layout-the-page-must-include-a-return-to-home-button-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-do-not-modify-birddatatable-tsx-itself",
+      "title": "Create a new standalone page component at frontend/src/pages/BirdDataPage.tsx that renders the BirdDataTable component (frontend/src/components/BirdDataTable.tsx) in a full-page layout. The page must include a 'Return to Home' button styled consistently with the existing desert/amber RTL Arabic theme. Do not modify BirdDataTable.tsx itself.",
+      "reqIds": [
+        "REQ-42"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-register-a-new-route-data-in-frontend-src-app-tsx-that-lazy-loads-the-new-birddatapage-component-wrapped-in-an-errorboundary-follow-the-same-lazy-loading-pattern-used-for-existing-routes-such-as-gallery-map-and-statistics",
+      "title": "Register a new route '/data' in frontend/src/App.tsx that lazy-loads the new BirdDataPage component, wrapped in an ErrorBoundary. Follow the same lazy-loading pattern used for existing routes such as /gallery, /map, and /statistics.",
+      "reqIds": [
+        "REQ-43"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-navigation-button-to-the-homepage-frontend-src-pages-homepage-tsx-that-navigates-to-the-new-data-route-the-button-should-be-labeled-bird-data-in-arabic-styled-as-a-navigation-card-consistent-with-the-existing-gallery-map-eagle-owl-and-statistics-navigation-cards-already-on-the-home-page-do-not-change-any-other-part-of-homepage-tsx",
+      "title": "Add a navigation button to the HomePage (frontend/src/pages/HomePage.tsx) that navigates to the new '/data' route. The button should be labeled 'البيانات' (Bird Data) in Arabic, styled as a navigation card consistent with the existing gallery, map, eagle-owl, and statistics navigation cards already on the home page. Do not change any other part of HomePage.tsx.",
+      "reqIds": [
+        "REQ-44"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-hamburgermenu-component-frontend-src-components-hamburgermenu-tsx-so-that-clicking-navigates-to-the-data-route-using-tanstack-router-consistent-with-how-other-menu-items-navigate-the-menu-must-close-after-the-item-is-selected",
+      "title": "Update the HamburgerMenu component (frontend/src/components/HamburgerMenu.tsx) so that clicking 'البيانات' navigates to the '/data' route using TanStack Router, consistent with how other menu items navigate. The menu must close after the item is selected.",
+      "reqIds": [
+        "REQ-45"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-add-edit-delete-and-save-action-buttons-to-the-bird-data-table-in-frontend-src-components-birddatatable-tsx-the-add-button-should-appear-in-the-table-toolbar-header-area-to-create-a-new-bird-record-row-each-existing-row-should-have-an-edit-button-that-switches-the-row-into-an-editable-inline-state-a-save-button-that-commits-the-edits-visible-only-when-a-row-is-in-edit-mode-replacing-the-edit-button-and-a-delete-button-that-removes-the-row-all-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-used-throughout-the-app-restrict-add-edit-delete-and-save-actions-to-authenticated-admin-users-only-consistent-with-the-existing-access-control-logic-already-present-in-birddatatable-tsx-do-not-change-any-other-part-of-the-file-any-other-component-any-page-or-any-route",
+      "title": "Add Add (إضافة), Edit (تعديل), Delete (حذف), and Save (حفظ) action buttons to the bird data table in frontend/src/components/BirdDataTable.tsx. The Add button should appear in the table toolbar/header area to create a new bird record row. Each existing row should have an Edit button that switches the row into an editable inline state, a Save button that commits the edits (visible only when a row is in edit mode, replacing the Edit button), and a Delete button that removes the row. All buttons must be styled consistently with the existing desert/amber RTL Arabic theme used throughout the app. Restrict Add, Edit, Delete, and Save actions to authenticated admin users only, consistent with the existing access control logic already present in BirdDataTable.tsx. Do not change any other part of the file, any other component, any page, or any route.",
+      "reqIds": [
+        "REQ-46"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-add-edit-delete-and-save-action-buttons-exclusively-to-frontend-src-components-birddatatable-tsx-the-add-button-must-appear-in-the-table-toolbar-header-area-to-create-a-new-empty-bird-record-row-each-existing-data-row-must-show-an-edit-button-that-switches-that-row-into-an-inline-editable-state-when-a-row-is-in-edit-mode-the-edit-button-must-be-replaced-by-a-save-button-that-commits-the-changes-to-the-backend-each-row-must-also-have-a-delete-button-that-removes-the-record-all-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-already-used-in-birddatatable-tsx-all-four-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-access-control-logic-principal-role-check-already-present-in-birddatatable-tsx-no-other-file-component-page-or-route-may-be-modified",
+      "title": "Add Add (إضافة), Edit (تعديل), Delete (حذف), and Save (حفظ) action buttons exclusively to frontend/src/components/BirdDataTable.tsx. The Add button must appear in the table toolbar/header area to create a new empty bird record row. Each existing data row must show an Edit button that switches that row into an inline editable state. When a row is in edit mode, the Edit button must be replaced by a Save button that commits the changes to the backend. Each row must also have a Delete button that removes the record. All buttons must be styled consistently with the existing desert/amber RTL Arabic theme already used in BirdDataTable.tsx. All four actions must be restricted to authenticated admin users only, using the same access-control logic (principal/role check) already present in BirdDataTable.tsx. No other file, component, page, or route may be modified.",
+      "reqIds": [
+        "REQ-47"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-add-edit-delete-and-save-action-buttons-in-frontend-src-components-birddatatable-tsx-so-they-are-visible-and-functional-for-authenticated-admin-users-the-add-button-must-appear-in-the-table-toolbar-header-area-each-data-row-must-show-an-edit-button-that-switches-the-row-into-inline-edit-mode-in-edit-mode-the-edit-button-is-replaced-by-a-save-button-that-commits-changes-to-the-backend-each-row-must-also-have-a-delete-button-all-buttons-must-use-the-existing-desert-amber-rtl-arabic-theme-already-in-birddatatable-tsx-all-four-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-principal-role-check-already-present-in-birddatatable-tsx-do-not-modify-any-other-file-component-page-or-route",
+      "title": "Fix the Add (إضافة), Edit (تعديل), Delete (حذف), and Save (حفظ) action buttons in frontend/src/components/BirdDataTable.tsx so they are visible and functional for authenticated admin users. The Add button must appear in the table toolbar/header area. Each data row must show an Edit button that switches the row into inline edit mode; in edit mode the Edit button is replaced by a Save button that commits changes to the backend. Each row must also have a Delete button. All buttons must use the existing desert/amber RTL Arabic theme already in BirdDataTable.tsx. All four actions must be restricted to authenticated admin users only using the same principal/role check already present in BirdDataTable.tsx. Do NOT modify any other file, component, page, or route.",
+      "reqIds": [
+        "REQ-48"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-alllocationsmap-tsx-ensure-that-bird-location-pins-are-rendered-on-the-map-for-every-bird-record-returned-by-the-backend-that-has-valid-coordinate-data-verify-that-the-component-correctly-reads-the-location-coordinates-fields-from-each-birddata-record-and-maps-them-to-clickable-pins-on-the-static-al-buraimi-map-image-do-not-change-any-other-component-page-route-or-backend-file",
+      "title": "In AllLocationsMap.tsx, ensure that bird location pins are rendered on the map for every bird record returned by the backend that has valid coordinate data. Verify that the component correctly reads the location/coordinates fields from each BirdData record and maps them to clickable pins on the static Al Buraimi map image. Do not change any other component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-49"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-and-ensure-the-add-edit-delete-and-save-action-buttons-are-visible-and-fully-functional-in-frontend-src-components-birddatatable-tsx-for-authenticated-admin-users-the-add-button-must-appear-in-the-table-toolbar-header-area-to-create-a-new-empty-bird-record-row-each-existing-data-row-must-show-an-edit-button-that-switches-the-row-into-inline-edit-mode-when-a-row-is-in-edit-mode-the-edit-button-must-be-replaced-by-a-save-button-that-commits-changes-to-the-backend-each-row-must-also-have-a-delete-button-that-removes-the-record-all-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-already-used-in-birddatatable-tsx-all-four-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-principal-role-check-already-present-in-birddatatable-tsx-do-not-modify-any-other-file-component-page-or-route",
+      "title": "Fix and ensure the Add (إضافة), Edit (تعديل), Delete (حذف), and Save (حفظ) action buttons are visible and fully functional in frontend/src/components/BirdDataTable.tsx for authenticated admin users. The Add button must appear in the table toolbar/header area to create a new empty bird record row. Each existing data row must show an Edit button that switches the row into inline edit mode. When a row is in edit mode, the Edit button must be replaced by a Save button that commits changes to the backend. Each row must also have a Delete button that removes the record. All buttons must be styled consistently with the existing desert/amber RTL Arabic theme already used in BirdDataTable.tsx. All four actions must be restricted to authenticated admin users only, using the same principal/role check already present in BirdDataTable.tsx. Do NOT modify any other file, component, page, or route.",
+      "reqIds": [
+        "REQ-50"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-frontend-src-components-birddatatable-tsx-so-that-the-add-edit-save-and-delete-action-buttons-are-visible-and-fully-functional-for-authenticated-admin-users-the-add-button-must-appear-in-the-table-toolbar-header-area-each-data-row-must-show-an-edit-button-that-switches-the-row-into-inline-edit-mode-in-edit-mode-the-edit-button-is-replaced-by-a-save-button-that-commits-the-changes-to-the-backend-each-row-must-also-have-a-delete-button-all-buttons-must-be-styled-using-the-existing-desert-amber-rtl-arabic-theme-already-present-in-the-file-all-four-actions-must-be-restricted-to-authenticated-admin-users-only-using-the-same-principal-role-check-logic-already-in-birddatatable-tsx-this-change-must-be-isolated-exclusively-to-birddatatable-tsx-no-other-file-component-page-route-or-backend-file-may-be-modified",
+      "title": "Fix frontend/src/components/BirdDataTable.tsx so that the Add (إضافة), Edit (تعديل), Save (حفظ), and Delete (حذف) action buttons are visible and fully functional for authenticated admin users. The Add button must appear in the table toolbar/header area. Each data row must show an Edit button that switches the row into inline edit mode; in edit mode the Edit button is replaced by a Save button that commits the changes to the backend. Each row must also have a Delete button. All buttons must be styled using the existing desert/amber RTL Arabic theme already present in the file. All four actions must be restricted to authenticated admin users only using the same principal/role-check logic already in BirdDataTable.tsx. This change must be isolated exclusively to BirdDataTable.tsx — no other file, component, page, route, or backend file may be modified.",
+      "reqIds": [
+        "REQ-51"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -314,6 +415,64 @@
     {
       "id": "AR-23",
       "summary": "Revert/restore the entire project to the state of Draft Version 510, which was a known stable version. The app title must be 'مواقع انتشار البوم بمحافظة البريمي'. No new modifications should be applied during this revert.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-24",
+      "summary": "Restore the hamburger menu containing navigation links to: bird data, photo gallery, locations/map, and statistics — as it existed in version 510.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-25",
+      "summary": "Add a horizontal data table to the bird data page with columns: Local Name (الاسم المحلي), Scientific Name (الاسم العلمي), English Name (الاسم بالانجليزي), Location (الموقع), Coordinates (الاحداثيات), Mountain Name (اسم الجبل), Valley Name (اسم الوادي), Governorate (الولاية), Notes (ملاحظات).",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-27",
+      "summary": "Ensure the backend BirdData type exposes the fields required for the new table columns: local name, scientific name, English name, location, coordinates, mountain name, valley name, governorate, and notes. If any of these fields are missing from the BirdData record type in backend/main.mo, add them as optional or required fields and update the getBirdData() query to return them.",
+      "reqIds": [
+        "REQ-40"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-28",
+      "summary": "Fix the dropdown/hamburger menu navigation so that clicking 'البيانات' (Bird Data) correctly navigates to the bird data page.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-29",
+      "summary": "Fix the 'البيانات' (Bird Data) navigation item in HamburgerMenu.tsx so that clicking it correctly navigates the user to the bird data page (the home page section or dedicated route where BirdDataTable is rendered). The item currently opens the dropdown but does not trigger any navigation. Ensure the navigation method is consistent with the router used in App.tsx (TanStack Router) and that the menu closes after selection.",
+      "reqIds": [
+        "REQ-41"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-30",
+      "summary": "Add a new standalone page for displaying the bird data table. Move the data section from the home page to this new page. Add a navigation button on the home page to go to the new data page. Do not change the home page design or any existing functionality.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-31",
+      "summary": "Add Add (إضافة), Edit (تعديل), Delete (حذف), and Save (حفظ) action buttons to the bird data table (BirdDataTable.tsx) without changing anything else.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-32",
+      "summary": "Sync bird location data with the map so that bird records appear as markers on the map view, without changing any other part of the app.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-33",
+      "summary": "Without changing anything else, add Save (حفظ), Edit (تعديل), Delete (حذف), and Edit/Modify (تحرير) action buttons to the bird data table in the data page (BirdDataTable.tsx).",
       "reqIds": [],
       "status": "pending"
     }

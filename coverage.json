@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T02:04:24.757Z",
+  "generatedAt": "2026-02-25T03:42:39.670Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -11,72 +11,24 @@
     "implemented": 1,
     "items": [
       {
-        "id": "REQ-37",
-        "summary": "Revert the entire project — both backend (backend/main.mo, backend/migration.mo) and all frontend source files — to the exact state of Draft Version 510. No new modifications, fixes, or feature additions should be applied during this revert. The result must be a faithful restoration of the Draft Version 510 codebase, including all bird records, blob storage, role-based access control, navigation buttons, image display pipelines, splash screen, and homepage sections that were present and functional at that version.",
+        "id": "REQ-51",
+        "summary": "Fix frontend/src/components/BirdDataTable.tsx so that the Add (إضافة), Edit (تعديل), Save (حفظ), and Delete (حذف) action buttons are visible and fully functional for authenticated admin users. The Add button must appear in the table toolbar/header area. Each data row must show an Edit button that switches the row into inline edit mode; in edit mode the Edit button is replaced by a Save button that commits the changes to the backend. Each row must also have a Delete button. All buttons must be styled using the existing desert/amber RTL Arabic theme already present in the file. All four actions must be restricted to authenticated admin users only using the same principal/role-check logic already in BirdDataTable.tsx. This change must be isolated exclusively to BirdDataTable.tsx — no other file, component, page, route, or backend file may be modified.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/index.html",
-          "frontend/src/App.tsx",
-          "frontend/src/pages/HomePage.tsx",
-          "frontend/src/components/SplashScreen.tsx",
-          "frontend/src/components/MainHeader.tsx",
-          "frontend/src/components/BirdGallery.tsx",
-          "frontend/src/components/BirdDetailsPage.tsx",
-          "frontend/src/components/AllLocationsMap.tsx",
-          "frontend/src/components/StaticAlBuraimiMap.tsx",
-          "frontend/src/components/EagleOwlPage.tsx",
-          "frontend/src/components/StatisticsPage.tsx",
-          "frontend/src/components/ImageViewPage.tsx",
-          "frontend/src/components/PermissionManagement.tsx",
-          "frontend/src/components/BirdDataTable.tsx",
-          "frontend/src/components/TeamDataTable.tsx",
-          "frontend/src/hooks/useQueries.ts",
-          "frontend/src/hooks/useActor.ts",
-          "frontend/src/hooks/useInternetIdentity.ts",
-          "frontend/src/index.css",
-          "frontend/tailwind.config.js"
+          "frontend/src/components/BirdDataTable.tsx"
         ],
         "matchedFiles": [
-          "frontend/index.html",
-          "frontend/src/App.tsx",
-          "frontend/src/pages/HomePage.tsx",
-          "frontend/src/components/SplashScreen.tsx",
-          "frontend/src/components/MainHeader.tsx",
-          "frontend/src/components/BirdGallery.tsx",
-          "frontend/src/components/BirdDetailsPage.tsx",
-          "frontend/src/components/AllLocationsMap.tsx",
-          "frontend/src/components/StaticAlBuraimiMap.tsx",
-          "frontend/src/components/EagleOwlPage.tsx",
-          "frontend/src/components/StatisticsPage.tsx",
-          "frontend/src/components/ImageViewPage.tsx",
-          "frontend/src/components/PermissionManagement.tsx",
-          "frontend/src/components/BirdDataTable.tsx",
-          "frontend/src/components/TeamDataTable.tsx"
+          "frontend/src/components/BirdDataTable.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/index.html",
-    "frontend/src/App.tsx",
-    "frontend/src/components/AllLocationsMap.tsx",
     "frontend/src/components/BirdDataTable.tsx",
-    "frontend/src/components/BirdDetailsPage.tsx",
-    "frontend/src/components/BirdGallery.tsx",
-    "frontend/src/components/EagleOwlPage.tsx",
-    "frontend/src/components/ImageViewPage.tsx",
-    "frontend/src/components/MainHeader.tsx",
-    "frontend/src/components/PermissionManagement.tsx",
-    "frontend/src/components/SplashScreen.tsx",
-    "frontend/src/components/StaticAlBuraimiMap.tsx",
-    "frontend/src/components/StatisticsPage.tsx",
-    "frontend/src/components/TeamDataTable.tsx",
-    "frontend/src/pages/HomePage.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

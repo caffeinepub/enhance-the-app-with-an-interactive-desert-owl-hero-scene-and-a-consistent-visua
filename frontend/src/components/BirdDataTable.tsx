@@ -1,358 +1,551 @@
-import { useState } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { Search, Plus, Edit2, Trash2, Download, FileText, RefreshCw, X, Save } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import {
   useGetAllBirdData,
+  useIsCallerAdmin,
   useAddBirdWithDetails,
   useUpdateBirdDetails,
-  useDeleteBirdData,
-  useIsCallerAdmin,
+  useDeleteBirdById,
 } from '../hooks/useQueries';
 import { BirdData } from '../backend';
-import { exportBirdsToExcel } from '../lib/excelExport';
-import { exportBirdsToPDF } from '../lib/pdfExport';
+import { toast } from 'sonner';
 
-const ADMIN_PRINCIPAL = '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe';
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-interface BirdFormData {
+interface EditableRow {
   arabicName: string;
-  englishName: string;
   scientificName: string;
+  englishName: string;
   description: string;
   notes: string;
   latitude: string;
   longitude: string;
 }
 
-const emptyForm: BirdFormData = {
-  arabicName: '',
-  englishName: '',
-  scientificName: '',
-  description: '',
-  notes: '',
-  latitude: '',
-  longitude: '',
-};
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function emptyEditableRow(): EditableRow {
+  return {
+    arabicName: '',
+    scientificName: '',
+    englishName: '',
+    description: '',
+    notes: '',
+    latitude: '',
+    longitude: '',
+  };
+}
+
+function birdToEditable(bird: BirdData): EditableRow {
+  const loc = bird.locations[0];
+  return {
+    arabicName: bird.arabicName,
+    scientificName: bird.scientificName,
+    englishName: bird.englishName,
+    description: bird.description,
+    notes: bird.notes,
+    latitude: loc ? String(loc.latitude) : '',
+    longitude: loc ? String(loc.longitude) : '',
+  };
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function BirdDataTable() {
-  const navigate = useNavigate();
   const { identity } = useInternetIdentity();
-  const { data: birdData, isLoading } = useGetAllBirdData();
-  const { data: isAdmin } = useIsCallerAdmin();
-  const { mutateAsync: addBird, isPending: isAdding } = useAddBirdWithDetails();
-  const { mutateAsync: updateBird, isPending: isUpdating } = useUpdateBirdDetails();
-  const { mutateAsync: deleteBird, isPending: isDeleting } = useDeleteBirdData();
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showForm, setShowForm] = useState(false);
-  const [editingBird, setEditingBird] = useState<string | null>(null);
-  const [formData, setFormData] = useState<BirdFormData>(emptyForm);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-
   const isAuthenticated = !!identity;
-  const currentPrincipal = identity?.getPrincipal().toString();
-  const canModify = isAuthenticated && (currentPrincipal === ADMIN_PRINCIPAL || isAdmin);
 
-  const filteredBirds = birdData?.filter(([name, bird]) => {
+  const { data: allBirdData, isLoading: dataLoading } = useGetAllBirdData();
+  const { data: isAdmin } = useIsCallerAdmin();
+
+  const addBirdMutation = useAddBirdWithDetails();
+  const updateBirdMutation = useUpdateBirdDetails();
+  const deleteBirdMutation = useDeleteBirdById();
+
+  // ── Search ──────────────────────────────────────────────────────────────────
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // ── Editing state ───────────────────────────────────────────────────────────
+  // editingId: bigint for existing rows, 'new' for a new row being added
+  const [editingId, setEditingId] = useState<bigint | 'new' | null>(null);
+  const [editValues, setEditValues] = useState<EditableRow>(emptyEditableRow());
+  const [savingId, setSavingId] = useState<bigint | 'new' | null>(null);
+  const [deletingId, setDeletingId] = useState<bigint | null>(null);
+
+  // ── Derived data ─────────────────────────────────────────────────────────────
+  const birds: BirdData[] = useMemo(() => {
+    if (!allBirdData) return [];
+    return allBirdData.map(([, bird]) => bird);
+  }, [allBirdData]);
+
+  const filteredBirds = useMemo(() => {
+    if (!searchQuery.trim()) return birds;
     const q = searchQuery.toLowerCase();
-    return (
-      name.toLowerCase().includes(q) ||
-      bird.arabicName.toLowerCase().includes(q) ||
-      bird.englishName.toLowerCase().includes(q) ||
-      bird.scientificName.toLowerCase().includes(q)
+    return birds.filter(
+      (b) =>
+        b.arabicName.toLowerCase().includes(q) ||
+        b.scientificName.toLowerCase().includes(q) ||
+        b.englishName.toLowerCase().includes(q) ||
+        b.description.toLowerCase().includes(q) ||
+        b.notes.toLowerCase().includes(q)
     );
-  }) ?? [];
+  }, [birds, searchQuery]);
 
-  const handleAdd = async () => {
-    if (!formData.arabicName.trim()) return;
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
+  function handleStartEdit(bird: BirdData) {
+    setEditingId(bird.id);
+    setEditValues(birdToEditable(bird));
+  }
+
+  function handleCancelEdit() {
+    setEditingId(null);
+    setEditValues(emptyEditableRow());
+  }
+
+  function handleStartAdd() {
+    setEditingId('new');
+    setEditValues(emptyEditableRow());
+  }
+
+  function handleFieldChange(field: keyof EditableRow, value: string) {
+    setEditValues((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSave(bird?: BirdData) {
+    const id = bird ? bird.id : 'new';
+    setSavingId(id);
     try {
-      await addBird({
-        arabicName: formData.arabicName,
-        scientificName: formData.scientificName,
-        englishName: formData.englishName,
-        description: formData.description,
-        notes: formData.notes,
-        latitude: parseFloat(formData.latitude) || 24.1,
-        longitude: parseFloat(formData.longitude) || 56.0,
-        audioFilePath: null,
-        subImages: [],
-      });
-      setFormData(emptyForm);
-      setShowForm(false);
-    } catch (err) {
-      console.error('Failed to add bird:', err);
+      const lat = parseFloat(editValues.latitude) || 0;
+      const lng = parseFloat(editValues.longitude) || 0;
+
+      if (bird) {
+        // Update existing bird using updateBirdDetails
+        await updateBirdMutation.mutateAsync({
+          birdName: bird.arabicName,
+          arabicName: editValues.arabicName,
+          scientificName: editValues.scientificName,
+          englishName: editValues.englishName,
+          description: editValues.description,
+          notes: editValues.notes,
+        });
+        toast.success('تم حفظ البيانات بنجاح');
+      } else {
+        // Add new bird
+        if (!editValues.arabicName.trim()) {
+          toast.error('يرجى إدخال الاسم العربي');
+          setSavingId(null);
+          return;
+        }
+        await addBirdMutation.mutateAsync({
+          arabicName: editValues.arabicName,
+          scientificName: editValues.scientificName,
+          englishName: editValues.englishName,
+          description: editValues.description,
+          notes: editValues.notes,
+          latitude: lat,
+          longitude: lng,
+          audioFilePath: null,
+          subImages: [],
+        });
+        toast.success('تمت إضافة الطائر بنجاح');
+      }
+      setEditingId(null);
+      setEditValues(emptyEditableRow());
+    } catch {
+      toast.error('حدث خطأ أثناء الحفظ');
+    } finally {
+      setSavingId(null);
     }
-  };
+  }
 
-  const handleEdit = (name: string, bird: BirdData) => {
-    setEditingBird(name);
-    setFormData({
-      arabicName: bird.arabicName,
-      englishName: bird.englishName,
-      scientificName: bird.scientificName,
-      description: bird.description,
-      notes: bird.notes,
-      latitude: bird.locations[0]?.latitude.toString() ?? '',
-      longitude: bird.locations[0]?.longitude.toString() ?? '',
-    });
-    setShowForm(true);
-  };
-
-  const handleUpdate = async () => {
-    if (!editingBird) return;
+  async function handleDelete(bird: BirdData) {
+    if (!window.confirm(`هل أنت متأكد من حذف "${bird.arabicName}"؟`)) return;
+    setDeletingId(bird.id);
     try {
-      await updateBird({
-        birdName: editingBird,
-        arabicName: formData.arabicName,
-        scientificName: formData.scientificName,
-        englishName: formData.englishName,
-        description: formData.description,
-        notes: formData.notes,
-      });
-      setEditingBird(null);
-      setFormData(emptyForm);
-      setShowForm(false);
-    } catch (err) {
-      console.error('Failed to update bird:', err);
+      await deleteBirdMutation.mutateAsync(bird.id);
+      toast.success('تم حذف الطائر بنجاح');
+    } catch {
+      toast.error('حدث خطأ أثناء الحذف');
+    } finally {
+      setDeletingId(null);
     }
-  };
+  }
 
-  const handleDelete = async (name: string) => {
-    try {
-      await deleteBird(name);
-      setDeleteConfirm(null);
-    } catch (err) {
-      console.error('Failed to delete bird:', err);
-    }
-  };
+  // ── Render ───────────────────────────────────────────────────────────────────
 
-  const handleExportExcel = () => {
-    const birds = filteredBirds.map(([, b]) => b);
-    exportBirdsToExcel(birds);
-  };
+  if (!isAuthenticated) {
+    return (
+      <div
+        className="flex items-center justify-center min-h-[200px] text-amber-700 text-lg"
+        dir="rtl"
+      >
+        يرجى تسجيل الدخول لعرض بيانات الطيور
+      </div>
+    );
+  }
 
-  const handleExportPDF = () => {
-    const birds = filteredBirds.map(([, b]) => b);
-    exportBirdsToPDF(birds);
-  };
+  if (dataLoading) {
+    return (
+      <div
+        className="flex items-center justify-center min-h-[200px] text-amber-700 text-lg gap-3"
+        dir="rtl"
+      >
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600" />
+        جاري تحميل البيانات...
+      </div>
+    );
+  }
+
+  const inputClass =
+    'w-full border border-amber-300 rounded px-2 py-1 text-sm bg-amber-50 focus:outline-none focus:ring-1 focus:ring-amber-500 text-right';
+
+  const colCount = isAdmin ? 9 : 8;
 
   return (
-    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      {/* Table Header */}
-      <div className="px-6 py-4 border-b border-border">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-foreground font-arabic">بيانات الطيور</h2>
+    <div dir="rtl" className="w-full">
+      {/* ── Toolbar ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        {/* Search */}
+        <input
+          type="text"
+          placeholder="بحث في بيانات الطيور..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 min-w-[200px] border border-amber-300 rounded-lg px-3 py-2 text-sm bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 text-right"
+        />
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Search */}
-            <div className="relative">
-              <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="بحث..."
-                className="pr-9 pl-3 py-2 bg-background border border-border rounded-lg text-sm font-arabic focus:outline-none focus:ring-2 focus:ring-primary/50 w-40"
-              />
-            </div>
-
-            {/* Export Buttons */}
-            <button
-              onClick={handleExportExcel}
-              className="flex items-center gap-1.5 px-3 py-2 bg-green-600/10 hover:bg-green-600/20 text-green-700 dark:text-green-400 rounded-lg text-sm font-arabic transition-colors"
-            >
-              <Download className="w-4 h-4" />
-              <span>Excel</span>
-            </button>
-            <button
-              onClick={handleExportPDF}
-              className="flex items-center gap-1.5 px-3 py-2 bg-red-600/10 hover:bg-red-600/20 text-red-700 dark:text-red-400 rounded-lg text-sm font-arabic transition-colors"
-            >
-              <FileText className="w-4 h-4" />
-              <span>PDF</span>
-            </button>
-
-            {/* Add Button (admin only) */}
-            {canModify && (
-              <button
-                onClick={() => {
-                  setEditingBird(null);
-                  setFormData(emptyForm);
-                  setShowForm(true);
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-arabic hover:bg-primary/90 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                <span>إضافة</span>
-              </button>
-            )}
-          </div>
-        </div>
+        {/* Add button — admin only */}
+        {isAdmin && (
+          <button
+            onClick={handleStartAdd}
+            disabled={editingId !== null}
+            className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            <span className="text-lg leading-none">+</span>
+            إضافة طائر
+          </button>
+        )}
       </div>
 
-      {/* Add/Edit Form */}
-      {showForm && canModify && (
-        <div className="px-6 py-4 bg-muted/50 border-b border-border">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-foreground font-arabic">
-              {editingBird ? 'تعديل بيانات الطائر' : 'إضافة طائر جديد'}
-            </h3>
-            <button
-              onClick={() => { setShowForm(false); setEditingBird(null); setFormData(emptyForm); }}
-              className="p-1 hover:bg-muted rounded-lg transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[
-              { key: 'arabicName', label: 'الاسم العربي', required: true },
-              { key: 'englishName', label: 'الاسم الإنجليزي' },
-              { key: 'scientificName', label: 'الاسم العلمي' },
-              { key: 'latitude', label: 'خط العرض' },
-              { key: 'longitude', label: 'خط الطول' },
-            ].map(({ key, label, required }) => (
-              <div key={key}>
-                <label className="block text-xs font-arabic text-foreground/60 mb-1">
-                  {label}{required && ' *'}
-                </label>
-                <input
-                  type="text"
-                  value={formData[key as keyof BirdFormData]}
-                  onChange={(e) => setFormData(prev => ({ ...prev, [key]: e.target.value }))}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-arabic focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-arabic text-foreground/60 mb-1">الوصف</label>
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                rows={2}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-arabic focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-arabic text-foreground/60 mb-1">ملاحظات</label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                rows={2}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm font-arabic focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-              />
-            </div>
-          </div>
-
-          <div className="mt-4 flex gap-2">
-            <button
-              onClick={editingBird ? handleUpdate : handleAdd}
-              disabled={isAdding || isUpdating || !formData.arabicName.trim()}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-arabic hover:bg-primary/90 transition-colors disabled:opacity-50"
-            >
-              {(isAdding || isUpdating) ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
+      {/* ── Table ── */}
+      <div className="overflow-x-auto rounded-xl border border-amber-200 shadow-sm">
+        <table className="w-full text-sm text-right">
+          <thead className="bg-amber-100 text-amber-900">
+            <tr>
+              <th className="px-3 py-3 font-bold border-b border-amber-200 whitespace-nowrap">#</th>
+              <th className="px-3 py-3 font-bold border-b border-amber-200 whitespace-nowrap">الاسم العربي</th>
+              <th className="px-3 py-3 font-bold border-b border-amber-200 whitespace-nowrap">الاسم العلمي</th>
+              <th className="px-3 py-3 font-bold border-b border-amber-200 whitespace-nowrap">الاسم الإنجليزي</th>
+              <th className="px-3 py-3 font-bold border-b border-amber-200 whitespace-nowrap">الوصف</th>
+              <th className="px-3 py-3 font-bold border-b border-amber-200 whitespace-nowrap">ملاحظات</th>
+              <th className="px-3 py-3 font-bold border-b border-amber-200 whitespace-nowrap">خط العرض</th>
+              <th className="px-3 py-3 font-bold border-b border-amber-200 whitespace-nowrap">خط الطول</th>
+              {isAdmin && (
+                <th className="px-3 py-3 font-bold border-b border-amber-200 text-center whitespace-nowrap">
+                  الإجراءات
+                </th>
               )}
-              <span>{editingBird ? 'حفظ التعديلات' : 'إضافة'}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Table */}
-      {isLoading ? (
-        <div className="text-center py-12">
-          <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
-          <p className="text-foreground/60 font-arabic">جاري التحميل...</p>
-        </div>
-      ) : filteredBirds.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="text-5xl mb-3">🦉</div>
-          <p className="text-foreground/60 font-arabic">
-            {searchQuery ? 'لا توجد نتائج' : 'لا توجد بيانات'}
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-muted">
-              <tr>
-                <th className="px-4 py-3 text-right font-arabic text-foreground/70">#</th>
-                <th className="px-4 py-3 text-right font-arabic text-foreground/70">الاسم العربي</th>
-                <th className="px-4 py-3 text-right font-arabic text-foreground/70 hidden md:table-cell">الاسم الإنجليزي</th>
-                <th className="px-4 py-3 text-right font-arabic text-foreground/70 hidden lg:table-cell">الاسم العلمي</th>
-                <th className="px-4 py-3 text-right font-arabic text-foreground/70">المواقع</th>
-                {canModify && (
-                  <th className="px-4 py-3 text-right font-arabic text-foreground/70">إجراءات</th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {filteredBirds.map(([name, bird], idx) => (
-                <tr key={name} className="border-t border-border hover:bg-muted/50">
-                  <td className="px-4 py-3 text-foreground/60">{idx + 1}</td>
-                  <td className="px-4 py-3">
+            </tr>
+          </thead>
+          <tbody>
+            {/* New row being added */}
+            {editingId === 'new' && (
+              <tr className="bg-green-50 border-b border-amber-200">
+                <td className="px-3 py-2 text-amber-400 text-xs">جديد</td>
+                <td className="px-3 py-2">
+                  <input
+                    className={inputClass}
+                    value={editValues.arabicName}
+                    onChange={(e) => handleFieldChange('arabicName', e.target.value)}
+                    placeholder="الاسم العربي *"
+                    autoFocus
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    className={inputClass}
+                    value={editValues.scientificName}
+                    onChange={(e) => handleFieldChange('scientificName', e.target.value)}
+                    placeholder="الاسم العلمي"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    className={inputClass}
+                    value={editValues.englishName}
+                    onChange={(e) => handleFieldChange('englishName', e.target.value)}
+                    placeholder="الاسم الإنجليزي"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    className={inputClass}
+                    value={editValues.description}
+                    onChange={(e) => handleFieldChange('description', e.target.value)}
+                    placeholder="الوصف"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    className={inputClass}
+                    value={editValues.notes}
+                    onChange={(e) => handleFieldChange('notes', e.target.value)}
+                    placeholder="ملاحظات"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    className={inputClass}
+                    value={editValues.latitude}
+                    onChange={(e) => handleFieldChange('latitude', e.target.value)}
+                    placeholder="0.0"
+                    type="number"
+                    step="any"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    className={inputClass}
+                    value={editValues.longitude}
+                    onChange={(e) => handleFieldChange('longitude', e.target.value)}
+                    placeholder="0.0"
+                    type="number"
+                    step="any"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex items-center justify-center gap-2">
                     <button
-                      onClick={() => navigate({ to: '/bird/$name', params: { name } })}
-                      className="font-arabic text-foreground hover:text-primary transition-colors font-medium"
+                      onClick={() => handleSave()}
+                      disabled={savingId === 'new'}
+                      className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
                     >
-                      {bird.arabicName}
+                      {savingId === 'new' ? (
+                        <span className="flex items-center gap-1">
+                          <span className="animate-spin inline-block w-3 h-3 border border-white border-t-transparent rounded-full" />
+                          حفظ...
+                        </span>
+                      ) : (
+                        'حفظ'
+                      )}
                     </button>
-                  </td>
-                  <td className="px-4 py-3 text-foreground/70 hidden md:table-cell">{bird.englishName || '—'}</td>
-                  <td className="px-4 py-3 text-foreground/50 italic hidden lg:table-cell">{bird.scientificName || '—'}</td>
-                  <td className="px-4 py-3 text-primary font-semibold">{bird.locations.length}</td>
-                  {canModify && (
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleEdit(name, bird)}
-                          className="p-1.5 hover:bg-primary/10 text-primary rounded-lg transition-colors"
-                          title="تعديل"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                        </button>
-                        {deleteConfirm === name ? (
-                          <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleDelete(name)}
-                              disabled={isDeleting}
-                              className="px-2 py-1 bg-destructive text-destructive-foreground rounded text-xs font-arabic"
-                            >
-                              {isDeleting ? '...' : 'تأكيد'}
-                            </button>
-                            <button
-                              onClick={() => setDeleteConfirm(null)}
-                              className="px-2 py-1 bg-muted rounded text-xs font-arabic"
-                            >
-                              إلغاء
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setDeleteConfirm(name)}
-                            className="p-1.5 hover:bg-destructive/10 text-destructive rounded-lg transition-colors"
-                            title="حذف"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="bg-gray-400 hover:bg-gray-500 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
+
+            {/* Existing rows */}
+            {filteredBirds.length === 0 && editingId !== 'new' ? (
+              <tr>
+                <td
+                  colSpan={colCount}
+                  className="px-3 py-8 text-center text-amber-500"
+                >
+                  {searchQuery
+                    ? 'لا توجد نتائج مطابقة للبحث'
+                    : 'لا توجد بيانات طيور حتى الآن'}
+                </td>
+              </tr>
+            ) : (
+              filteredBirds.map((bird, index) => {
+                const isEditingThis = editingId === bird.id;
+                const isSavingThis = savingId === bird.id;
+                const isDeletingThis = deletingId === bird.id;
+                const firstLoc = bird.locations[0];
+
+                return (
+                  <tr
+                    key={String(bird.id)}
+                    className={`border-b border-amber-100 transition-colors ${
+                      isEditingThis
+                        ? 'bg-amber-50'
+                        : index % 2 === 0
+                        ? 'bg-white'
+                        : 'bg-amber-50/30'
+                    } hover:bg-amber-50`}
+                  >
+                    <td className="px-3 py-2 text-amber-600 font-bold">{index + 1}</td>
+
+                    {/* Arabic Name */}
+                    <td className="px-3 py-2">
+                      {isEditingThis ? (
+                        <input
+                          className={inputClass}
+                          value={editValues.arabicName}
+                          onChange={(e) => handleFieldChange('arabicName', e.target.value)}
+                          autoFocus
+                        />
+                      ) : (
+                        <span className="font-bold text-amber-900">{bird.arabicName}</span>
+                      )}
                     </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+
+                    {/* Scientific Name */}
+                    <td className="px-3 py-2">
+                      {isEditingThis ? (
+                        <input
+                          className={inputClass}
+                          value={editValues.scientificName}
+                          onChange={(e) => handleFieldChange('scientificName', e.target.value)}
+                        />
+                      ) : (
+                        <span className="text-gray-700 italic">{bird.scientificName || '—'}</span>
+                      )}
+                    </td>
+
+                    {/* English Name */}
+                    <td className="px-3 py-2">
+                      {isEditingThis ? (
+                        <input
+                          className={inputClass}
+                          value={editValues.englishName}
+                          onChange={(e) => handleFieldChange('englishName', e.target.value)}
+                        />
+                      ) : (
+                        <span className="text-gray-700">{bird.englishName || '—'}</span>
+                      )}
+                    </td>
+
+                    {/* Description */}
+                    <td className="px-3 py-2 max-w-[180px]">
+                      {isEditingThis ? (
+                        <input
+                          className={inputClass}
+                          value={editValues.description}
+                          onChange={(e) => handleFieldChange('description', e.target.value)}
+                        />
+                      ) : (
+                        <span className="text-gray-600 line-clamp-2 block">
+                          {bird.description || '—'}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Notes */}
+                    <td className="px-3 py-2 max-w-[150px]">
+                      {isEditingThis ? (
+                        <input
+                          className={inputClass}
+                          value={editValues.notes}
+                          onChange={(e) => handleFieldChange('notes', e.target.value)}
+                        />
+                      ) : (
+                        <span className="text-gray-600 line-clamp-2 block">
+                          {bird.notes || '—'}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Latitude */}
+                    <td className="px-3 py-2">
+                      {isEditingThis ? (
+                        <input
+                          className={inputClass}
+                          value={editValues.latitude}
+                          onChange={(e) => handleFieldChange('latitude', e.target.value)}
+                          type="number"
+                          step="any"
+                        />
+                      ) : (
+                        <span className="text-gray-600 font-mono text-xs">
+                          {firstLoc ? firstLoc.latitude.toFixed(4) : '—'}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Longitude */}
+                    <td className="px-3 py-2">
+                      {isEditingThis ? (
+                        <input
+                          className={inputClass}
+                          value={editValues.longitude}
+                          onChange={(e) => handleFieldChange('longitude', e.target.value)}
+                          type="number"
+                          step="any"
+                        />
+                      ) : (
+                        <span className="text-gray-600 font-mono text-xs">
+                          {firstLoc ? firstLoc.longitude.toFixed(4) : '—'}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Action buttons — admin only */}
+                    {isAdmin && (
+                      <td className="px-3 py-2">
+                        <div className="flex items-center justify-center gap-2 flex-wrap">
+                          {isEditingThis ? (
+                            <>
+                              <button
+                                onClick={() => handleSave(bird)}
+                                disabled={isSavingThis}
+                                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
+                              >
+                                {isSavingThis ? (
+                                  <span className="flex items-center gap-1">
+                                    <span className="animate-spin inline-block w-3 h-3 border border-white border-t-transparent rounded-full" />
+                                    حفظ...
+                                  </span>
+                                ) : (
+                                  'حفظ'
+                                )}
+                              </button>
+                              <button
+                                onClick={handleCancelEdit}
+                                disabled={isSavingThis}
+                                className="bg-gray-400 hover:bg-gray-500 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
+                              >
+                                إلغاء
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleStartEdit(bird)}
+                                disabled={editingId !== null || isDeletingThis}
+                                className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
+                              >
+                                تعديل
+                              </button>
+                              <button
+                                onClick={() => handleDelete(bird)}
+                                disabled={editingId !== null || isDeletingThis}
+                                className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap"
+                              >
+                                {isDeletingThis ? (
+                                  <span className="flex items-center gap-1">
+                                    <span className="animate-spin inline-block w-3 h-3 border border-white border-t-transparent rounded-full" />
+                                    حذف...
+                                  </span>
+                                ) : (
+                                  'حذف'
+                                )}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* ── Footer info ── */}
+      <div className="mt-3 text-xs text-amber-600 text-right">
+        إجمالي السجلات: {filteredBirds.length}
+        {searchQuery && ` (من أصل ${birds.length})`}
+      </div>
     </div>
   );
 }

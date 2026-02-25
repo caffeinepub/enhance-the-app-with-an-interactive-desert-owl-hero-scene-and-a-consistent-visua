@@ -13,13 +13,18 @@ import type { Principal } from '@icp-sdk/core/principal';
 export interface BirdData {
   'id' : bigint,
   'subImages' : Array<string>,
+  'localName' : string,
   'description' : string,
   'audioFile' : [] | [string],
+  'valleyName' : string,
   'arabicName' : string,
+  'mountainName' : string,
   'englishName' : string,
   'notes' : string,
   'scientificName' : string,
   'locations' : Array<Coordinate>,
+  'governorate' : string,
+  'location' : string,
 }
 export interface Coordinate { 'latitude' : number, 'longitude' : number }
 export interface FileReference { 'hash' : string, 'path' : string }

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import SplashScreen from '../components/SplashScreen';
-import BirdDataTable from '../components/BirdDataTable';
 import StaticAlBuraimiMap from '../components/StaticAlBuraimiMap';
 import TeamDataTable from '../components/TeamDataTable';
 
@@ -58,7 +57,15 @@ export default function HomePage() {
           <h3 className="text-2xl font-bold text-foreground text-center mb-8 font-arabic">
             استكشف التطبيق
           </h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <button
+              onClick={() => navigate({ to: '/data' })}
+              className="nav-card group flex flex-col items-center p-6 bg-card border border-border rounded-2xl hover:border-primary hover:shadow-lg transition-all duration-300 cursor-pointer"
+            >
+              <span className="text-4xl mb-3 group-hover:scale-110 transition-transform">🐦</span>
+              <span className="text-sm font-semibold text-foreground font-arabic text-center">البيانات</span>
+            </button>
+
             <button
               onClick={() => navigate({ to: '/gallery' })}
               className="nav-card group flex flex-col items-center p-6 bg-card border border-border rounded-2xl hover:border-primary hover:shadow-lg transition-all duration-300 cursor-pointer"
@@ -99,13 +106,6 @@ export default function HomePage() {
               <span className="text-sm font-semibold text-foreground font-arabic text-center">الصلاحيات</span>
             </button>
           </div>
-        </div>
-      </section>
-
-      {/* Bird Data Table */}
-      <section className="py-8 px-4">
-        <div className="max-w-6xl mx-auto">
-          <BirdDataTable />
         </div>
       </section>
 

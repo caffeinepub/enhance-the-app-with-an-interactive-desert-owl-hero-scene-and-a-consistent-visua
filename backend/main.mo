@@ -29,6 +29,11 @@ actor {
         audioFile : ?Text;
         subImages : [Text];
         notes : Text;
+        localName : Text;
+        location : Text;
+        mountainName : Text;
+        valleyName : Text;
+        governorate : Text;
     };
 
     type LocationData = {
@@ -130,7 +135,6 @@ actor {
     };
 
     public shared ({ caller }) func assignCallerUserRole(user : Principal, role : AccessControl.UserRole) : async () {
-        // Admin-only check happens inside AccessControl.assignRole
         AccessControl.assignRole(accessControlState, caller, user, role);
     };
 
@@ -440,6 +444,11 @@ actor {
                     audioFile = null;
                     subImages = [];
                     notes = "";
+                    localName = "";
+                    location = "";
+                    mountainName = "";
+                    valleyName = "";
+                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
@@ -475,6 +484,11 @@ actor {
                     audioFile = audioFilePath;
                     subImages;
                     notes;
+                    localName = "";
+                    location = "";
+                    mountainName = "";
+                    valleyName = "";
+                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
@@ -510,6 +524,11 @@ actor {
                     audioFile = audioFilePath;
                     subImages;
                     notes;
+                    localName = "";
+                    location = "";
+                    mountainName = "";
+                    valleyName = "";
+                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
@@ -544,6 +563,11 @@ actor {
                     audioFile = ?audioFilePath;
                     subImages = [];
                     notes = "";
+                    localName = "";
+                    location = "";
+                    mountainName = "";
+                    valleyName = "";
+                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
@@ -579,6 +603,11 @@ actor {
                     audioFile = null;
                     subImages = [imagePath];
                     notes = "";
+                    localName = "";
+                    location = "";
+                    mountainName = "";
+                    valleyName = "";
+                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
@@ -903,6 +932,4 @@ actor {
         isBackupInProgress;
     };
 };
-
-
 

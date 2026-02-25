@@ -1,42 +1,45 @@
 {
   "kind": "build_request",
-  "title": "Revert entire project to Draft Version 510 (stable baseline)",
+  "title": "Fix Add/Edit/Save/Delete buttons in BirdDataTable without changing anything else",
   "projectName": "Al Buraimi Owl Atlas",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-37",
-      "text": "Revert the entire project — both backend (backend/main.mo, backend/migration.mo) and all frontend source files — to the exact state of Draft Version 510. No new modifications, fixes, or feature additions should be applied during this revert. The result must be a faithful restoration of the Draft Version 510 codebase, including all bird records, blob storage, role-based access control, navigation buttons, image display pipelines, splash screen, and homepage sections that were present and functional at that version.",
-      "target": "both",
+      "id": "REQ-51",
+      "text": "Fix frontend/src/components/BirdDataTable.tsx so that the Add (إضافة), Edit (تعديل), Save (حفظ), and Delete (حذف) action buttons are visible and fully functional for authenticated admin users. The Add button must appear in the table toolbar/header area. Each data row must show an Edit button that switches the row into inline edit mode; in edit mode the Edit button is replaced by a Save button that commits the changes to the backend. Each row must also have a Delete button. All buttons must be styled using the existing desert/amber RTL Arabic theme already present in the file. All four actions must be restricted to authenticated admin users only using the same principal/role-check logic already in BirdDataTable.tsx. This change must be isolated exclusively to BirdDataTable.tsx — no other file, component, page, route, or backend file may be modified.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-last"
+          "msg-1"
         ],
         "quotes": [
-          "هل تستطيع اعادة هذا الاصدار 🎬 الإصدار 510 متاح للمعاينة"
+          "اخبرتك لا تغير اي شيء فقط اضافة الان لا توجد ازرار اضافة حفظ حذف تحريرتعديل الرجاء الاضافة بدون اي تغيرات في التطبيق من فضلك"
         ]
       },
       "acceptanceCriteria": [
-        "The app title displayed in the browser tab and hero section reads 'مواقع انتشار البوم بمحافظة البريمي'",
-        "The splash screen displays on first visit with the owl image, Arabic title, and animated enter button",
-        "The home page hero section, all navigation buttons (gallery, map, eagle owl, statistics, permissions), the bird data table, the static Al Buraimi map, and the team data table all render correctly on first load without requiring authentication",
-        "All routes (/, /gallery, /bird/:name, /map, /eagle-owl, /statistics, /image-view, /permissions) are registered and navigable",
-        "Images stored in blob storage are fetched and displayed correctly across BirdDetailsPage, BirdGallery, and AllLocationsMap — all uploaded images per bird are shown, not just the first one",
-        "The admin user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' retains admin privileges and the admin link is visible in MainHeader when authenticated",
-        "All previously stored bird records, user profiles, team data, blob storage entries, and access control settings are preserved after deployment",
-        "Return to Home buttons are present and functional on all secondary pages (BirdDetailsPage, BirdGallery, AllLocationsMap, EagleOwlPage, StatisticsPage, ImageViewPage, PermissionManagement)"
+        "An 'إضافة' (Add) button is visible in the table toolbar/header area when the authenticated user is an admin.",
+        "Clicking 'إضافة' inserts a new empty editable row into the table.",
+        "Each existing data row displays a 'تعديل' (Edit) button when not in edit mode.",
+        "Clicking 'تعديل' on a row switches that row into inline edit mode with editable fields.",
+        "When a row is in edit mode, the 'تعديل' button is replaced by a 'حفظ' (Save) button.",
+        "Clicking 'حفظ' commits the edited row data to the backend and exits edit mode.",
+        "Each data row displays a 'حذف' (Delete) button that removes the record from the backend.",
+        "All four buttons are hidden or disabled for unauthenticated users and non-admin users.",
+        "Button styles use the existing desert/amber RTL Arabic theme already in BirdDataTable.tsx.",
+        "No other file, component, page, route, or backend file is modified."
       ]
     }
   ],
   "constraints": [
-    "Do not apply any new features, fixes, or modifications beyond what existed in Draft Version 510",
-    "The app title must be 'مواقع انتشار البوم بمحافظة البريمي' — do not use any other title",
-    "Do not edit files listed under frontend.immutablePaths"
+    "Only frontend/src/components/BirdDataTable.tsx may be modified.",
+    "Do not change any other component, page, route, hook, or backend file.",
+    "Do not alter any existing functionality, layout, or styling outside of the CRUD buttons."
   ],
   "nonGoals": [
-    "Introducing any new features not present in Draft Version 510",
-    "Changing the app's design language or color theme beyond what was in Version 510",
-    "Migrating or restructuring the backend data model beyond what is needed for stable state restoration"
+    "Modifying App.tsx, HomePage.tsx, BirdDataPage.tsx, or any other frontend file.",
+    "Changes to backend/main.mo or backend/migration.mo.",
+    "Altering navigation, routing, or any other UI section.",
+    "Redesigning or restyling any part of the app other than the new action buttons."
   ],
   "imageRequirements": {
     "required": [],

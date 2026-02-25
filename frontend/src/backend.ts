@@ -92,13 +92,18 @@ export class ExternalBlob {
 export interface BirdData {
     id: bigint;
     subImages: Array<string>;
+    localName: string;
     description: string;
     audioFile?: string;
+    valleyName: string;
     arabicName: string;
+    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
     locations: Array<Coordinate>;
+    governorate: string;
+    location: string;
 }
 export interface TeamGroup {
     members: Array<string>;
@@ -1176,34 +1181,49 @@ function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     subImages: Array<string>;
+    localName: string;
     description: string;
     audioFile: [] | [string];
+    valleyName: string;
     arabicName: string;
+    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
     locations: Array<_Coordinate>;
+    governorate: string;
+    location: string;
 }): {
     id: bigint;
     subImages: Array<string>;
+    localName: string;
     description: string;
     audioFile?: string;
+    valleyName: string;
     arabicName: string;
+    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
     locations: Array<Coordinate>;
+    governorate: string;
+    location: string;
 } {
     return {
         id: value.id,
         subImages: value.subImages,
+        localName: value.localName,
         description: value.description,
         audioFile: record_opt_to_undefined(from_candid_opt_n15(_uploadFile, _downloadFile, value.audioFile)),
+        valleyName: value.valleyName,
         arabicName: value.arabicName,
+        mountainName: value.mountainName,
         englishName: value.englishName,
         notes: value.notes,
         scientificName: value.scientificName,
-        locations: value.locations
+        locations: value.locations,
+        governorate: value.governorate,
+        location: value.location
     };
 }
 function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1254,34 +1274,49 @@ function to_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Arra
 function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     subImages: Array<string>;
+    localName: string;
     description: string;
     audioFile?: string;
+    valleyName: string;
     arabicName: string;
+    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
     locations: Array<Coordinate>;
+    governorate: string;
+    location: string;
 }): {
     id: bigint;
     subImages: Array<string>;
+    localName: string;
     description: string;
     audioFile: [] | [string];
+    valleyName: string;
     arabicName: string;
+    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
     locations: Array<_Coordinate>;
+    governorate: string;
+    location: string;
 } {
     return {
         id: value.id,
         subImages: value.subImages,
+        localName: value.localName,
         description: value.description,
         audioFile: value.audioFile ? candid_some(value.audioFile) : candid_none(),
+        valleyName: value.valleyName,
         arabicName: value.arabicName,
+        mountainName: value.mountainName,
         englishName: value.englishName,
         notes: value.notes,
         scientificName: value.scientificName,
-        locations: value.locations
+        locations: value.locations,
+        governorate: value.governorate,
+        location: value.location
     };
 }
 function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

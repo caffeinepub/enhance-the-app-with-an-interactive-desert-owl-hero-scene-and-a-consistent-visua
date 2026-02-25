@@ -31,13 +31,18 @@ export const Coordinate = IDL.Record({
 export const BirdData = IDL.Record({
   'id' : IDL.Nat,
   'subImages' : IDL.Vec(IDL.Text),
+  'localName' : IDL.Text,
   'description' : IDL.Text,
   'audioFile' : IDL.Opt(IDL.Text),
+  'valleyName' : IDL.Text,
   'arabicName' : IDL.Text,
+  'mountainName' : IDL.Text,
   'englishName' : IDL.Text,
   'notes' : IDL.Text,
   'scientificName' : IDL.Text,
   'locations' : IDL.Vec(Coordinate),
+  'governorate' : IDL.Text,
+  'location' : IDL.Text,
 });
 export const LocationData = IDL.Record({
   'birdName' : IDL.Text,
@@ -247,13 +252,18 @@ export const idlFactory = ({ IDL }) => {
   const BirdData = IDL.Record({
     'id' : IDL.Nat,
     'subImages' : IDL.Vec(IDL.Text),
+    'localName' : IDL.Text,
     'description' : IDL.Text,
     'audioFile' : IDL.Opt(IDL.Text),
+    'valleyName' : IDL.Text,
     'arabicName' : IDL.Text,
+    'mountainName' : IDL.Text,
     'englishName' : IDL.Text,
     'notes' : IDL.Text,
     'scientificName' : IDL.Text,
     'locations' : IDL.Vec(Coordinate),
+    'governorate' : IDL.Text,
+    'location' : IDL.Text,
   });
   const LocationData = IDL.Record({
     'birdName' : IDL.Text,

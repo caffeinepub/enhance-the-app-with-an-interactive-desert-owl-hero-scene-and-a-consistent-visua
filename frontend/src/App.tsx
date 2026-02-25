@@ -18,6 +18,7 @@ const EagleOwlPage = lazy(() => import('./components/EagleOwlPage'));
 const StatisticsPage = lazy(() => import('./components/StatisticsPage'));
 const ImageViewPage = lazy(() => import('./components/ImageViewPage'));
 const PermissionManagement = lazy(() => import('./components/PermissionManagement'));
+const BirdDataPage = lazy(() => import('./pages/BirdDataPage'));
 
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen bg-background">
@@ -137,6 +138,18 @@ const permissionsRoute = createRoute({
   ),
 });
 
+const birdDataRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/data',
+  component: () => (
+    <ErrorBoundary>
+      <Suspense fallback={<LoadingFallback />}>
+        <BirdDataPage />
+      </Suspense>
+    </ErrorBoundary>
+  ),
+});
+
 const catchAllRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '*',
@@ -155,6 +168,7 @@ const routeTree = rootRoute.addChildren([
   statisticsRoute,
   imageViewRoute,
   permissionsRoute,
+  birdDataRoute,
   catchAllRoute,
 ]);
 
