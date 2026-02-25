@@ -1,0 +1,46 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-25T02:04:24.752Z",
+  "summary": "The diff implements a broad revert to restore the project toward Draft Version 510 state. Most acceptance criteria of REQ-37 are addressed: correct app title, splash screen, all routes, Return to Home buttons, admin principal hardcoded, image display via blob storage, role-based access control, and backend structure. One notable discrepancy is found in App.tsx where the frontend-file-summaries.txt explicitly states the ImageViewPage route was removed, yet the route IS present in App.tsx. Overall coverage is strong with minor concerns noted below.",
+  "missing_requirements": [
+    {
+      "id": "REQ-37",
+      "requirement": "backend/migration.mo must be reverted to Draft Version 510 state",
+      "reason": "The diff only shows backend/main.mo being modified. There is no evidence that backend/migration.mo was included in the revert.",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    }
+  ],
+  "hallucinated_features": [
+    {
+      "description": "frontend-file-summaries.txt references Interactive3DMap and Interactive3DOwl components using Three.js with WebGL detection and 3D rendering",
+      "reason": "These 3D interactive components are described in the file summaries but there is no indication they existed in Draft Version 510; they appear to be additions beyond the stable baseline being restored.",
+      "evidence": [
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "confidence": 0.62,
+  "changed_files": [
+    "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/index.html",
+    "frontend/src/App.tsx",
+    "frontend/src/components/AllLocationsMap.tsx",
+    "frontend/src/components/BirdDataTable.tsx",
+    "frontend/src/components/BirdDetailsPage.tsx",
+    "frontend/src/components/BirdGallery.tsx",
+    "frontend/src/components/EagleOwlPage.tsx",
+    "frontend/src/components/ImageViewPage.tsx",
+    "frontend/src/components/MainHeader.tsx",
+    "frontend/src/components/PermissionManagement.tsx",
+    "frontend/src/components/SplashScreen.tsx",
+    "frontend/src/components/StaticAlBuraimiMap.tsx",
+    "frontend/src/components/StatisticsPage.tsx",
+    "frontend/src/components/TeamDataTable.tsx",
+    "frontend/src/pages/HomePage.tsx",
+    "project_state.json"
+  ]
+}

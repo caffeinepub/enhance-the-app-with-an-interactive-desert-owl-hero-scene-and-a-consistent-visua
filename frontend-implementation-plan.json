@@ -1,0 +1,123 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Revert Al Buraimi Owl Atlas to Draft Version 510",
+  "requirements": [
+    {
+      "id": "REQ-37",
+      "summary": "Revert all frontend source files to Draft Version 510 baseline, restoring splash screen, homepage sections, navigation buttons, image display pipelines, role-based access control UI, and all routes to their exact state in that version",
+      "acceptanceCriteria": [
+        "The app title displayed in the browser tab and hero section reads 'مواقع انتشار البوم بمحافظة البريمي'",
+        "The splash screen displays on first visit with the owl image, Arabic title, and animated enter button",
+        "The home page hero section, all navigation buttons (gallery, map, eagle owl, statistics, permissions), the bird data table, the static Al Buraimi map, and the team data table all render correctly on first load without requiring authentication",
+        "All routes (/, /gallery, /bird/:name, /map, /eagle-owl, /statistics, /image-view, /permissions) are registered and navigable",
+        "Images stored in blob storage are fetched and displayed correctly across BirdDetailsPage, BirdGallery, and AllLocationsMap — all uploaded images per bird are shown, not just the first one",
+        "The admin user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' retains admin privileges and the admin link is visible in MainHeader when authenticated",
+        "All previously stored bird records, user profiles, team data, blob storage entries, and access control settings are preserved after deployment",
+        "Return to Home buttons are present and functional on all secondary pages (BirdDetailsPage, BirdGallery, AllLocationsMap, EagleOwlPage, StatisticsPage, ImageViewPage, PermissionManagement)"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/index.html",
+          "operation": "modify",
+          "description": "Restore the HTML entry point to Draft Version 510 state, ensuring the app title is set to 'مواقع انتشار البوم بمحافظة البريمي' and all meta tags match the baseline version"
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Restore the main App component to Draft Version 510, ensuring all routes (/, /gallery, /bird/:name, /map, /eagle-owl, /statistics, /image-view, /permissions) are registered with lazy loading and RTL layout as they were in that version"
+        },
+        {
+          "path": "frontend/src/pages/HomePage.tsx",
+          "operation": "modify",
+          "description": "Restore HomePage to Draft Version 510 baseline, including the hero section with splash screen logic, navigation cards grid linking to gallery/map/eagle-owl/statistics/permissions, and ensuring all sections render without authentication requirements"
+        },
+        {
+          "path": "frontend/src/components/SplashScreen.tsx",
+          "operation": "modify",
+          "description": "Restore SplashScreen to Draft Version 510 state with owl logo from frontend/public/assets/generated/realistic-owl-perfect-transparent-clean.dim_400x400.png, Arabic/English title, animated enter button, and fade-out transition logic"
+        },
+        {
+          "path": "frontend/src/components/MainHeader.tsx",
+          "operation": "modify",
+          "description": "Restore MainHeader to Draft Version 510, ensuring sticky RTL navigation with logo, desktop/mobile nav links, refresh button, Internet Identity login/logout, and admin permissions link visibility for principal '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe'"
+        },
+        {
+          "path": "frontend/src/components/BirdGallery.tsx",
+          "operation": "modify",
+          "description": "Restore BirdGallery to Draft Version 510, ensuring the searchable grid displays all birds with image previews, names, descriptions, and expandable additional images. Use the blob-storage component to fetch image URLs correctly and ensure all uploaded images per bird are shown"
+        },
+        {
+          "path": "frontend/src/components/BirdDetailsPage.tsx",
+          "operation": "modify",
+          "description": "Restore BirdDetailsPage to Draft Version 510 baseline, including image carousel showing all bird images fetched via blob storage, audio player, metadata display (Arabic/English/scientific names), and Return to Home button. Ensure all uploaded images are displayed in the carousel"
+        },
+        {
+          "path": "frontend/src/components/AllLocationsMap.tsx",
+          "operation": "modify",
+          "description": "Restore AllLocationsMap to Draft Version 510, overlaying bird location pins on the static Al Buraimi map image from frontend/public/assets/generated/al-buraimi-official-static-map.dim_1024x768.png, converting coordinates to percentages, and showing popups with bird names and all uploaded images fetched via blob storage when pins are clicked"
+        },
+        {
+          "path": "frontend/src/components/StaticAlBuraimiMap.tsx",
+          "operation": "modify",
+          "description": "Restore StaticAlBuraimiMap to Draft Version 510, displaying the static map image loaded from blob storage with fallback to frontend/public/assets/generated/al-buraimi-official-static-map.dim_1024x768.png, and allowing admin users to upload replacement maps"
+        },
+        {
+          "path": "frontend/src/components/EagleOwlPage.tsx",
+          "operation": "modify",
+          "description": "Restore EagleOwlPage to Draft Version 510 state, showing info cards, matched bird records filtered by owl-related keywords, sighting locations, and Return to Home button"
+        },
+        {
+          "path": "frontend/src/components/StatisticsPage.tsx",
+          "operation": "modify",
+          "description": "Restore StatisticsPage to Draft Version 510, displaying bird observation statistics as summary cards (total birds and locations) and a Recharts bar chart of locations per species, with Return to Home button"
+        },
+        {
+          "path": "frontend/src/components/ImageViewPage.tsx",
+          "operation": "modify",
+          "description": "Restore ImageViewPage to Draft Version 510, providing full-screen image viewing with zoom, rotation, and reset controls in Arabic UI, and Return to Home button"
+        },
+        {
+          "path": "frontend/src/components/PermissionManagement.tsx",
+          "operation": "modify",
+          "description": "Restore PermissionManagement to Draft Version 510, showing admin-only access guards for unauthenticated and non-admin users, a form to assign roles via principal ID, and Return to Home button. Use the authorization component for role checks"
+        },
+        {
+          "path": "frontend/src/components/BirdDataTable.tsx",
+          "operation": "modify",
+          "description": "Restore BirdDataTable to Draft Version 510, including search, add, edit, delete, and Excel/PDF export functionality, with mutation restrictions for authenticated admin users only. Use the authorization component for admin checks"
+        },
+        {
+          "path": "frontend/src/components/TeamDataTable.tsx",
+          "operation": "modify",
+          "description": "Restore TeamDataTable to Draft Version 510 state, rendering the static team roster with followers, members, project manager, and designer in the styled card layout that was present in that version"
+        },
+        {
+          "path": "frontend/src/hooks/useQueries.ts",
+          "operation": "modify",
+          "description": "Restore useQueries to Draft Version 510, ensuring all React Query hooks for bird data, locations, audio files, map references, and user profiles match the baseline version and work correctly with the blob-storage component for fetching file URLs"
+        },
+        {
+          "path": "frontend/src/hooks/useActor.ts",
+          "operation": "modify",
+          "description": "Restore useActor hook to Draft Version 510, creating and caching the ICP backend actor with proper authentication state management and query invalidation logic"
+        },
+        {
+          "path": "frontend/src/hooks/useInternetIdentity.ts",
+          "operation": "modify",
+          "description": "Restore useInternetIdentity to Draft Version 510, managing AuthClient creation, login, logout, and identity persistence with status tracking. Ensure the authorization component integration is preserved"
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Restore global CSS to Draft Version 510, including Tailwind setup, light/dark desert wildlife theme custom properties, splash screen styles, RTL Arabic layout, and component-specific styles"
+        },
+        {
+          "path": "frontend/tailwind.config.js",
+          "operation": "modify",
+          "description": "Restore Tailwind configuration to Draft Version 510, defining custom design tokens (OKLCH colors, border radius, shadows, animations) and enabling typography, container-queries, and animate plugins"
+        }
+      ]
+    }
+  ]
+}

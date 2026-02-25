@@ -1,0 +1,41 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-revert-the-entire-project-both-backend-backend-main-mo-backend-migration-mo-and-all-frontend-source-files-to-the-exact-state-of-draft-version-510-no-new-modifications-fixes-or-feature-additions-should-be-applied-during-this-revert-the-result-must-be-a-faithful-restoration-of-the-draft-version-510-codebase-including-all-bird-records-blob-storage-role-based-access-control-navigation-buttons-image-display-pipelines-splash-screen-and-homepage-sections-that-were-present-and-functional-at-that-version",
+      "featureTitle": "Revert the entire project — both backend (backend/main.mo, backend/migration.mo) and all frontend source files — to the exact state of Draft Version 510. No new modifications, fixes, or feature additions should be applied during this revert. The result must be a faithful restoration of the Draft Version 510 codebase, including all bird records, blob storage, role-based access control, navigation buttons, image display pipelines, splash screen, and homepage sections that were present and functional at that version.",
+      "files": [
+        "frontend/index.html",
+        "frontend/src/App.tsx",
+        "frontend/src/components/AllLocationsMap.tsx",
+        "frontend/src/components/BirdDataTable.tsx",
+        "frontend/src/components/BirdDetailsPage.tsx",
+        "frontend/src/components/BirdGallery.tsx",
+        "frontend/src/components/EagleOwlPage.tsx",
+        "frontend/src/components/ImageViewPage.tsx",
+        "frontend/src/components/MainHeader.tsx",
+        "frontend/src/components/PermissionManagement.tsx",
+        "frontend/src/components/SplashScreen.tsx",
+        "frontend/src/components/StaticAlBuraimiMap.tsx",
+        "frontend/src/components/StatisticsPage.tsx",
+        "frontend/src/components/TeamDataTable.tsx",
+        "frontend/src/pages/HomePage.tsx"
+      ],
+      "components": [
+        "authorization@1.0.1",
+        "blob-storage@1.1.2",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-37"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

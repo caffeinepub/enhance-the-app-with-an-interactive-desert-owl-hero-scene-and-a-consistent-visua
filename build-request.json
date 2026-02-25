@@ -1,0 +1,45 @@
+{
+  "kind": "build_request",
+  "title": "Revert entire project to Draft Version 510 (stable baseline)",
+  "projectName": "Al Buraimi Owl Atlas",
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-37",
+      "text": "Revert the entire project — both backend (backend/main.mo, backend/migration.mo) and all frontend source files — to the exact state of Draft Version 510. No new modifications, fixes, or feature additions should be applied during this revert. The result must be a faithful restoration of the Draft Version 510 codebase, including all bird records, blob storage, role-based access control, navigation buttons, image display pipelines, splash screen, and homepage sections that were present and functional at that version.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-last"
+        ],
+        "quotes": [
+          "هل تستطيع اعادة هذا الاصدار 🎬 الإصدار 510 متاح للمعاينة"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The app title displayed in the browser tab and hero section reads 'مواقع انتشار البوم بمحافظة البريمي'",
+        "The splash screen displays on first visit with the owl image, Arabic title, and animated enter button",
+        "The home page hero section, all navigation buttons (gallery, map, eagle owl, statistics, permissions), the bird data table, the static Al Buraimi map, and the team data table all render correctly on first load without requiring authentication",
+        "All routes (/, /gallery, /bird/:name, /map, /eagle-owl, /statistics, /image-view, /permissions) are registered and navigable",
+        "Images stored in blob storage are fetched and displayed correctly across BirdDetailsPage, BirdGallery, and AllLocationsMap — all uploaded images per bird are shown, not just the first one",
+        "The admin user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' retains admin privileges and the admin link is visible in MainHeader when authenticated",
+        "All previously stored bird records, user profiles, team data, blob storage entries, and access control settings are preserved after deployment",
+        "Return to Home buttons are present and functional on all secondary pages (BirdDetailsPage, BirdGallery, AllLocationsMap, EagleOwlPage, StatisticsPage, ImageViewPage, PermissionManagement)"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not apply any new features, fixes, or modifications beyond what existed in Draft Version 510",
+    "The app title must be 'مواقع انتشار البوم بمحافظة البريمي' — do not use any other title",
+    "Do not edit files listed under frontend.immutablePaths"
+  ],
+  "nonGoals": [
+    "Introducing any new features not present in Draft Version 510",
+    "Changing the app's design language or color theme beyond what was in Version 510",
+    "Migrating or restructuring the backend data model beyond what is needed for stable state restoration"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

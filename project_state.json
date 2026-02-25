@@ -1,0 +1,325 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 21,
+  "summary": "Bird distribution tracker app for Al Buraimi Governorate. After multiple failed revert/restore attempts (versions 521-528), user is requesting restoration to version 510, which was an earlier stable version. The app title should be 'مواقع انتشار البوم بمحافظة البريمي'.",
+  "architectural_notes": [
+    "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)"
+  ],
+  "known_issues": [
+    "After version 521 deployment, only one image is displaying; other uploaded images are still missing",
+    "After version 523 deployment, previously added data and images are no longer displaying, and page navigation buttons are missing from the interface",
+    "After version 524 deployment, all data, images, and the home page have disappeared — full regression reported by user",
+    "User requested immediate revert to Draft Version 522 after version 526 deployment",
+    "Version 528 deployment failed to restore correct app state — title was wrong and app did not match version 522 functionality; user is now requesting revert to version 510"
+  ],
+  "isFixRequest": true,
+  "existing_features": [
+    {
+      "id": "feature-investigate-why-uploaded-images-are-not-displaying-after-deployment-check-if-blob-storage-paths-file-references-or-asset-serving-mechanisms-have-changed-verify-that-image-blob-ids-stored-in-bird-records-still-resolve-to-accessible-image-data",
+      "title": "Investigate why uploaded images are not displaying after deployment. Check if blob storage paths, file references, or asset serving mechanisms have changed. Verify that image blob IDs stored in bird records still resolve to accessible image data.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-frontend-error-handling-and-logging-to-display-specific-error-messages-when-data-fails-to-load-show-whether-the-issue-is-a-backend-connection-problem-empty-dataset-or-authentication-permission-error",
+      "title": "Add frontend error handling and logging to display specific error messages when data fails to load. Show whether the issue is a backend connection problem, empty dataset, or authentication/permission error.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-debug-and-fix-the-image-display-logic-in-alllocationsmap-tsx-to-ensure-all-uploaded-images-for-each-bird-location-are-rendered-not-just-the-first-one-verify-the-image-iteration-logic-and-check-if-the-blob-url-generation-is-working-for-all-image-ids-in-the-images-array",
+      "title": "Debug and fix the image display logic in AllLocationsMap.tsx to ensure all uploaded images for each bird location are rendered, not just the first one. Verify the image iteration logic and check if the blob URL generation is working for all image IDs in the images array.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-debug-and-fix-the-image-display-logic-in-birdgallery-tsx-to-ensure-all-uploaded-images-are-visible-in-the-gallery-view-not-just-one-image-per-bird-verify-that-the-lazygallerygrid-component-is-receiving-and-rendering-all-image-entries",
+      "title": "Debug and fix the image display logic in BirdGallery.tsx to ensure all uploaded images are visible in the gallery view, not just one image per bird. Verify that the LazyGalleryGrid component is receiving and rendering all image entries.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-comprehensive-logging-to-the-frontend-image-rendering-components-alllocationsmap-birdgallery-birddetailspage-to-capture-total-number-of-images-expected-per-bird-number-of-images-successfully-rendered-any-blob-url-generation-failures-and-whether-the-backend-is-returning-incomplete-image-arrays",
+      "title": "Add comprehensive logging to the frontend image rendering components (AllLocationsMap, BirdGallery, BirdDetailsPage) to capture: total number of images expected per bird, number of images successfully rendered, any blob URL generation failures, and whether the backend is returning incomplete image arrays.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-return-to-home-button-to-birddetailspage-tsx-that-navigates-the-user-back-to-the-main-home-page-homepage-the-button-should-be-visually-consistent-with-the-existing-arabic-rtl-interface-and-placed-prominently-at-the-top-or-bottom-of-the-page",
+      "title": "Add a 'Return to Home' button to BirdDetailsPage.tsx that navigates the user back to the main home page (HomePage). The button should be visually consistent with the existing Arabic RTL interface and placed prominently at the top or bottom of the page.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-return-to-home-button-to-alllocationsmap-tsx-that-navigates-the-user-back-to-the-main-home-page-the-button-should-be-accessible-and-match-the-existing-rtl-arabic-interface-style",
+      "title": "Add a 'Return to Home' button to AllLocationsMap.tsx that navigates the user back to the main home page. The button should be accessible and match the existing RTL Arabic interface style.",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-return-to-home-button-to-birdgallery-tsx-that-navigates-the-user-back-to-the-main-home-page-the-button-should-be-styled-to-match-the-existing-arabic-rtl-gallery-interface",
+      "title": "Add a 'Return to Home' button to BirdGallery.tsx that navigates the user back to the main home page. The button should be styled to match the existing Arabic RTL gallery interface.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-return-to-home-button-to-eagleowlpage-tsx-statisticspage-tsx-imageviewpage-tsx-and-permissionmanagement-tsx-that-each-navigate-the-user-back-to-the-main-home-page-buttons-should-be-consistently-styled-across-all-pages-using-the-existing-desert-amber-theme-and-rtl-layout",
+      "title": "Add a 'Return to Home' button to EagleOwlPage.tsx, StatisticsPage.tsx, ImageViewPage.tsx, and PermissionManagement.tsx that each navigate the user back to the main home page. Buttons should be consistently styled across all pages using the existing desert/amber theme and RTL layout.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-audit-the-frontend-app-tsx-router-configuration-to-ensure-all-page-routes-alllocationsmap-birdgallery-birddetailspage-eagleowlpage-statisticspage-imageviewpage-permissionmanagement-are-correctly-registered-and-functional-after-the-v523-update-fix-any-broken-or-missing-route-definitions-that-would-cause-page-navigation-buttons-to-be-non-functional-or-invisible",
+      "title": "Audit the frontend App.tsx router configuration to ensure all page routes (AllLocationsMap, BirdGallery, BirdDetailsPage, EagleOwlPage, StatisticsPage, ImageViewPage, PermissionManagement) are correctly registered and functional after the v523 update. Fix any broken or missing route definitions that would cause page navigation buttons to be non-functional or invisible.",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-audit-and-fix-the-blob-storage-url-generation-pipeline-in-the-frontend-ensure-that-image-blob-ids-retrieved-from-the-backend-are-correctly-resolved-into-displayable-urls-across-birddetailspage-tsx-birdgallery-tsx-and-alllocationsmap-tsx-check-that-the-useactor-hook-and-blob-fetching-logic-are-initializing-correctly-after-the-latest-update-and-are-not-silently-failing",
+      "title": "Audit and fix the blob storage URL generation pipeline in the frontend. Ensure that image blob IDs retrieved from the backend are correctly resolved into displayable URLs across BirdDetailsPage.tsx, BirdGallery.tsx, and AllLocationsMap.tsx. Check that the useActor hook and blob-fetching logic are initializing correctly after the latest update and are not silently failing.",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-diagnostic-error-display-layer-to-the-frontend-that-surfaces-specific-failure-reasons-when-data-or-images-fail-to-load-after-an-upgrade-display-whether-the-failure-is-a-backend-connection-error-an-empty-dataset-returned-post-migration-an-authentication-permission-error-or-a-blob-resolution-failure-this-should-be-visible-in-the-ui-not-just-in-the-console-to-help-identify-post-deployment-regressions",
+      "title": "Add a diagnostic error display layer to the frontend that surfaces specific failure reasons when data or images fail to load after an upgrade. Display whether the failure is a backend connection error, an empty dataset returned post-migration, an authentication/permission error, or a blob resolution failure. This should be visible in the UI (not just in the console) to help identify post-deployment regressions.",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-homepage-frontend-src-pages-homepage-tsx-to-its-fully-functional-state-including-the-hero-section-with-the-owl-image-all-navigation-buttons-gallery-map-eagle-owl-statistics-permissions-the-bird-data-table-and-the-static-al-buraimi-map-ensure-all-sections-render-correctly-on-first-load-without-requiring-authentication",
+      "title": "Restore the HomePage (frontend/src/pages/HomePage.tsx) to its fully functional state, including the hero section with the owl image, all navigation buttons (gallery, map, eagle owl, statistics, permissions), the bird data table, and the static Al Buraimi map. Ensure all sections render correctly on first load without requiring authentication.",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-app-tsx-tanstack-router-configuration-to-correctly-register-all-routes-home-gallery-gallery-bird-details-bird-name-map-map-eagle-owl-eagle-owl-statistics-statistics-image-view-image-view-and-permissions-permissions-ensure-lazy-loading-and-error-boundaries-are-intact-and-all-navigation-buttons-on-the-home-page-route-to-the-correct-pages",
+      "title": "Restore the App.tsx TanStack Router configuration to correctly register all routes: home (/), gallery (/gallery), bird details (/bird/:name), map (/map), eagle-owl (/eagle-owl), statistics (/statistics), image view (/image-view), and permissions (/permissions). Ensure lazy loading and error boundaries are intact and all navigation buttons on the home page route to the correct pages.",
+      "reqIds": [
+        "REQ-22",
+        "REQ-30"
+      ],
+      "version": 2
+    },
+    {
+      "id": "feature-restore-the-blob-storage-url-generation-pipeline-across-birddetailspage-tsx-birdgallery-tsx-and-alllocationsmap-tsx-so-that-images-stored-in-blob-storage-are-correctly-fetched-and-rendered-ensure-the-useactor-hook-initializes-correctly-and-blob-ids-from-bird-records-resolve-into-displayable-image-urls-without-silent-failures",
+      "title": "Restore the blob storage URL generation pipeline across BirdDetailsPage.tsx, BirdGallery.tsx, and AllLocationsMap.tsx so that images stored in blob storage are correctly fetched and rendered. Ensure the useActor hook initializes correctly and blob IDs from bird records resolve into displayable image URLs without silent failures.",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-splashscreen-component-frontend-src-components-splashscreen-tsx-and-ensure-it-displays-correctly-on-first-visit-with-the-owl-image-arabic-title-and-the-animated-enter-button-verify-that-clicking-the-enter-button-transitions-the-user-to-the-home-page-content-without-a-blank-screen",
+      "title": "Restore the SplashScreen component (frontend/src/components/SplashScreen.tsx) and ensure it displays correctly on first visit with the owl image, Arabic title, and the animated enter button. Verify that clicking the enter button transitions the user to the home page content without a blank screen.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-verify-and-restore-role-based-access-control-so-that-the-admin-user-with-principal-id-5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe-retains-admin-privileges-after-the-v524-upgrade-ensure-the-admin-link-is-visible-in-mainheader-when-authenticated-and-that-write-operations-in-birddatatable-are-accessible-to-this-principal",
+      "title": "Verify and restore role-based access control so that the admin user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' retains admin privileges after the v524 upgrade. Ensure the admin link is visible in MainHeader when authenticated and that write operations in BirdDataTable are accessible to this principal.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-homepage-frontend-src-pages-homepage-tsx-to-its-fully-functional-state-including-the-splash-screen-shown-once-per-session-hero-section-with-owl-image-all-navigation-buttons-gallery-map-eagle-owl-statistics-permissions-the-bird-data-table-the-static-al-buraimi-map-and-the-team-data-table-ensure-all-sections-render-correctly-on-first-load-without-requiring-authentication",
+      "title": "Restore the HomePage (frontend/src/pages/HomePage.tsx) to its fully functional state, including the splash screen (shown once per session), hero section with owl image, all navigation buttons (gallery, map, eagle owl, statistics, permissions), the bird data table, the static Al Buraimi map, and the team data table. Ensure all sections render correctly on first load without requiring authentication.",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-the-blob-storage-url-generation-pipeline-across-birddetailspage-tsx-birdgallery-tsx-and-alllocationsmap-tsx-so-that-all-images-stored-in-blob-storage-are-correctly-fetched-and-rendered-ensure-the-useactor-hook-initializes-correctly-and-blob-ids-from-bird-records-resolve-into-displayable-image-urls-without-silent-failures-all-uploaded-images-per-bird-must-be-displayed-not-just-the-first-one",
+      "title": "Restore the blob storage URL generation pipeline across BirdDetailsPage.tsx, BirdGallery.tsx, and AllLocationsMap.tsx so that all images stored in blob storage are correctly fetched and rendered. Ensure the useActor hook initializes correctly and blob IDs from bird records resolve into displayable image URLs without silent failures. All uploaded images per bird must be displayed, not just the first one.",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-verify-and-restore-role-based-access-control-so-that-the-admin-user-with-principal-id-5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe-retains-admin-privileges-after-the-upgrade-ensure-the-admin-link-is-visible-in-mainheader-when-authenticated-and-that-write-operations-in-birddatatable-are-accessible-to-this-principal",
+      "title": "Verify and restore role-based access control so that the admin user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' retains admin privileges after the upgrade. Ensure the admin link is visible in MainHeader when authenticated and that write operations in BirdDataTable are accessible to this principal.",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-return-to-home-navigation-buttons-are-present-and-functional-on-all-secondary-pages-birddetailspage-tsx-birdgallery-tsx-alllocationsmap-tsx-eagleowlpage-tsx-statisticspage-tsx-imageviewpage-tsx-and-permissionmanagement-tsx-buttons-must-be-styled-consistently-using-the-existing-desert-amber-theme-and-rtl-layout",
+      "title": "Ensure 'Return to Home' navigation buttons are present and functional on all secondary pages: BirdDetailsPage.tsx, BirdGallery.tsx, AllLocationsMap.tsx, EagleOwlPage.tsx, StatisticsPage.tsx, ImageViewPage.tsx, and PermissionManagement.tsx. Buttons must be styled consistently using the existing desert/amber theme and RTL layout.",
+      "reqIds": [
+        "REQ-34"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-revert-the-entire-project-both-backend-backend-main-mo-backend-migration-mo-and-all-frontend-source-files-to-the-exact-state-of-draft-version-522-no-new-modifications-fixes-or-feature-additions-should-be-applied-during-this-revert-the-result-must-be-a-faithful-restoration-of-the-draft-version-522-codebase-including-all-bird-records-blob-storage-role-based-access-control-navigation-buttons-image-display-pipelines-splash-screen-and-homepage-sections-that-were-present-and-functional-at-that-version",
+      "title": "Revert the entire project — both backend (backend/main.mo, backend/migration.mo) and all frontend source files — to the exact state of Draft Version 522. No new modifications, fixes, or feature additions should be applied during this revert. The result must be a faithful restoration of the Draft Version 522 codebase, including all bird records, blob storage, role-based access control, navigation buttons, image display pipelines, splash screen, and homepage sections that were present and functional at that version.",
+      "reqIds": [
+        "REQ-36"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-revert-the-entire-project-both-backend-backend-main-mo-backend-migration-mo-and-all-frontend-source-files-to-the-exact-state-of-draft-version-510-no-new-modifications-fixes-or-feature-additions-should-be-applied-during-this-revert-the-result-must-be-a-faithful-restoration-of-the-draft-version-510-codebase-including-all-bird-records-blob-storage-role-based-access-control-navigation-buttons-image-display-pipelines-splash-screen-and-homepage-sections-that-were-present-and-functional-at-that-version",
+      "title": "Revert the entire project — both backend (backend/main.mo, backend/migration.mo) and all frontend source files — to the exact state of Draft Version 510. No new modifications, fixes, or feature additions should be applied during this revert. The result must be a faithful restoration of the Draft Version 510 codebase, including all bird records, blob storage, role-based access control, navigation buttons, image display pipelines, splash screen, and homepage sections that were present and functional at that version.",
+      "reqIds": [
+        "REQ-37"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Investigate why previously added bird data is no longer displaying after the latest deployment to version 520. Check if the backend stable memory migration is correctly preserving existing bird records, user profiles, team data, and access control settings.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Verify that the migration.mo file correctly migrates stable storage from the old actor to the new actor. If migration logic is missing or incomplete, implement proper state transfer for all stable variables including birdData, nextId, users, teams, and blobStorage.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Check if role-based access control and permissions are functioning correctly after deployment. Verify that the user with principal ID '5uylz-j7fcd-isj73-gp57f-xwwyy-po2ib-7iboa-fdkdv-nrsam-3bd3r-qqe' still has admin privileges and can view/edit data.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Verify that the backend canister configuration and HTTP asset serving are correctly set up in the live environment. Check if CORS settings, asset certification, or canister permissions have changed compared to the draft environment.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Debug and fix the image display logic in BirdDetailsPage.tsx to ensure all images associated with a specific bird are shown, not just a single image. Check if the image array mapping and blob URL generation is working correctly for multiple images.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Verify in the backend that when getBirdData() is called, it returns the complete images array for each bird record, not truncated or filtered data. Add logging to confirm the full image blob ID arrays are being sent to the frontend.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Add 'Return to Home' buttons across pages to allow users to navigate back to the main/home page.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Audit and fix the backend stable memory migration so that all previously stored bird records (including birdData, nextId, users, teams, blobStorage, and access control settings) are fully preserved across canister upgrades. Ensure migration.mo correctly transfers all stable variables from the pre-upgrade state to the post-upgrade state without data loss.",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Verify and fix the backend getBirdData() function to ensure it returns the complete and untruncated images array for every bird record. Add backend-side logging (via Debug.print) to confirm the full blob ID arrays are included in each returned BirdData record.",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "Audit and restore the backend stable memory migration in migration.mo to ensure all previously stored data — birdData, nextId, users, teams, blobStorage, mapReferenceId, and access control settings — is fully preserved across canister upgrades from the pre-v524 state. Fix any missing or broken state transfer logic that caused data loss after the v524 deployment.",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-19",
+      "summary": "Restore the backend getBirdData() function to return complete, untruncated bird records including full images arrays, audio blob IDs, location coordinates, and all metadata fields. Add Debug.print logging on the backend to confirm full blob ID arrays are included in each returned BirdData record.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-20",
+      "summary": "Restore the backend stable memory migration in migration.mo to fully preserve all stable variables — birdData, nextId, users, teams, blobStorage, mapReferenceId, and access control settings — from the pre-upgrade state so that all previously stored bird records, images, and user data survive canister upgrades without loss.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-21",
+      "summary": "Restore the backend getBirdData() function to return complete, untruncated bird records including full images arrays, audio blob IDs, location coordinates, and all metadata fields. Add Debug.print logging on the backend to confirm full blob ID arrays are included in each returned BirdData record.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-22",
+      "summary": "Revert the entire project — both backend (backend/main.mo, backend/migration.mo) and all frontend source files — to the exact state of Draft Version 522. No new modifications, fixes, or feature additions should be applied during this revert. The result must be a byte-for-byte restoration of the Draft Version 522 codebase.",
+      "reqIds": [
+        "REQ-35"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-23",
+      "summary": "Revert/restore the entire project to the state of Draft Version 510, which was a known stable version. The app title must be 'مواقع انتشار البوم بمحافظة البريمي'. No new modifications should be applied during this revert.",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Owl Distribution Tracker",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}
