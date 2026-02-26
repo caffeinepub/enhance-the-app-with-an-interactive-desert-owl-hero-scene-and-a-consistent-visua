@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 95,
+  "projectStateVersion": 97,
   "summary": "Bird distribution tracker app for Al Buraimi Governorate. After multiple failed revert/restore attempts (versions 521-528), user is requesting restoration to version 510, which was an earlier stable version. The app title should be 'مواقع انتشار البوم بمحافظة البريمي'.",
   "architectural_notes": [
     "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)",
@@ -886,6 +886,14 @@
       "id": "AR-52",
       "summary": "Restore the admin action buttons (إضافة/Add, حفظ/Save, حذف/Delete, تعديل/Edit, تحرير/Update-Edit) that disappeared from the bird data table and gallery pages after version 565 deployment — without making any other changes to the application.",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-53",
+      "summary": "Rebuild and redeploy the current project state without making any code changes to any file. Ensure the backend (backend/main.mo) compiles and deploys correctly, and all frontend source files are bundled and served without errors. The deployment must restore the app to its last intended state including: the nine-column BirdDataTable with all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) visible and functional for authenticated admin users; the interactive AllLocationsMap with bird filtering and show/hide toggle; the BirdGallery with admin action buttons and image click modal; the HomePage with splash screen, hero section, navigation cards, map upload section, and team table; the HamburgerMenu with all navigation links; and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions).",
+      "reqIds": [
+        "REQ-93"
+      ],
       "status": "pending"
     }
   ],

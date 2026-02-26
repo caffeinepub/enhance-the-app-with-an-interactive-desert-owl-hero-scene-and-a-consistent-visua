@@ -1,36 +1,23 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T02:40:30.504Z",
+  "generatedAt": "2026-02-26T02:53:22.780Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 2,
+    "total": 1,
+    "implemented": 0,
     "items": [
       {
-        "id": "REQ-91",
-        "summary": "Restore all five admin-only action buttons that disappeared from frontend/src/components/BirdDataTable.tsx after the version 565 deployment. The five buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row at the top of the table; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
-        "status": "implemented",
+        "id": "REQ-93",
+        "summary": "Rebuild and redeploy the current project state without making any code changes to any file. Ensure the backend (backend/main.mo) compiles and deploys correctly, and all frontend source files are bundled and served without errors. The deployment must restore the app to its last intended state including: the nine-column BirdDataTable with all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) visible and functional for authenticated admin users; the interactive AllLocationsMap with bird filtering and show/hide toggle; the BirdGallery with admin action buttons and image click modal; the HomePage with splash screen, hero section, navigation cards, map upload section, and team table; the HamburgerMenu with all navigation links; and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions).",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
+          "frontend/src/App.tsx"
         ],
-        "matchedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
-        ]
-      },
-      {
-        "id": "REQ-92",
-        "summary": "Restore all four admin-only action buttons that disappeared from frontend/src/components/BirdGallery.tsx after the version 565 deployment. The four buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/BirdGallery.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/BirdGallery.tsx"
-        ]
+        "matchedFiles": []
       }
     ]
   },

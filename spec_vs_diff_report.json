@@ -1,20 +1,38 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T02:40:30.492Z",
-  "summary": "Both modified files (BirdDataTable.tsx and BirdGallery.tsx) show evidence of restored admin action buttons with the required useState + useEffect isAdmin pattern. The file summaries confirm all five buttons in BirdDataTable (إضافة/تعديل/حفظ/حذف/تحرير) and all four buttons in BirdGallery (إضافة/تحرير/حذف/حفظ) are present. The implementation uses the lastIdentityRef pattern as required. Two additional files were modified (frontend-file-summaries.txt and project_state.json), which appear to be metadata/state tracking files. The diff is truncated so complete verification of all acceptance criteria is limited.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-26T02:53:22.775Z",
+  "summary": "The build request (REQ-93) explicitly requires a rebuild/redeploy with ZERO source code changes to any file. However, the diff shows that at least two frontend source files were modified: BirdDataTable.tsx and BirdGallery.tsx. Additionally, frontend-file-summaries.txt and project_state.json were modified. The constraint 'Do not modify any source file — backend or frontend' and the acceptance criterion 'No source file is modified during this deployment' are directly violated.",
+  "missing_requirements": [
     {
-      "description": "Modification of frontend-file-summaries.txt and project_state.json files",
-      "reason": "The build request explicitly states 'Do NOT modify any file other than frontend/src/components/BirdDataTable.tsx and frontend/src/components/BirdGallery.tsx'. The diff shows 4 modified files including frontend-file-summaries.txt and project_state.json, which were not permitted to be changed.",
+      "id": "REQ-93",
+      "requirement": "No source file is modified during this deployment — this is a rebuild/redeploy only with zero code changes.",
+      "reason": "The diff shows modifications to frontend/src/components/BirdDataTable.tsx and frontend/src/components/BirdGallery.tsx, which are source files. The build request explicitly states no source files should be modified.",
       "evidence": [
-        "frontend-file-summaries.txt",
-        "project_state.json"
+        "frontend/src/components/BirdDataTable.tsx",
+        "frontend/src/components/BirdGallery.tsx"
       ]
     }
   ],
-  "confidence": 0.72,
+  "hallucinated_features": [
+    {
+      "description": "Modification of BirdDataTable.tsx source file — switching from manual useState/useEffect admin detection to useIsCallerAdmin React Query hook",
+      "reason": "The build request explicitly prohibits any source code modifications. The diff description in frontend-file-summaries.txt confirms BirdDataTable.tsx was changed to use the useIsCallerAdmin React Query hook directly instead of the manual useState/useEffect pattern. This is a code change not requested.",
+      "evidence": [
+        "frontend/src/components/BirdDataTable.tsx",
+        "frontend-file-summaries.txt"
+      ]
+    },
+    {
+      "description": "Modification of BirdGallery.tsx source file — switching from manual useState/useEffect admin detection to useIsCallerAdmin React Query hook",
+      "reason": "The build request explicitly prohibits any source code modifications. The diff description in frontend-file-summaries.txt confirms BirdGallery.tsx was changed to use the useIsCallerAdmin React Query hook directly instead of the manual useState/useEffect pattern. This is a code change not requested.",
+      "evidence": [
+        "frontend/src/components/BirdGallery.tsx",
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "confidence": 0.92,
   "changed_files": [
     "frontend-file-summaries.txt",
     "frontend/src/components/BirdDataTable.tsx",

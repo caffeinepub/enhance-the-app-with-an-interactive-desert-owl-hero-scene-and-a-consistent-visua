@@ -1,72 +1,44 @@
 {
   "kind": "build_request",
-  "title": "Restore admin action buttons in BirdDataTable and BirdGallery after v565 deployment",
-  "projectName": "Al Buraimi Owl Atlas",
+  "title": "Rebuild and redeploy project without any code changes",
+  "projectName": "Al Buraimi Bird Atlas",
   "priority": "high",
   "requirements": [
     {
-      "id": "REQ-91",
-      "text": "Restore all five admin-only action buttons that disappeared from frontend/src/components/BirdDataTable.tsx after the version 565 deployment. The five buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row at the top of the table; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
-      "target": "frontend",
+      "id": "REQ-93",
+      "text": "Rebuild and redeploy the current project state without making any code changes to any file. Ensure the backend (backend/main.mo) compiles and deploys correctly, and all frontend source files are bundled and served without errors. The deployment must restore the app to its last intended state including: the nine-column BirdDataTable with all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) visible and functional for authenticated admin users; the interactive AllLocationsMap with bird filtering and show/hide toggle; the BirdGallery with admin action buttons and image click modal; the HomePage with splash screen, hero section, navigation cards, map upload section, and team table; the HamburgerMenu with all navigation links; and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions).",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-4"
         ],
         "quotes": [
-          "ازرار التحكم اختفت هل تستطيع اعادتها رفع حفظ حذف تعديل تحرير"
+          "نعم حاول بدون تغير اي شيء في التطبيق"
         ]
       },
       "acceptanceCriteria": [
-        "Authenticated admin users see all five buttons: إضافة, تعديل, حفظ, حذف, تحرير in BirdDataTable",
-        "The إضافة (Add) button appears in the table toolbar/header area and inserts a new empty editable row",
-        "Each data row shows a تعديل (Edit) button that switches the row into inline edit mode",
-        "In edit mode, the Edit button is replaced by a حفظ (Save) button that commits changes to the backend",
-        "Each row has a حذف (Delete) button that removes the record from the backend",
-        "Each row has a تحرير (Update/Edit) button as an alternative update action",
-        "Non-admin and unauthenticated users do not see any of the five action buttons",
-        "The isAdmin check uses useState + useEffect so buttons appear after actor/identity resolves",
-        "All existing column definitions, RTL layout, horizontal scrolling, color scheme, font sizes, and data-fetching logic are unchanged",
-        "No other file, component, page, route, or backend file is modified"
-      ]
-    },
-    {
-      "id": "REQ-92",
-      "text": "Restore all four admin-only action buttons that disappeared from frontend/src/components/BirdGallery.tsx after the version 565 deployment. The four buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "ازرار التحكم اختفت هل تستطيع اعادتها رفع حفظ حذف تعديل تحرير"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Authenticated admin users see all four buttons: إضافة, حفظ, حذف, تحرير in BirdGallery",
-        "The إضافة (Add) button appears in the gallery toolbar/header area and opens a form/modal for uploading a new bird record with main and sub-images",
-        "Each gallery card has a حفظ (Save) button that commits pending edits to the backend",
-        "Each gallery card has a حذف (Delete) button that removes the record from the backend",
-        "Each gallery card has a تحرير (Update/Edit) button that switches the entry into an editable state",
-        "Non-admin and unauthenticated users do not see any action buttons",
-        "The isAdmin check uses useState + useEffect so buttons appear after actor/identity resolves",
-        "All existing gallery search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal are unchanged",
-        "No other file, component, page, route, or backend file is modified"
+        "The project builds and deploys successfully without any source code modifications",
+        "The backend canister compiles without errors and all existing data is preserved",
+        "All frontend routes are accessible and render their respective page components",
+        "Admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) are visible and functional in BirdDataTable for authenticated admin users",
+        "Admin-only action buttons (إضافة, حفظ, حذف, تحرير) are visible and functional in BirdGallery for authenticated admin users",
+        "The HamburgerMenu dropdown is visible in the header and navigates correctly to all sections",
+        "The HomePage renders with splash screen, hero section, navigation cards, map upload section, and team table",
+        "The AllLocationsMap renders the interactive Leaflet map with bird filtering and show/hide toggle",
+        "No source file is modified during this deployment"
       ]
     }
   ],
   "constraints": [
-    "Do NOT modify any file other than frontend/src/components/BirdDataTable.tsx and frontend/src/components/BirdGallery.tsx",
-    "Do NOT modify any backend files",
-    "Do NOT change column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, or data-fetching logic in BirdDataTable.tsx",
-    "Do NOT change the gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, or image-click modal in BirdGallery.tsx",
-    "The isAdmin check must use useState + useEffect pattern — do not evaluate principal synchronously before actor resolves"
+    "Do not modify any source file — backend or frontend",
+    "Do not change any component, page, route, or backend logic",
+    "This is a rebuild/redeploy only — zero code changes"
   ],
   "nonGoals": [
-    "Adding new features or columns to the bird data table",
-    "Changing the visual design or theme of the app",
-    "Modifying any routes in App.tsx",
-    "Modifying the backend (main.mo or migration.mo)",
-    "Changing any other page components (HomePage, AllLocationsMap, BirdDetailsPage, etc.)"
+    "Adding new features",
+    "Fixing bugs by modifying code",
+    "Refactoring or restructuring any component",
+    "Changing any styling or layout"
   ],
   "imageRequirements": {
     "required": [],

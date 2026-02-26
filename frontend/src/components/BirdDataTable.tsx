@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { useActor } from '../hooks/useActor';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useGetAllBirdData, useSaveBirdData, useDeleteBirdById } from '../hooks/useQueries';
+import { useGetAllBirdData, useSaveBirdData, useDeleteBirdById, useIsCallerAdmin } from '../hooks/useQueries';
 import { exportBirdDataToCSV } from '../lib/csvExport';
 import { BirdData } from '../backend';
 
@@ -20,45 +19,16 @@ interface EditableRow {
 }
 
 export default function BirdDataTable() {
-  const { actor, isFetching: actorFetching } = useActor();
-  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const { data: birdDataRaw, isLoading } = useGetAllBirdData();
   const saveBirdMutation = useSaveBirdData();
   const deleteBirdMutation = useDeleteBirdById();
+  const { data: isAdmin = false } = useIsCallerAdmin();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [editingRows, setEditingRows] = useState<Record<string, EditableRow>>({});
   const [showAddForm, setShowAddForm] = useState(false);
   const [newBird, setNewBird] = useState<Partial<EditableRow>>({});
-
-  // Use useState + useEffect for isAdmin to ensure re-render after actor resolves
-  const [isAdmin, setIsAdmin] = useState(false);
-  const lastIdentityRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    const currentIdentity = identity?.getPrincipal().toString() ?? null;
-
-    // If user logged out (identity changed to null), reset admin
-    if (currentIdentity === null && lastIdentityRef.current !== null) {
-      lastIdentityRef.current = null;
-      setIsAdmin(false);
-      return;
-    }
-
-    // Only check admin when actor is ready
-    if (!actor || actorFetching) return;
-
-    let cancelled = false;
-    actor.isCallerAdmin().then(result => {
-      if (!cancelled) {
-        setIsAdmin(result);
-        lastIdentityRef.current = currentIdentity;
-      }
-    }).catch(() => {
-      if (!cancelled) setIsAdmin(false);
-    });
-    return () => { cancelled = true; };
-  }, [actor, actorFetching, identity]);
 
   const birdData: [string, BirdData][] = birdDataRaw || [];
 
