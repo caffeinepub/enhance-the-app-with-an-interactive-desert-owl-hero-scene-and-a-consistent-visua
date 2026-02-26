@@ -1,26 +1,21 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Rebuild and Redeploy Al Buraimi Bird Atlas Without Code Changes",
+  "title": "Change homepage title to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'",
   "requirements": [
     {
-      "id": "REQ-93",
-      "summary": "Rebuild and redeploy the current project state without making any code changes. Verify all frontend files compile correctly and all routes, components, and features remain functional after deployment.",
+      "id": "REQ-104",
+      "summary": "Update the main page title text in HomePage.tsx from 'طيور محافظة البريمي' to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'",
       "acceptanceCriteria": [
-        "The project builds and deploys successfully without any source code modifications",
-        "All frontend routes are accessible and render their respective page components",
-        "Admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) are visible and functional in BirdDataTable for authenticated admin users",
-        "Admin-only action buttons (إضافة, حفظ, حذف, تحرير) are visible and functional in BirdGallery for authenticated admin users",
-        "The HamburgerMenu dropdown is visible in the header and navigates correctly to all sections",
-        "The HomePage renders with splash screen, hero section, navigation cards, map upload section, and team table",
-        "The AllLocationsMap renders the interactive Leaflet map with bird filtering and show/hide toggle",
-        "No source file is modified during this deployment"
+        "The main heading/title on the home page reads 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'.",
+        "No other text, layout, styling, or functionality on the home page is changed.",
+        "No other file, component, page, route, or backend file is modified."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/App.tsx",
+          "path": "frontend/src/pages/HomePage.tsx",
           "operation": "modify",
-          "description": "Verify the TanStack Router configuration with all registered routes (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions) compiles and bundles correctly without any changes to the source code. This operation ensures the routing structure remains intact during rebuild."
+          "description": "Change only the main page title text from 'طيور محافظة البريمي' to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'. Locate the heading element that currently displays 'طيور محافظة البريمي' and replace that text string with the new title. Do not modify any other text, component structure, styling, layout, props, state management, event handlers, or any other aspect of the file."
         }
       ]
     }

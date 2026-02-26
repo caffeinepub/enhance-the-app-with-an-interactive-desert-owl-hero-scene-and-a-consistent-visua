@@ -1,44 +1,36 @@
 {
   "kind": "build_request",
-  "title": "Rebuild and redeploy project without any code changes",
-  "projectName": "Al Buraimi Bird Atlas",
-  "priority": "high",
+  "title": "Change homepage title to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'",
+  "projectName": "Al Buraimi Owl Survey",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-93",
-      "text": "Rebuild and redeploy the current project state without making any code changes to any file. Ensure the backend (backend/main.mo) compiles and deploys correctly, and all frontend source files are bundled and served without errors. The deployment must restore the app to its last intended state including: the nine-column BirdDataTable with all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) visible and functional for authenticated admin users; the interactive AllLocationsMap with bird filtering and show/hide toggle; the BirdGallery with admin action buttons and image click modal; the HomePage with splash screen, hero section, navigation cards, map upload section, and team table; the HamburgerMenu with all navigation links; and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions).",
-      "target": "both",
+      "id": "REQ-104",
+      "text": "In frontend/src/pages/HomePage.tsx only, change the main page title text from 'طيور محافظة البريمي' to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'. Do NOT change any other text, layout, styling, logic, component structure, or any other aspect of the page. Do NOT modify any other file, component, page, route, or backend file.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4"
+          "msg-5"
         ],
         "quotes": [
-          "نعم حاول بدون تغير اي شيء في التطبيق"
+          "تغير العنوان في الصفحة الرئيسية من طيور محافظة البريمي الى مشروع المسح الميداني لطائر البوم بمحافظة البريمي بدون اي تغير في التطبيق"
         ]
       },
       "acceptanceCriteria": [
-        "The project builds and deploys successfully without any source code modifications",
-        "The backend canister compiles without errors and all existing data is preserved",
-        "All frontend routes are accessible and render their respective page components",
-        "Admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) are visible and functional in BirdDataTable for authenticated admin users",
-        "Admin-only action buttons (إضافة, حفظ, حذف, تحرير) are visible and functional in BirdGallery for authenticated admin users",
-        "The HamburgerMenu dropdown is visible in the header and navigates correctly to all sections",
-        "The HomePage renders with splash screen, hero section, navigation cards, map upload section, and team table",
-        "The AllLocationsMap renders the interactive Leaflet map with bird filtering and show/hide toggle",
-        "No source file is modified during this deployment"
+        "The main heading/title on the home page reads 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'.",
+        "No other text, layout, styling, or functionality on the home page is changed.",
+        "No other file, component, page, route, or backend file is modified."
       ]
     }
   ],
   "constraints": [
-    "Do not modify any source file — backend or frontend",
-    "Do not change any component, page, route, or backend logic",
-    "This is a rebuild/redeploy only — zero code changes"
+    "Only the title text in frontend/src/pages/HomePage.tsx may be changed — no other modifications to any file are permitted."
   ],
   "nonGoals": [
-    "Adding new features",
-    "Fixing bugs by modifying code",
-    "Refactoring or restructuring any component",
-    "Changing any styling or layout"
+    "Changing the HTML <title> tag in index.html.",
+    "Changing the SplashScreen title.",
+    "Modifying any backend file.",
+    "Modifying any other frontend component, page, or route."
   ],
   "imageRequirements": {
     "required": [],

@@ -1,4 +1,27 @@
 {
   "kind": "feature_evidence_report",
-  "features": []
+  "features": [
+    {
+      "featureId": "feature-in-frontend-src-pages-homepage-tsx-only-change-the-main-page-title-text-from-to-do-not-change-any-other-text-layout-styling-logic-component-structure-or-any-other-aspect-of-the-page-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "featureTitle": "In frontend/src/pages/HomePage.tsx only, change the main page title text from 'طيور محافظة البريمي' to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'. Do NOT change any other text, layout, styling, logic, component structure, or any other aspect of the page. Do NOT modify any other file, component, page, route, or backend file.",
+      "files": [
+        "frontend/src/pages/HomePage.tsx"
+      ],
+      "components": [
+        "authorization@1.0.1",
+        "blob-storage@1.1.2",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-104"
+      ],
+      "confidence": "high"
+    }
+  ]
 }

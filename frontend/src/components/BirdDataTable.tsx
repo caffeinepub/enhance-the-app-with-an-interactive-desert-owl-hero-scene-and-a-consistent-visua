@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useActor } from '../hooks/useActor';
-import { useGetAllBirdData, useSaveBirdData, useDeleteBirdById, useIsCallerAdmin } from '../hooks/useQueries';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { useGetAllBirdData, useSaveBirdData, useDeleteBirdById } from '../hooks/useQueries';
 import { exportBirdDataToCSV } from '../lib/csvExport';
 import { BirdData } from '../backend';
 
@@ -18,17 +19,73 @@ interface EditableRow {
   governorate: string;
 }
 
+interface NewBirdForm {
+  arabicName: string;
+  scientificName: string;
+  englishName: string;
+  location: string;
+  governorate: string;
+  latitude: string;
+  longitude: string;
+  localName: string;
+  description: string;
+  notes: string;
+}
+
+const emptyNewBird: NewBirdForm = {
+  arabicName: '',
+  scientificName: '',
+  englishName: '',
+  location: '',
+  governorate: '',
+  latitude: '',
+  longitude: '',
+  localName: '',
+  description: '',
+  notes: '',
+};
+
 export default function BirdDataTable() {
-  const { actor } = useActor();
+  const { actor, isFetching: actorFetching } = useActor();
+  const { identity } = useInternetIdentity();
   const { data: birdDataRaw, isLoading } = useGetAllBirdData();
   const saveBirdMutation = useSaveBirdData();
   const deleteBirdMutation = useDeleteBirdById();
-  const { data: isAdmin = false } = useIsCallerAdmin();
 
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdminLoading, setIsAdminLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingRows, setEditingRows] = useState<Record<string, EditableRow>>({});
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newBird, setNewBird] = useState<Partial<EditableRow>>({});
+  const [newBird, setNewBird] = useState<NewBirdForm>(emptyNewBird);
+  const [isAddingBird, setIsAddingBird] = useState(false);
+
+  // Async admin check — depends only on actor (identity is already embedded in actor)
+  useEffect(() => {
+    let cancelled = false;
+    setIsAdminLoading(true);
+
+    if (actor && !actorFetching) {
+      actor.isCallerAdmin()
+        .then(result => {
+          if (!cancelled) {
+            setIsAdmin(result);
+            setIsAdminLoading(false);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setIsAdmin(false);
+            setIsAdminLoading(false);
+          }
+        });
+    } else if (!actorFetching) {
+      setIsAdmin(false);
+      setIsAdminLoading(false);
+    }
+
+    return () => { cancelled = true; };
+  }, [actor, actorFetching, identity]);
 
   const birdData: [string, BirdData][] = birdDataRaw || [];
 
@@ -100,11 +157,37 @@ export default function BirdDataTable() {
   };
 
   const handleAddBird = async () => {
-    if (!newBird.arabicName) return;
-    if (!actor) return;
-    await actor.addBirdData(newBird.arabicName, 0, 0);
-    setNewBird({});
-    setShowAddForm(false);
+    if (!newBird.arabicName.trim() || !actor) return;
+
+    setIsAddingBird(true);
+    try {
+      const lat = parseFloat(newBird.latitude) || 0;
+      const lng = parseFloat(newBird.longitude) || 0;
+
+      // Build a full BirdData object so all fields are saved at once
+      const birdToSave: BirdData = {
+        id: BigInt(0), // backend assigns real id via saveBirdData upsert
+        arabicName: newBird.arabicName.trim(),
+        scientificName: newBird.scientificName.trim(),
+        englishName: newBird.englishName.trim(),
+        description: newBird.description.trim(),
+        notes: newBird.notes.trim(),
+        localName: newBird.localName.trim(),
+        location: newBird.location.trim(),
+        mountainName: '',
+        valleyName: '',
+        governorate: newBird.governorate.trim(),
+        locations: lat !== 0 || lng !== 0 ? [{ latitude: lat, longitude: lng }] : [],
+        audioFile: undefined,
+        subImages: [],
+      };
+
+      await saveBirdMutation.mutateAsync(birdToSave);
+      setNewBird(emptyNewBird);
+      setShowAddForm(false);
+    } finally {
+      setIsAddingBird(false);
+    }
   };
 
   const handleFieldChange = (birdId: bigint, field: keyof EditableRow, value: string) => {
@@ -145,7 +228,7 @@ export default function BirdDataTable() {
         >
           تصدير CSV
         </button>
-        {isAdmin && (
+        {!isAdminLoading && isAdmin && (
           <button
             onClick={() => setShowAddForm(v => !v)}
             className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition-colors font-bold"
@@ -156,40 +239,123 @@ export default function BirdDataTable() {
       </div>
 
       {/* Add Bird Form */}
-      {isAdmin && showAddForm && (
+      {!isAdminLoading && isAdmin && showAddForm && (
         <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
           <h3 className="text-green-800 font-bold mb-3 text-sm">إضافة طائر جديد</h3>
-          <div className="flex flex-wrap gap-2">
-            <input
-              type="text"
-              placeholder="الاسم العربي *"
-              value={newBird.arabicName || ''}
-              onChange={e => setNewBird(prev => ({ ...prev, arabicName: e.target.value }))}
-              className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
-            />
-            <input
-              type="text"
-              placeholder="الاسم العلمي"
-              value={newBird.scientificName || ''}
-              onChange={e => setNewBird(prev => ({ ...prev, scientificName: e.target.value }))}
-              className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
-            />
-            <input
-              type="text"
-              placeholder="الاسم الإنجليزي"
-              value={newBird.englishName || ''}
-              onChange={e => setNewBird(prev => ({ ...prev, englishName: e.target.value }))}
-              className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-green-700 font-semibold">الاسم العربي *</label>
+              <input
+                type="text"
+                placeholder="الاسم العربي *"
+                value={newBird.arabicName}
+                onChange={e => setNewBird(prev => ({ ...prev, arabicName: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-green-700 font-semibold">الاسم العلمي</label>
+              <input
+                type="text"
+                placeholder="الاسم العلمي"
+                value={newBird.scientificName}
+                onChange={e => setNewBird(prev => ({ ...prev, scientificName: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-green-700 font-semibold">الاسم الإنجليزي</label>
+              <input
+                type="text"
+                placeholder="الاسم الإنجليزي"
+                value={newBird.englishName}
+                onChange={e => setNewBird(prev => ({ ...prev, englishName: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-green-700 font-semibold">الموقع</label>
+              <input
+                type="text"
+                placeholder="الموقع"
+                value={newBird.location}
+                onChange={e => setNewBird(prev => ({ ...prev, location: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-green-700 font-semibold">الولاية</label>
+              <input
+                type="text"
+                placeholder="الولاية"
+                value={newBird.governorate}
+                onChange={e => setNewBird(prev => ({ ...prev, governorate: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-green-700 font-semibold">Zone</label>
+              <input
+                type="text"
+                placeholder="Zone"
+                value={newBird.localName}
+                onChange={e => setNewBird(prev => ({ ...prev, localName: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-green-700 font-semibold">Latitude (°)</label>
+              <input
+                type="number"
+                placeholder="Latitude (°)"
+                value={newBird.latitude}
+                onChange={e => setNewBird(prev => ({ ...prev, latitude: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+                step="any"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-green-700 font-semibold">Longitude (°)</label>
+              <input
+                type="number"
+                placeholder="Longitude (°)"
+                value={newBird.longitude}
+                onChange={e => setNewBird(prev => ({ ...prev, longitude: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+                step="any"
+              />
+            </div>
+            <div className="flex flex-col gap-1 sm:col-span-2 md:col-span-1">
+              <label className="text-xs text-green-700 font-semibold">الوصف</label>
+              <input
+                type="text"
+                placeholder="الوصف"
+                value={newBird.description}
+                onChange={e => setNewBird(prev => ({ ...prev, description: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+            <div className="flex flex-col gap-1 sm:col-span-2 md:col-span-2">
+              <label className="text-xs text-green-700 font-semibold">ملاحظات</label>
+              <input
+                type="text"
+                placeholder="ملاحظات"
+                value={newBird.notes}
+                onChange={e => setNewBird(prev => ({ ...prev, notes: e.target.value }))}
+                className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
             <button
               onClick={handleAddBird}
-              disabled={!newBird.arabicName}
-              className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
+              disabled={!newBird.arabicName.trim() || isAddingBird || saveBirdMutation.isPending}
+              className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 disabled:opacity-50 transition-colors font-semibold"
             >
-              حفظ
+              {isAddingBird || saveBirdMutation.isPending ? 'جاري الحفظ...' : 'حفظ'}
             </button>
             <button
-              onClick={() => { setShowAddForm(false); setNewBird({}); }}
+              onClick={() => { setShowAddForm(false); setNewBird(emptyNewBird); }}
               className="px-4 py-2 bg-gray-400 text-white rounded-md text-sm hover:bg-gray-500 transition-colors"
             >
               إلغاء
@@ -215,7 +381,7 @@ export default function BirdDataTable() {
               <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الوادي</th>
               <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">المحافظة</th>
               <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">المواقع</th>
-              {isAdmin && (
+              {!isAdminLoading && isAdmin && (
                 <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الإجراءات</th>
               )}
             </tr>
@@ -223,7 +389,7 @@ export default function BirdDataTable() {
           <tbody>
             {filteredData.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 13 : 12} className="text-center py-8 text-amber-600">
+                <td colSpan={(!isAdminLoading && isAdmin) ? 13 : 12} className="text-center py-8 text-amber-600">
                   {searchTerm ? 'لا توجد نتائج للبحث' : 'لا توجد بيانات'}
                 </td>
               </tr>
@@ -264,7 +430,7 @@ export default function BirdDataTable() {
                     </td>
 
                     {/* Admin actions */}
-                    {isAdmin && (
+                    {!isAdminLoading && isAdmin && (
                       <td className="px-3 py-2 whitespace-nowrap">
                         <div className="flex gap-1">
                           {isEditing ? (

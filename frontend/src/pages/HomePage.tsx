@@ -145,7 +145,7 @@ export default function HomePage() {
             />
           </div>
           <h1 className="text-4xl md:text-6xl font-bold text-primary mb-4 leading-tight">
-            طيور محافظة البريمي
+            مشروع المسح الميداني لطائر البوم بمحافظة البريمي
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
             دليل شامل لرصد وتوثيق الطيور في محافظة البريمي بسلطنة عُمان
