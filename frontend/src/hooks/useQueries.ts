@@ -357,6 +357,51 @@ export function useDeleteBirdData() {
   });
 }
 
+export function useDeleteBirdById() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (birdId: bigint) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.deleteBirdById(birdId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['birdNames'] });
+      queryClient.invalidateQueries({ queryKey: ['totalBirdCount'] });
+      toast.success('تم حذف الطائر بنجاح');
+    },
+    onError: (error) => {
+      console.error('Error deleting bird by id:', error);
+      toast.error('حدث خطأ أثناء حذف الطائر');
+    },
+  });
+}
+
+export function useSaveBirdData() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (birdData: BirdData) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.saveBirdData(birdData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['birdDetails'] });
+      toast.success('تم حفظ بيانات الطائر بنجاح');
+    },
+    onError: (error) => {
+      console.error('Error saving bird data:', error);
+      toast.error('حدث خطأ أثناء حفظ بيانات الطائر');
+    },
+  });
+}
+
 export function useSaveChanges() {
   const { actor } = useActor();
   const queryClient = useQueryClient();

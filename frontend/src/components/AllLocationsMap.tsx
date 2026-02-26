@@ -1,183 +1,381 @@
-import { useState } from 'react';
-import { Link } from '@tanstack/react-router';
-import { useGetAllLocationsWithNames, useGetBirdNames } from '../hooks/useQueries';
-import { useFileUrl } from '../blob-storage/FileStorage';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { useNavigate } from '@tanstack/react-router';
+import { useGetAllLocationsWithNames } from '../hooks/useQueries';
+import { LocationData } from '../backend';
 
-interface Pin {
-  birdName: string;
-  x: number;
-  y: number;
+// Leaflet types (loaded via CDN)
+declare global {
+  interface Window {
+    L: any;
+  }
 }
 
-// Al Buraimi approximate bounding box
-const MAP_BOUNDS = {
-  minLat: 23.5,
-  maxLat: 24.5,
-  minLng: 55.5,
-  maxLng: 56.5,
-};
-
-function coordToPercent(lat: number, lng: number): { x: number; y: number } {
-  const x = ((lng - MAP_BOUNDS.minLng) / (MAP_BOUNDS.maxLng - MAP_BOUNDS.minLng)) * 100;
-  const y = ((MAP_BOUNDS.maxLat - lat) / (MAP_BOUNDS.maxLat - MAP_BOUNDS.minLat)) * 100;
-  return {
-    x: Math.max(2, Math.min(98, x)),
-    y: Math.max(2, Math.min(98, y)),
-  };
+function isValidCoordinate(lat: number, lng: number): boolean {
+  return (
+    typeof lat === 'number' &&
+    typeof lng === 'number' &&
+    isFinite(lat) &&
+    isFinite(lng) &&
+    lat >= -90 &&
+    lat <= 90 &&
+    lng >= -180 &&
+    lng <= 180 &&
+    !(lat === 0 && lng === 0)
+  );
 }
 
-function BirdThumbnail({ birdName }: { birdName: string }) {
-  const { data: url } = useFileUrl(`birds/${birdName}/main.jpg`);
-  if (!url) return <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-2xl">🦅</div>;
-  return <img src={url} alt={birdName} className="w-12 h-12 object-cover rounded-lg" />;
+function loadLeaflet(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (window.L) {
+      resolve();
+      return;
+    }
+
+    // Load CSS
+    const existingCss = document.getElementById('leaflet-css');
+    if (!existingCss) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    // Load JS
+    const existingScript = document.getElementById('leaflet-js');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve());
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'leaflet-js';
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Leaflet'));
+    document.head.appendChild(script);
+  });
+}
+
+// Inner map component that manages the Leaflet map instance
+function LeafletMap({
+  locations,
+  selectedBird,
+}: {
+  locations: LocationData[];
+  selectedBird: string;
+}) {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<any>(null);
+  const markersLayerRef = useRef<any>(null);
+  const [leafletReady, setLeafletReady] = useState(false);
+  const [leafletError, setLeafletError] = useState<string | null>(null);
+
+  // Load Leaflet on mount
+  useEffect(() => {
+    loadLeaflet()
+      .then(() => setLeafletReady(true))
+      .catch((err: Error) => setLeafletError(err.message));
+  }, []);
+
+  // Initialize map once Leaflet is ready
+  useEffect(() => {
+    if (!leafletReady || !mapContainerRef.current || mapInstanceRef.current) return;
+
+    const L = window.L;
+
+    // Fix default icon paths for Leaflet
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    });
+
+    const map = L.map(mapContainerRef.current, {
+      center: [24.25, 55.79],
+      zoom: 10,
+      zoomControl: true,
+    });
+
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution:
+        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    }).addTo(map);
+
+    markersLayerRef.current = L.layerGroup().addTo(map);
+    mapInstanceRef.current = map;
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        markersLayerRef.current = null;
+      }
+    };
+  }, [leafletReady]);
+
+  // Update markers when locations or filter changes
+  useEffect(() => {
+    if (!leafletReady || !mapInstanceRef.current || !markersLayerRef.current) return;
+
+    const L = window.L;
+    const map = mapInstanceRef.current;
+    const markersLayer = markersLayerRef.current;
+
+    // Clear existing markers
+    markersLayer.clearLayers();
+
+    // Filter locations
+    const filtered = locations.filter((loc: LocationData) => {
+      if (selectedBird !== 'all' && loc.birdName !== selectedBird) return false;
+      return isValidCoordinate(loc.coordinate.latitude, loc.coordinate.longitude);
+    });
+
+    if (filtered.length === 0) {
+      // Default center: Al Buraimi
+      map.setView([24.25, 55.79], 10);
+      return;
+    }
+
+    const bounds: [number, number][] = [];
+
+    filtered.forEach((loc: LocationData) => {
+      const { latitude, longitude } = loc.coordinate;
+      const marker = L.marker([latitude, longitude]);
+
+      marker.bindPopup(`
+        <div style="text-align:right; direction:rtl; font-family: sans-serif; min-width:120px;">
+          <strong style="font-size:14px;">${loc.birdName}</strong><br/>
+          <span style="font-size:11px; color:#666;">
+            خط العرض: ${latitude.toFixed(5)}<br/>
+            خط الطول: ${longitude.toFixed(5)}
+          </span>
+        </div>
+      `);
+
+      markersLayer.addLayer(marker);
+      bounds.push([latitude, longitude]);
+    });
+
+    // Fit map to markers
+    if (bounds.length === 1) {
+      map.setView(bounds[0], 15);
+    } else if (bounds.length > 1) {
+      map.fitBounds(bounds, { padding: [40, 40] });
+    }
+  }, [leafletReady, locations, selectedBird]);
+
+  if (leafletError) {
+    return (
+      <div className="flex items-center justify-center h-full bg-amber-50 rounded-xl border border-amber-200">
+        <div className="text-center p-6">
+          <p className="text-amber-800 font-semibold text-lg mb-2">تعذّر تحميل الخريطة</p>
+          <p className="text-amber-600 text-sm">{leafletError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!leafletReady) {
+    return (
+      <div className="flex items-center justify-center h-full bg-amber-50 rounded-xl border border-amber-200">
+        <div className="text-center p-6">
+          <div className="animate-spin rounded-full h-10 w-10 border-4 border-amber-400 border-t-transparent mx-auto mb-3" />
+          <p className="text-amber-700 font-medium">جارٍ تحميل الخريطة…</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={mapContainerRef}
+      style={{ width: '100%', height: '100%', borderRadius: '0.75rem', zIndex: 0 }}
+    />
+  );
 }
 
 export default function AllLocationsMap() {
-  const { data: locations, isLoading } = useGetAllLocationsWithNames();
-  const { data: birdNames } = useGetBirdNames();
-  const [showMap, setShowMap] = useState(true);
-  const [selectedFilter, setSelectedFilter] = useState('all');
-  const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
+  const navigate = useNavigate();
+  const { data: rawLocations, isLoading, error, refetch } = useGetAllLocationsWithNames();
 
-  const filteredLocations = (locations || []).filter((loc) => {
-    if (selectedFilter === 'all') return true;
-    return loc.birdName === selectedFilter;
-  });
+  const allLocations: LocationData[] = (rawLocations as LocationData[] | undefined) ?? [];
 
-  const pins: Pin[] = filteredLocations.map((loc) => {
-    const { x, y } = coordToPercent(loc.coordinate.latitude, loc.coordinate.longitude);
-    return { birdName: loc.birdName, x, y };
-  });
+  const [selectedBird, setSelectedBird] = useState<string>('all');
+  const [showMap, setShowMap] = useState<boolean>(true);
+
+  // Derive unique bird names for the filter dropdown
+  const birdNames: string[] = Array.from(
+    new Set(allLocations.map((loc: LocationData) => loc.birdName))
+  ).sort() as string[];
+
+  // Filtered coordinates for the list view
+  const filteredLocations: LocationData[] =
+    selectedBird === 'all'
+      ? allLocations
+      : allLocations.filter((loc: LocationData) => loc.birdName === selectedBird);
+
+  const validFilteredLocations: LocationData[] = filteredLocations.filter((loc: LocationData) =>
+    isValidCoordinate(loc.coordinate.latitude, loc.coordinate.longitude)
+  );
+
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   return (
-    <main dir="rtl" className="min-h-screen bg-background text-foreground">
-      <div className="max-w-6xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary">خريطة مواقع الطيور</h1>
-          <Link
-            to="/"
-            className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium"
-          >
-            <span>←</span>
-            <span>الرئيسية</span>
-          </Link>
-        </div>
-
-        {/* Controls */}
-        <div className="flex flex-wrap items-center gap-3 mb-6">
+    <div className="min-h-screen bg-sand-50" dir="rtl">
+      {/* Header */}
+      <header className="bg-amber-800 text-amber-50 shadow-lg">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-wide">🗺️ خريطة مواقع الطيور</h1>
           <button
-            onClick={() => setShowMap(!showMap)}
-            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
+            onClick={() => navigate({ to: '/' })}
+            className="flex items-center gap-2 bg-amber-700 hover:bg-amber-600 text-amber-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
           >
-            {showMap ? '🙈 إخفاء الخريطة' : '🗺️ إظهار الخريطة'}
+            <span>العودة للرئيسية</span>
+            <span>🏠</span>
           </button>
+        </div>
+      </header>
 
-          <select
-            value={selectedFilter}
-            onChange={(e) => setSelectedFilter(e.target.value)}
-            className="px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          >
-            <option value="all">جميع الطيور</option>
-            {(birdNames || []).map((name) => (
-              <option key={name} value={name}>{name}</option>
-            ))}
-          </select>
+      <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+        {/* Controls */}
+        <div className="bg-white rounded-xl shadow-md border border-amber-100 p-4">
+          <div className="flex flex-wrap items-center gap-4">
+            {/* Bird filter */}
+            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+              <label className="text-amber-800 font-semibold text-sm whitespace-nowrap">
+                تصفية حسب الطائر:
+              </label>
+              <select
+                value={selectedBird}
+                onChange={(e) => setSelectedBird(e.target.value)}
+                className="flex-1 border border-amber-300 rounded-lg px-3 py-2 text-sm bg-amber-50 text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+              >
+                <option value="all">جميع الطيور</option>
+                {birdNames.map((name: string) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          <span className="text-sm text-muted-foreground">
-            {pins.length} موقع
-          </span>
+            {/* Toggle map visibility */}
+            <button
+              onClick={() => setShowMap((v) => !v)}
+              className="flex items-center gap-2 bg-amber-100 hover:bg-amber-200 text-amber-800 px-4 py-2 rounded-lg transition-colors text-sm font-medium border border-amber-300"
+            >
+              <span>{showMap ? '🙈' : '👁️'}</span>
+              <span>{showMap ? 'إخفاء الخريطة' : 'إظهار الخريطة'}</span>
+            </button>
+
+            {/* Refresh */}
+            <button
+              onClick={handleRefresh}
+              disabled={isLoading}
+              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
+            >
+              <span className={isLoading ? 'animate-spin inline-block' : 'inline-block'}>🔄</span>
+              <span>تحديث</span>
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className="mt-3 flex flex-wrap gap-3 text-xs text-amber-700">
+            <span className="bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
+              إجمالي المواقع: <strong>{allLocations.length}</strong>
+            </span>
+            <span className="bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
+              المواقع المعروضة: <strong>{validFilteredLocations.length}</strong>
+            </span>
+            <span className="bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
+              عدد الطيور: <strong>{birdNames.length}</strong>
+            </span>
+          </div>
         </div>
 
-        {/* Map */}
-        {showMap && (
-          <div className="relative rounded-2xl overflow-hidden border border-border shadow-lg bg-muted" style={{ minHeight: '400px' }}>
-
-            {/* Pins */}
-            {pins.map((pin, index) => (
-              <button
-                key={`${pin.birdName}-${index}`}
-                onClick={() => setSelectedPin(selectedPin?.birdName === pin.birdName && selectedPin?.x === pin.x ? null : pin)}
-                className="absolute transform -translate-x-1/2 -translate-y-1/2 hover:scale-125 transition-transform z-10"
-                style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
-                title={pin.birdName}
-              >
-                <div className="w-6 h-6 bg-primary rounded-full border-2 border-white shadow-lg flex items-center justify-center">
-                  <span className="text-xs text-primary-foreground">🐦</span>
-                </div>
-              </button>
-            ))}
-
-            {/* Selected Pin Popup */}
-            {selectedPin && (
-              <div
-                className="absolute z-20 bg-card border border-border rounded-xl shadow-xl p-3 min-w-[160px]"
-                style={{
-                  left: `${Math.min(selectedPin.x, 75)}%`,
-                  top: `${Math.max(selectedPin.y - 20, 5)}%`,
-                }}
-              >
-                <button
-                  onClick={() => setSelectedPin(null)}
-                  className="absolute top-1 left-1 text-muted-foreground hover:text-foreground text-xs"
-                >
-                  ✕
-                </button>
-                <div className="flex items-center gap-2 mt-1">
-                  <BirdThumbnail birdName={selectedPin.birdName} />
-                  <div>
-                    <p className="font-bold text-foreground text-sm">{selectedPin.birdName}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedPin.x.toFixed(1)}%, {selectedPin.y.toFixed(1)}%
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/50">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-              </div>
-            )}
+        {/* Error state */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+            <p className="text-red-700 font-semibold">حدث خطأ أثناء تحميل البيانات</p>
+            <button
+              onClick={handleRefresh}
+              className="mt-2 text-red-600 underline text-sm hover:text-red-800"
+            >
+              إعادة المحاولة
+            </button>
           </div>
         )}
 
-        {/* Locations List */}
-        <div className="mt-8">
-          <h2 className="text-xl font-bold text-foreground mb-4">قائمة المواقع</h2>
-          {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">جاري التحميل...</div>
-          ) : filteredLocations.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">لا توجد مواقع متاحة</div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredLocations.map((loc, index) => (
-                <div key={index} className="bg-card border border-border rounded-xl p-4">
-                  <p className="font-bold text-foreground mb-1">{loc.birdName}</p>
-                  <p className="text-xs text-muted-foreground">
-                    خط العرض: {loc.coordinate.latitude.toFixed(4)}
+        {/* Loading state */}
+        {isLoading && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-4 border-amber-400 border-t-transparent mx-auto mb-2" />
+            <p className="text-amber-700">جارٍ تحميل بيانات المواقع…</p>
+          </div>
+        )}
+
+        {/* Interactive Map */}
+        {showMap && !isLoading && (
+          <div
+            className="bg-white rounded-xl shadow-md border border-amber-100 overflow-hidden"
+            style={{ height: '500px' }}
+          >
+            <LeafletMap locations={allLocations} selectedBird={selectedBird} />
+          </div>
+        )}
+
+        {/* Locations list */}
+        {validFilteredLocations.length > 0 && (
+          <div className="bg-white rounded-xl shadow-md border border-amber-100 p-4">
+            <h2 className="text-amber-800 font-bold text-lg mb-4 border-b border-amber-100 pb-2">
+              قائمة المواقع ({validFilteredLocations.length})
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto">
+              {validFilteredLocations.map((loc: LocationData, idx: number) => (
+                <div
+                  key={idx}
+                  className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm"
+                >
+                  <p className="font-semibold text-amber-900 mb-1">{loc.birdName}</p>
+                  <p className="text-amber-700 text-xs">
+                    خط العرض: {loc.coordinate.latitude.toFixed(5)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    خط الطول: {loc.coordinate.longitude.toFixed(4)}
+                  <p className="text-amber-700 text-xs">
+                    خط الطول: {loc.coordinate.longitude.toFixed(5)}
                   </p>
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Bottom Return */}
-        <div className="mt-8 text-center">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors font-medium"
+        {/* Empty state */}
+        {!isLoading && !error && validFilteredLocations.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
+            <p className="text-amber-700 text-lg font-medium">
+              {selectedBird === 'all'
+                ? 'لا توجد مواقع مسجّلة حتى الآن'
+                : `لا توجد مواقع مسجّلة للطائر: ${selectedBird}`}
+            </p>
+          </div>
+        )}
+
+        {/* Return to home button (bottom) */}
+        <div className="text-center pb-4">
+          <button
+            onClick={() => navigate({ to: '/' })}
+            className="inline-flex items-center gap-2 bg-amber-700 hover:bg-amber-600 text-white px-6 py-3 rounded-xl transition-colors font-medium shadow"
           >
-            <span>←</span>
+            <span>🏠</span>
             <span>العودة للرئيسية</span>
-          </Link>
+          </button>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
   );
 }

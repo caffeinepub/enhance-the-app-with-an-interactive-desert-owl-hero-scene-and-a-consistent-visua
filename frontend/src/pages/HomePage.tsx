@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from '@tanstack/react-router';
 import SplashScreen from '../components/SplashScreen';
 import TeamDataTable from '../components/TeamDataTable';
-import StaticAlBuraimiMap from '../components/StaticAlBuraimiMap';
+import { Upload, MapPin, X } from 'lucide-react';
 
 const NAV_CARDS = [
   {
@@ -49,18 +49,27 @@ const NAV_CARDS = [
   },
 ];
 
+const MAP_STORAGE_KEY = 'customMapImage';
+
 export default function HomePage() {
   const [showSplash, setShowSplash] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [customMapImage, setCustomMapImage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   useEffect(() => {
     const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
     if (!hasSeenSplash) {
       setShowSplash(true);
     }
+    // Load saved map from localStorage
+    const savedMap = localStorage.getItem(MAP_STORAGE_KEY);
+    if (savedMap) {
+      setCustomMapImage(savedMap);
+    }
   }, []);
 
-  // SplashScreen uses `onEnter` prop
   const handleSplashEnter = () => {
     sessionStorage.setItem('hasSeenSplash', 'true');
     setShowSplash(false);
@@ -72,6 +81,47 @@ export default function HomePage() {
     }
     audioRef.current.currentTime = 0;
     audioRef.current.play().catch(() => {});
+  };
+
+  const handleMapFileChange = (file: File) => {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      if (dataUrl) {
+        localStorage.setItem(MAP_STORAGE_KEY, dataUrl);
+        setCustomMapImage(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleMapFileChange(file);
+    // Reset input so same file can be re-selected
+    e.target.value = '';
+  };
+
+  const handleRemoveMap = () => {
+    localStorage.removeItem(MAP_STORAGE_KEY);
+    setCustomMapImage(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) handleMapFileChange(file);
   };
 
   if (showSplash) {
@@ -143,13 +193,98 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Static Map Section */}
-      <section className="py-12 px-4">
+      {/* Map Upload Section */}
+      <section className="py-12 px-4 bg-background">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground mb-8">
-            خريطة محافظة البريمي
-          </h2>
-          <StaticAlBuraimiMap />
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
+              <MapPin className="w-7 h-7 text-primary" />
+              خريطة المحافظة
+            </h2>
+            <div className="flex gap-2">
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors shadow-md"
+              >
+                <Upload className="w-4 h-4" />
+                رفع الخريطة
+              </button>
+              {customMapImage && (
+                <button
+                  onClick={handleRemoveMap}
+                  className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive rounded-lg font-semibold text-sm hover:bg-destructive/20 transition-colors border border-destructive/30"
+                >
+                  <X className="w-4 h-4" />
+                  إزالة
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileInputChange}
+            className="hidden"
+          />
+
+          {/* Map display / upload area */}
+          {customMapImage ? (
+            <div className="relative rounded-2xl overflow-hidden border-2 border-primary/30 shadow-xl">
+              <img
+                src={customMapImage}
+                alt="خريطة محافظة البريمي"
+                className="w-full object-contain max-h-[600px] bg-amber-50"
+              />
+              <div className="absolute bottom-3 left-3">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-black/60 text-white rounded-lg text-xs hover:bg-black/80 transition-colors backdrop-blur-sm"
+                >
+                  <Upload className="w-3 h-3" />
+                  تغيير الخريطة
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`
+                flex flex-col items-center justify-center gap-4 p-12 rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-200
+                ${isDragging
+                  ? 'border-primary bg-primary/10 scale-[1.01]'
+                  : 'border-amber-300 bg-amber-50/50 hover:border-primary hover:bg-primary/5'
+                }
+              `}
+            >
+              <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
+                <MapPin className="w-8 h-8 text-amber-600" />
+              </div>
+              <div className="text-center">
+                <p className="text-lg font-semibold text-amber-800 mb-1">
+                  ارفع خريطة المحافظة
+                </p>
+                <p className="text-sm text-amber-600">
+                  اضغط هنا أو اسحب وأفلت صورة الخريطة
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  يدعم: JPG, PNG, WebP, GIF
+                </p>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-full font-semibold text-sm hover:bg-primary/90 transition-colors shadow-md"
+              >
+                <Upload className="w-4 h-4" />
+                اختر ملف الخريطة
+              </button>
+            </div>
+          )}
         </div>
       </section>
 

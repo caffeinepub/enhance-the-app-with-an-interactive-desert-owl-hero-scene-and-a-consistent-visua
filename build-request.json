@@ -1,40 +1,72 @@
 {
   "kind": "build_request",
-  "title": "Remove static map image from AllLocationsMap page",
-  "priority": "normal",
+  "title": "Restore admin action buttons in BirdDataTable and BirdGallery after v565 deployment",
+  "projectName": "Al Buraimi Owl Atlas",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-75",
-      "text": "In frontend/src/components/AllLocationsMap.tsx only, remove the existing static map image (the base map background/image element currently displayed on the bird locations map page). Do not change any other aspect of the component — all bird filtering logic, show/hide toggle, pin rendering, return-to-home button, RTL orientation, styling, and all other functionality must remain exactly as they are. The user will upload the correct map image themselves. Do NOT modify any other file, component, page, route, or backend file.",
+      "id": "REQ-91",
+      "text": "Restore all five admin-only action buttons that disappeared from frontend/src/components/BirdDataTable.tsx after the version 565 deployment. The five buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row at the top of the table; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-1"
         ],
         "quotes": [
-          "بدون ان تغير اي شيء في التطبيق قم بحذف الخريطة التي في خريطة مواقع الطيور لانها غير صحيحة ساقوم برفع الخريطة التي لدي"
+          "ازرار التحكم اختفت هل تستطيع اعادتها رفع حفظ حذف تعديل تحرير"
         ]
       },
       "acceptanceCriteria": [
-        "The static map image element is no longer rendered on the bird locations map page (AllLocationsMap.tsx).",
-        "The map area appears empty or shows a neutral background placeholder where the map image was.",
-        "All bird filtering controls (bird name list/dropdown, 'All' option, show/hide toggle) remain present and functional.",
-        "Bird location pins still render in the correct positions when a bird or 'All' is selected.",
-        "The 'Return to Home' button remains present and functional.",
-        "RTL orientation, desert/amber styling, and all other UI elements are unchanged.",
-        "No other file, component, page, route, or backend file is modified."
+        "Authenticated admin users see all five buttons: إضافة, تعديل, حفظ, حذف, تحرير in BirdDataTable",
+        "The إضافة (Add) button appears in the table toolbar/header area and inserts a new empty editable row",
+        "Each data row shows a تعديل (Edit) button that switches the row into inline edit mode",
+        "In edit mode, the Edit button is replaced by a حفظ (Save) button that commits changes to the backend",
+        "Each row has a حذف (Delete) button that removes the record from the backend",
+        "Each row has a تحرير (Update/Edit) button as an alternative update action",
+        "Non-admin and unauthenticated users do not see any of the five action buttons",
+        "The isAdmin check uses useState + useEffect so buttons appear after actor/identity resolves",
+        "All existing column definitions, RTL layout, horizontal scrolling, color scheme, font sizes, and data-fetching logic are unchanged",
+        "No other file, component, page, route, or backend file is modified"
+      ]
+    },
+    {
+      "id": "REQ-92",
+      "text": "Restore all four admin-only action buttons that disappeared from frontend/src/components/BirdGallery.tsx after the version 565 deployment. The four buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "ازرار التحكم اختفت هل تستطيع اعادتها رفع حفظ حذف تعديل تحرير"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Authenticated admin users see all four buttons: إضافة, حفظ, حذف, تحرير in BirdGallery",
+        "The إضافة (Add) button appears in the gallery toolbar/header area and opens a form/modal for uploading a new bird record with main and sub-images",
+        "Each gallery card has a حفظ (Save) button that commits pending edits to the backend",
+        "Each gallery card has a حذف (Delete) button that removes the record from the backend",
+        "Each gallery card has a تحرير (Update/Edit) button that switches the entry into an editable state",
+        "Non-admin and unauthenticated users do not see any action buttons",
+        "The isAdmin check uses useState + useEffect so buttons appear after actor/identity resolves",
+        "All existing gallery search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal are unchanged",
+        "No other file, component, page, route, or backend file is modified"
       ]
     }
   ],
   "constraints": [
-    "Only frontend/src/components/AllLocationsMap.tsx may be modified.",
-    "Do not change any logic, layout, styling, or functionality beyond removing the static map image element.",
-    "Do not modify any other file, component, page, route, or backend file."
+    "Do NOT modify any file other than frontend/src/components/BirdDataTable.tsx and frontend/src/components/BirdGallery.tsx",
+    "Do NOT modify any backend files",
+    "Do NOT change column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, or data-fetching logic in BirdDataTable.tsx",
+    "Do NOT change the gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, or image-click modal in BirdGallery.tsx",
+    "The isAdmin check must use useState + useEffect pattern — do not evaluate principal synchronously before actor resolves"
   ],
   "nonGoals": [
-    "Uploading or adding a new map image (the user will do this themselves).",
-    "Changing bird filtering logic, pin rendering, or any other map feature.",
-    "Modifying any other component, page, route, or backend file."
+    "Adding new features or columns to the bird data table",
+    "Changing the visual design or theme of the app",
+    "Modifying any routes in App.tsx",
+    "Modifying the backend (main.mo or migration.mo)",
+    "Changing any other page components (HomePage, AllLocationsMap, BirdDetailsPage, etc.)"
   ],
   "imageRequirements": {
     "required": [],

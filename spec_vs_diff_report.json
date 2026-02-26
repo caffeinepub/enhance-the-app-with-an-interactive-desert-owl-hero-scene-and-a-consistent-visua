@@ -1,13 +1,13 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T19:44:46.917Z",
-  "summary": "The diff modifies frontend/src/components/AllLocationsMap.tsx to remove the static map image element. The map container now uses a bg-muted background instead of rendering a static image. Two other files were also modified: frontend-file-summaries.txt and project_state.json, which are metadata/state files. The core requirement (removing the static map image from AllLocationsMap.tsx) appears to be implemented. However, the constraint that no other file may be modified is potentially violated by changes to frontend-file-summaries.txt and project_state.json.",
+  "generatedAt": "2026-02-26T02:40:30.492Z",
+  "summary": "Both modified files (BirdDataTable.tsx and BirdGallery.tsx) show evidence of restored admin action buttons with the required useState + useEffect isAdmin pattern. The file summaries confirm all five buttons in BirdDataTable (إضافة/تعديل/حفظ/حذف/تحرير) and all four buttons in BirdGallery (إضافة/تحرير/حذف/حفظ) are present. The implementation uses the lastIdentityRef pattern as required. Two additional files were modified (frontend-file-summaries.txt and project_state.json), which appear to be metadata/state tracking files. The diff is truncated so complete verification of all acceptance criteria is limited.",
   "missing_requirements": [],
   "hallucinated_features": [
     {
-      "description": "Modification of frontend-file-summaries.txt and project_state.json beyond the allowed AllLocationsMap.tsx file",
-      "reason": "The build request explicitly states 'Do not modify any other file, component, page, route, or backend file.' The diff shows two additional files were modified.",
+      "description": "Modification of frontend-file-summaries.txt and project_state.json files",
+      "reason": "The build request explicitly states 'Do NOT modify any file other than frontend/src/components/BirdDataTable.tsx and frontend/src/components/BirdGallery.tsx'. The diff shows 4 modified files including frontend-file-summaries.txt and project_state.json, which were not permitted to be changed.",
       "evidence": [
         "frontend-file-summaries.txt",
         "project_state.json"
@@ -17,7 +17,8 @@
   "confidence": 0.72,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/components/AllLocationsMap.tsx",
+    "frontend/src/components/BirdDataTable.tsx",
+    "frontend/src/components/BirdGallery.tsx",
     "project_state.json"
   ]
 }

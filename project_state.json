@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 79,
+  "projectStateVersion": 95,
   "summary": "Bird distribution tracker app for Al Buraimi Governorate. After multiple failed revert/restore attempts (versions 521-528), user is requesting restoration to version 510, which was an earlier stable version. The app title should be 'مواقع انتشار البوم بمحافظة البريمي'.",
   "architectural_notes": [
     "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)",
@@ -16,9 +16,9 @@
     "Dropdown menu 'البيانات' item does not navigate to the bird data page when selected",
     "Version 542 deployment: All action buttons (Add/Edit/Save/Delete) were removed and the table size/font size were not changed — user requesting re-attempt with no other changes to the app",
     "Version 543 deployment: Action buttons did not appear and table/font size were not changed — user requesting revert to version 541 state",
-    "Version 548 deployment: Action buttons (Add/Save/Edit/Delete/تحرير) still not appearing in the bird data page — user suspects equation/logic application issues and is requesting another attempt without changing anything else in the app"
+    "Version 565 deployment: Admin action buttons (إضافة, حفظ, حذف, تعديل, تحرير) disappeared from bird data table and gallery pages"
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-investigate-why-uploaded-images-are-not-displaying-after-deployment-check-if-blob-storage-paths-file-references-or-asset-serving-mechanisms-have-changed-verify-that-image-blob-ids-stored-in-bird-records-still-resolve-to-accessible-image-data",
@@ -476,6 +476,135 @@
         "REQ-75"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-ensure-all-five-admin-only-action-buttons-are-present-visible-and-fully-functional-for-authenticated-admin-users-1-an-add-button-in-the-table-toolbar-header-area-that-creates-a-new-empty-bird-record-row-for-inline-editing-2-a-edit-button-on-each-existing-data-row-that-switches-that-row-into-inline-edit-mode-3-a-save-button-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-the-changes-to-the-backend-4-a-delete-button-on-each-row-that-removes-the-record-from-the-backend-5-a-update-edit-button-on-each-row-providing-an-alternative-update-action-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-triggers-a-re-render-when-the-identity-actor-resolves-so-buttons-appear-once-admin-identity-is-confirmed-all-five-buttons-must-be-styled-with-the-existing-desert-amber-rtl-arabic-tailwind-theme-do-not-change-column-definitions-layout-structure-rtl-orientation-horizontal-scrolling-behavior-color-scheme-data-fetching-logic-font-sizes-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, ensure all five admin-only action buttons are present, visible, and fully functional for authenticated admin users: (1) An 'إضافة' (Add) button in the table toolbar/header area that creates a new empty bird record row for inline editing. (2) A 'تعديل' (Edit) button on each existing data row that switches that row into inline edit mode. (3) A 'حفظ' (Save) button that replaces the Edit button when a row is in edit mode and commits the changes to the backend. (4) A 'حذف' (Delete) button on each row that removes the record from the backend. (5) A 'تحرير' (Update/Edit) button on each row providing an alternative update action. The isAdmin check must use a useState + useEffect pattern that triggers a re-render when the identity/actor resolves, so buttons appear once admin identity is confirmed. All five buttons must be styled with the existing desert/amber RTL Arabic Tailwind theme. Do NOT change column definitions, layout structure, RTL orientation, horizontal scrolling behavior, color scheme, data-fetching logic, font sizes, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-76",
+        "REQ-78"
+      ],
+      "version": 2
+    },
+    {
+      "id": "feature-in-frontend-src-components-birdgallery-tsx-only-ensure-all-admin-only-action-buttons-are-present-visible-and-fully-functional-for-authenticated-admin-users-1-an-add-button-in-the-gallery-toolbar-header-area-that-opens-a-form-modal-for-uploading-a-new-bird-record-with-main-and-sub-images-2-a-save-button-on-each-gallery-card-that-commits-pending-edits-to-the-backend-3-a-delete-button-on-each-gallery-card-that-removes-the-record-from-the-backend-4-a-update-edit-button-on-each-gallery-card-that-switches-the-entry-into-an-editable-state-the-isadmin-check-must-use-a-usestate-useeffect-pattern-so-buttons-appear-once-admin-identity-is-confirmed-after-the-actor-resolves-all-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-tailwind-theme-preserve-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-and-image-click-modal-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdGallery.tsx only, ensure all admin-only action buttons are present, visible, and fully functional for authenticated admin users: (1) An 'إضافة' (Add) button in the gallery toolbar/header area that opens a form/modal for uploading a new bird record with main and sub-images. (2) A 'حفظ' (Save) button on each gallery card that commits pending edits to the backend. (3) A 'حذف' (Delete) button on each gallery card that removes the record from the backend. (4) A 'تحرير' (Update/Edit) button on each gallery card that switches the entry into an editable state. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. All buttons must be styled consistently with the existing desert/amber RTL Arabic Tailwind theme. Preserve the gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-77"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birdgallery-tsx-only-ensure-all-admin-only-action-buttons-are-present-visible-and-fully-functional-for-authenticated-admin-users-1-an-add-button-in-the-gallery-toolbar-header-area-that-opens-a-form-modal-for-uploading-a-new-bird-record-with-a-main-image-and-sub-images-2-a-save-button-on-each-gallery-card-that-commits-pending-edits-to-the-backend-3-a-delete-button-on-each-gallery-card-that-removes-the-record-from-the-backend-4-a-update-edit-button-on-each-gallery-card-that-switches-the-entry-into-an-editable-state-the-isadmin-check-must-use-a-usestate-useeffect-pattern-so-buttons-appear-once-admin-identity-is-confirmed-after-the-actor-resolves-all-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-tailwind-theme-preserve-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-and-image-click-modal-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdGallery.tsx only, ensure all admin-only action buttons are present, visible, and fully functional for authenticated admin users: (1) An 'إضافة' (Add) button in the gallery toolbar/header area that opens a form/modal for uploading a new bird record with a main image and sub-images. (2) A 'حفظ' (Save) button on each gallery card that commits pending edits to the backend. (3) A 'حذف' (Delete) button on each gallery card that removes the record from the backend. (4) A 'تحرير' (Update/Edit) button on each gallery card that switches the entry into an editable state. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. All buttons must be styled consistently with the existing desert/amber RTL Arabic Tailwind theme. Preserve the gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-79"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-admin-only-action-buttons-in-frontend-src-components-birddatatable-tsx-so-they-are-visible-and-fully-functional-for-authenticated-admin-users-without-changing-any-other-aspect-of-the-component-or-any-other-file-the-five-buttons-must-be-1-add-in-the-table-toolbar-header-area-inserts-a-new-empty-editable-row-2-edit-on-each-data-row-switches-that-row-into-inline-edit-mode-3-save-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-changes-to-the-backend-4-delete-on-each-row-removes-the-record-from-the-backend-5-update-edit-on-each-row-alternative-update-action-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-triggers-a-re-render-when-the-identity-actor-resolves-so-buttons-appear-once-admin-identity-is-confirmed-all-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-and-data-fetching-logic-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Fix the admin-only action buttons in frontend/src/components/BirdDataTable.tsx so they are visible and fully functional for authenticated admin users, without changing any other aspect of the component or any other file. The five buttons must be: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that triggers a re-render when the identity/actor resolves so buttons appear once admin identity is confirmed. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-80"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-admin-only-action-buttons-in-frontend-src-components-birdgallery-tsx-so-they-are-visible-and-fully-functional-for-authenticated-admin-users-without-changing-any-other-aspect-of-the-component-or-any-other-file-the-four-buttons-must-be-1-add-in-the-gallery-toolbar-header-area-opens-a-form-modal-for-uploading-a-new-bird-record-with-main-and-sub-images-2-save-on-each-gallery-card-commits-pending-edits-to-the-backend-3-delete-on-each-gallery-card-removes-the-record-from-the-backend-4-update-edit-on-each-gallery-card-switches-the-entry-into-an-editable-state-the-isadmin-check-must-use-a-usestate-useeffect-pattern-so-buttons-appear-once-admin-identity-is-confirmed-after-the-actor-resolves-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-and-image-click-modal-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Fix the admin-only action buttons in frontend/src/components/BirdGallery.tsx so they are visible and fully functional for authenticated admin users, without changing any other aspect of the component or any other file. The four buttons must be: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with main and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-81"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-frontend-src-components-birddatatable-tsx-so-that-all-five-admin-only-action-buttons-are-visible-and-fully-functional-for-authenticated-admin-users-without-changing-any-other-aspect-of-the-component-or-any-other-file-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-correctly-triggers-a-re-render-after-the-actor-identity-resolves-ensuring-buttons-appear-once-admin-identity-is-confirmed-the-five-buttons-are-1-add-in-the-table-toolbar-header-area-inserts-a-new-empty-editable-row-2-edit-on-each-data-row-switches-that-row-into-inline-edit-mode-3-save-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-changes-to-the-backend-4-delete-on-each-row-removes-the-record-from-the-backend-5-update-edit-on-each-row-alternative-update-action-all-buttons-must-be-styled-with-the-existing-desert-amber-rtl-arabic-tailwind-theme-all-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-and-data-fetching-logic-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Fix frontend/src/components/BirdDataTable.tsx so that all five admin-only action buttons are visible and fully functional for authenticated admin users, without changing any other aspect of the component or any other file. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. The five buttons are: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. All buttons must be styled with the existing desert/amber RTL Arabic Tailwind theme. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-82"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-frontend-src-components-birdgallery-tsx-so-that-all-four-admin-only-action-buttons-are-visible-and-fully-functional-for-authenticated-admin-users-without-changing-any-other-aspect-of-the-component-or-any-other-file-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-correctly-triggers-a-re-render-after-the-actor-identity-resolves-ensuring-buttons-appear-once-admin-identity-is-confirmed-the-four-buttons-are-1-add-in-the-gallery-toolbar-header-area-opens-a-form-modal-for-uploading-a-new-bird-record-with-main-and-sub-images-2-save-on-each-gallery-card-commits-pending-edits-to-the-backend-3-delete-on-each-gallery-card-removes-the-record-from-the-backend-4-update-edit-on-each-gallery-card-switches-the-entry-into-an-editable-state-all-buttons-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-tailwind-theme-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-and-image-click-modal-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Fix frontend/src/components/BirdGallery.tsx so that all four admin-only action buttons are visible and fully functional for authenticated admin users, without changing any other aspect of the component or any other file. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. The four buttons are: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with main and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. All buttons must be styled consistently with the existing desert/amber RTL Arabic Tailwind theme. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-83"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-alllocationsmap-tsx-only-replace-the-current-static-image-based-map-display-with-an-interactive-openstreetmap-map-using-leaflet-js-which-is-already-available-in-the-project-via-mapview-tsx-the-map-must-render-inside-the-existing-page-layout-without-altering-the-page-structure-bird-name-filter-dropdown-show-hide-toggle-return-to-home-button-rtl-orientation-or-any-other-existing-functionality-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/AllLocationsMap.tsx only, replace the current static/image-based map display with an interactive OpenStreetMap map (using Leaflet.js, which is already available in the project via MapView.tsx). The map must render inside the existing page layout without altering the page structure, bird-name filter dropdown, show/hide toggle, Return to Home button, RTL orientation, or any other existing functionality. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-84"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-alllocationsmap-tsx-only-connect-the-interactive-map-to-the-existing-bird-location-data-already-fetched-from-the-backend-for-each-bird-record-that-has-valid-latitude-and-longitude-coordinate-data-place-a-map-marker-at-those-coordinates-markers-must-be-rendered-for-every-valid-bird-record-returned-by-the-backend-query-consistent-with-the-existing-coordinate-parsing-logic-already-present-in-the-component",
+      "title": "In frontend/src/components/AllLocationsMap.tsx only, connect the interactive map to the existing bird location data already fetched from the backend. For each bird record that has valid latitude and longitude coordinate data, place a map marker at those coordinates. Markers must be rendered for every valid bird record returned by the backend query, consistent with the existing coordinate parsing logic already present in the component.",
+      "reqIds": [
+        "REQ-85"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-alllocationsmap-tsx-only-configure-the-interactive-map-to-automatically-center-and-zoom-to-fit-the-currently-visible-set-of-markers-whenever-the-displayed-markers-change-e-g-on-initial-load-or-when-the-bird-name-filter-changes-if-only-one-marker-is-visible-zoom-to-an-appropriate-street-level-zoom-if-multiple-markers-are-visible-fit-the-map-bounds-to-encompass-all-of-them",
+      "title": "In frontend/src/components/AllLocationsMap.tsx only, configure the interactive map to automatically center and zoom to fit the currently visible set of markers whenever the displayed markers change (e.g., on initial load or when the bird-name filter changes). If only one marker is visible, zoom to an appropriate street-level zoom. If multiple markers are visible, fit the map bounds to encompass all of them.",
+      "reqIds": [
+        "REQ-86"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-homepage-tsx-only-remove-the-static-al-buraimi-map-image-component-element-the-incorrect-map-currently-displayed-on-the-home-page-do-not-change-any-other-section-component-layout-styling-logic-or-functionality-of-the-homepage-the-user-will-upload-their-own-correct-map-image-separately",
+      "title": "In frontend/src/pages/HomePage.tsx only, remove the static Al Buraimi map image/component element (the incorrect map currently displayed on the home page). Do not change any other section, component, layout, styling, logic, or functionality of the HomePage. The user will upload their own correct map image separately.",
+      "reqIds": [
+        "REQ-87"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-pages-homepage-tsx-only-add-a-map-upload-section-that-allows-any-user-no-authentication-required-to-upload-their-own-map-image-the-section-must-include-a-clearly-labeled-upload-map-button-styled-consistently-with-the-existing-desert-amber-rtl-arabic-theme-when-the-user-selects-an-image-file-it-must-be-displayed-inline-on-the-home-page-in-the-area-where-the-map-was-previously-shown-the-uploaded-map-must-persist-across-page-reloads-by-storing-the-image-as-a-data-url-in-localstorage-do-not-change-any-other-section-component-layout-styling-logic-or-functionality-of-the-homepage-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/pages/HomePage.tsx only, add a map upload section that allows any user (no authentication required) to upload their own map image. The section must include a clearly labeled 'Upload Map' button (رفع الخريطة) styled consistently with the existing desert/amber RTL Arabic theme. When the user selects an image file, it must be displayed inline on the home page in the area where the map was previously shown. The uploaded map must persist across page reloads by storing the image as a data URL in localStorage. Do not change any other section, component, layout, styling, logic, or functionality of the HomePage. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-88"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-all-admin-only-action-buttons-that-disappeared-from-frontend-src-components-birddatatable-tsx-after-the-version-564-deployment-the-five-buttons-must-be-present-visible-and-fully-functional-for-authenticated-admin-users-1-add-in-the-table-toolbar-header-area-inserts-a-new-empty-editable-row-2-edit-on-each-data-row-switches-that-row-into-inline-edit-mode-3-save-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-changes-to-the-backend-4-delete-on-each-row-removes-the-record-from-the-backend-5-update-edit-on-each-row-alternative-update-action-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-triggers-a-re-render-when-the-identity-actor-resolves-all-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-and-data-fetching-logic-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore all admin-only action buttons that disappeared from frontend/src/components/BirdDataTable.tsx after the version 564 deployment. The five buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that triggers a re-render when the identity/actor resolves. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-89"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-all-admin-only-action-buttons-that-disappeared-from-frontend-src-components-birdgallery-tsx-after-the-version-564-deployment-the-four-buttons-must-be-present-visible-and-fully-functional-for-authenticated-admin-users-1-add-in-the-gallery-toolbar-header-area-opens-a-form-modal-for-uploading-a-new-bird-record-with-main-and-sub-images-2-save-on-each-gallery-card-commits-pending-edits-to-the-backend-3-delete-on-each-gallery-card-removes-the-record-from-the-backend-4-update-edit-on-each-gallery-card-switches-the-entry-into-an-editable-state-the-isadmin-check-must-use-a-usestate-useeffect-pattern-so-buttons-appear-once-admin-identity-is-confirmed-after-the-actor-resolves-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-and-image-click-modal-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore all admin-only action buttons that disappeared from frontend/src/components/BirdGallery.tsx after the version 564 deployment. The four buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with main and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-90"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-all-five-admin-only-action-buttons-that-disappeared-from-frontend-src-components-birddatatable-tsx-after-the-version-565-deployment-the-five-buttons-must-be-present-visible-and-fully-functional-for-authenticated-admin-users-1-add-in-the-table-toolbar-header-area-inserts-a-new-empty-editable-row-at-the-top-of-the-table-2-edit-on-each-data-row-switches-that-row-into-inline-edit-mode-3-save-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-changes-to-the-backend-4-delete-on-each-row-removes-the-record-from-the-backend-5-update-edit-on-each-row-alternative-update-action-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-correctly-triggers-a-re-render-after-the-actor-identity-resolves-ensuring-buttons-appear-once-admin-identity-is-confirmed-all-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-and-data-fetching-logic-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore all five admin-only action buttons that disappeared from frontend/src/components/BirdDataTable.tsx after the version 565 deployment. The five buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row at the top of the table; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-91"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-all-four-admin-only-action-buttons-that-disappeared-from-frontend-src-components-birdgallery-tsx-after-the-version-565-deployment-the-four-buttons-must-be-present-visible-and-fully-functional-for-authenticated-admin-users-1-add-in-the-gallery-toolbar-header-area-opens-a-form-modal-for-uploading-a-new-bird-record-with-a-main-image-and-sub-images-2-save-on-each-gallery-card-commits-pending-edits-to-the-backend-3-delete-on-each-gallery-card-removes-the-record-from-the-backend-4-update-edit-on-each-gallery-card-switches-the-entry-into-an-editable-state-the-isadmin-check-must-use-a-usestate-useeffect-pattern-so-buttons-appear-once-admin-identity-is-confirmed-after-the-actor-resolves-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-and-image-click-modal-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore all four admin-only action buttons that disappeared from frontend/src/components/BirdGallery.tsx after the version 565 deployment. The four buttons must be present, visible, and fully functional for authenticated admin users: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-92"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -720,6 +849,42 @@
     {
       "id": "AR-46",
       "summary": "Remove the existing static map image from the bird locations map page (AllLocationsMap.tsx) without changing anything else in the app. The user will upload the correct map image themselves.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-47",
+      "summary": "Restore the Add, Delete, Edit, and Save action buttons that are missing from the bird data table (spreadsheet) and gallery pages after version 559 deployment — without making any other changes to the application.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-48",
+      "summary": "Integrate an interactive map (Google Maps or OpenStreetMap) into the existing Bird Locations Map page (AllLocationsMap.tsx) only. Connect to existing Latitude/Longitude data, display a marker for each bird's location, auto-update markers when coordinates change, and auto-center/zoom to the latest position. No other part of the app may be modified.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-49",
+      "summary": "Remove the incorrect Al Buraimi map image from the HomePage (main/home page) only, without changing anything else in the app. The user will upload their own correct map image.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-50",
+      "summary": "Add a map upload button to the HomePage (frontend/src/pages/HomePage.tsx) that allows the user to upload their own map image. Do not change any other part of the app.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-51",
+      "summary": "Restore the action buttons (Add, Edit, Save, Delete and other admin buttons) that disappeared from the bird data table and gallery pages after version 564 deployment — without making any other changes to the application.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-52",
+      "summary": "Restore the admin action buttons (إضافة/Add, حفظ/Save, حذف/Delete, تعديل/Edit, تحرير/Update-Edit) that disappeared from the bird data table and gallery pages after version 565 deployment — without making any other changes to the application.",
       "reqIds": [],
       "status": "pending"
     }

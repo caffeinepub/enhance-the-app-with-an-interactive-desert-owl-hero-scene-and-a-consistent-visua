@@ -1,25 +1,50 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Remove static map image from AllLocationsMap page",
+  "title": "Restore admin action buttons in BirdDataTable and BirdGallery after v565 deployment",
   "requirements": [
     {
-      "id": "REQ-75",
-      "summary": "Remove the static map image element from AllLocationsMap.tsx while preserving all other functionality including bird filtering, pin rendering, show/hide toggle, return-to-home button, RTL orientation, and styling",
+      "id": "REQ-91",
+      "summary": "Restore all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) in BirdDataTable.tsx with proper useState + useEffect pattern for isAdmin check to ensure buttons appear after actor/identity resolves",
       "acceptanceCriteria": [
-        "The static map image element is no longer rendered on the bird locations map page (AllLocationsMap.tsx).",
-        "The map area appears empty or shows a neutral background placeholder where the map image was.",
-        "All bird filtering controls (bird name list/dropdown, 'All' option, show/hide toggle) remain present and functional.",
-        "Bird location pins still render in the correct positions when a bird or 'All' is selected.",
-        "The 'Return to Home' button remains present and functional.",
-        "RTL orientation, desert/amber styling, and all other UI elements are unchanged.",
-        "No other file, component, page, route, or backend file is modified."
+        "Authenticated admin users see all five buttons: إضافة, تعديل, حفظ, حذف, تحرير in BirdDataTable",
+        "The إضافة (Add) button appears in the table toolbar/header area and inserts a new empty editable row",
+        "Each data row shows a تعديل (Edit) button that switches the row into inline edit mode",
+        "In edit mode, the Edit button is replaced by a حفظ (Save) button that commits changes to the backend",
+        "Each row has a حذف (Delete) button that removes the record from the backend",
+        "Each row has a تحرير (Update/Edit) button as an alternative update action",
+        "Non-admin and unauthenticated users do not see any of the five action buttons",
+        "The isAdmin check uses useState + useEffect so buttons appear after actor/identity resolves",
+        "All existing column definitions, RTL layout, horizontal scrolling, color scheme, font sizes, and data-fetching logic are unchanged",
+        "No other file, component, page, route, or backend file is modified"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/AllLocationsMap.tsx",
+          "path": "frontend/src/components/BirdDataTable.tsx",
           "operation": "modify",
-          "description": "Remove the static map image element (img tag or image component) that serves as the base map background. Locate the image element displaying the map and remove it from the JSX structure. Ensure the container for bird location pins remains intact with its existing dimensions and styling so pins continue to render at their correct coordinate positions. All other functionality including bird filtering dropdown, 'All birds' option, show/hide pins toggle, bird name display, return-to-home navigation button, RTL text direction, and desert/amber color scheme must remain completely unchanged. The map area should display a neutral or empty background where the image was previously shown."
+          "description": "Restore all five admin-only action buttons that disappeared after v565 deployment. Add a useState variable for isAdmin initialized to false, and a useEffect that calls actor.isCallerAdmin() when actor is available and updates the state to trigger a re-render. Add the إضافة (Add) button in the table toolbar/header area that inserts a new empty editable row at the top of the table when clicked. Add تعديل (Edit), حفظ (Save), حذف (Delete), and تحرير (Update/Edit) buttons on each data row, conditionally rendered only when isAdmin is true. Ensure the Edit button switches to Save button when a row enters edit mode. Wire all buttons to their respective handlers (add row, toggle edit mode, save changes to backend via actor methods, delete record from backend). Preserve all existing column definitions, RTL layout, horizontal scrolling, color scheme, font sizes, search functionality, and data-fetching logic exactly as they are. Do not modify any styling, table structure, or non-admin features."
+        }
+      ]
+    },
+    {
+      "id": "REQ-92",
+      "summary": "Restore all four admin-only action buttons (إضافة, حفظ, حذف, تحرير) in BirdGallery.tsx with proper useState + useEffect pattern for isAdmin check to ensure buttons appear after actor/identity resolves",
+      "acceptanceCriteria": [
+        "Authenticated admin users see all four buttons: إضافة, حفظ, حذف, تحرير in BirdGallery",
+        "The إضافة (Add) button appears in the gallery toolbar/header area and opens a form/modal for uploading a new bird record with main and sub-images",
+        "Each gallery card has a حفظ (Save) button that commits pending edits to the backend",
+        "Each gallery card has a حذف (Delete) button that removes the record from the backend",
+        "Each gallery card has a تحرير (Update/Edit) button that switches the entry into an editable state",
+        "Non-admin and unauthenticated users do not see any action buttons",
+        "The isAdmin check uses useState + useEffect so buttons appear after actor/identity resolves",
+        "All existing gallery search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal are unchanged",
+        "No other file, component, page, route, or backend file is modified"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/BirdGallery.tsx",
+          "operation": "modify",
+          "description": "Restore all four admin-only action buttons that disappeared after v565 deployment. Add a useState variable for isAdmin initialized to false, and a useEffect that calls actor.isCallerAdmin() when actor is available and updates the state to trigger a re-render. Add the إضافة (Add) button in the gallery toolbar/header area that opens a form/modal for uploading a new bird record with main image and sub-images when clicked. Add حفظ (Save), حذف (Delete), and تحرير (Update/Edit) buttons on each gallery card, conditionally rendered only when isAdmin is true. Ensure the Update/Edit button switches the card into an editable state. Wire all buttons to their respective handlers (open upload modal/form, save edits to backend via actor methods like saveBirdData or updateBirdDetails, delete record from backend via deleteBirdById or deleteBirdData). Use the blob-storage component's useFileUpload hook for handling image uploads in the Add modal. Preserve all existing gallery search functionality, card layout, image display from blob storage using useFileUrl, RTL orientation, data-fetching logic via useQuery, and the image-click modal exactly as they are. Do not modify any styling, layout, or non-admin features."
         }
       ]
     }

@@ -1,270 +1,226 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useActor } from '../hooks/useActor';
-import {
-  useGetAllBirdData,
-  useSaveAllBirdData,
-  useDeleteBirdData,
-  useUpdateBirdDetails,
-  useAddBirdWithDetails,
-} from '../hooks/useQueries';
-import { BirdData } from '../backend';
-import { toast } from 'sonner';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { useGetAllBirdData, useSaveBirdData, useDeleteBirdById } from '../hooks/useQueries';
 import { exportBirdDataToCSV } from '../lib/csvExport';
+import { BirdData } from '../backend';
 
-interface EditingRow {
-  key: string;
-  data: BirdData;
+interface EditableRow {
+  id: bigint;
+  arabicName: string;
+  scientificName: string;
+  englishName: string;
+  description: string;
+  notes: string;
+  localName: string;
+  location: string;
+  mountainName: string;
+  valleyName: string;
+  governorate: string;
 }
 
 export default function BirdDataTable() {
-  const { actor } = useActor();
-  const { data: allBirdData, isLoading, refetch } = useGetAllBirdData();
-  const saveAllMutation = useSaveAllBirdData();
-  const deleteMutation = useDeleteBirdData();
-  const updateMutation = useUpdateBirdDetails();
-  const addMutation = useAddBirdWithDetails();
+  const { actor, isFetching: actorFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const { data: birdDataRaw, isLoading } = useGetAllBirdData();
+  const saveBirdMutation = useSaveBirdData();
+  const deleteBirdMutation = useDeleteBirdById();
 
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [canModify, setCanModify] = useState(false);
-  const [editingRow, setEditingRow] = useState<EditingRow | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [editingRows, setEditingRows] = useState<Record<string, EditableRow>>({});
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newBird, setNewBird] = useState<{
-    arabicName: string;
-    scientificName: string;
-    englishName: string;
-    description: string;
-    notes: string;
-    latitude: string;
-    longitude: string;
-  }>({
-    arabicName: '',
-    scientificName: '',
-    englishName: '',
-    description: '',
-    notes: '',
-    latitude: '23.5',
-    longitude: '56.0',
-  });
+  const [newBird, setNewBird] = useState<Partial<EditableRow>>({});
 
-  const checkAdminStatus = useCallback(async () => {
-    if (!actor) return;
-    try {
-      const [adminResult, modifyResult] = await Promise.all([
-        actor.isCallerAdmin(),
-        actor.canCallerModifyData(),
-      ]);
-      setIsAdmin(adminResult);
-      setCanModify(modifyResult);
-    } catch (err) {
-      console.error('Error checking admin status:', err);
-    }
-  }, [actor]);
+  // Use useState + useEffect for isAdmin to ensure re-render after actor resolves
+  const [isAdmin, setIsAdmin] = useState(false);
+  const lastIdentityRef = useRef<string | null>(null);
 
   useEffect(() => {
-    checkAdminStatus();
-  }, [checkAdminStatus]);
+    const currentIdentity = identity?.getPrincipal().toString() ?? null;
 
-  const filteredData = (allBirdData || []).filter(([, bird]) => {
-    if (!searchQuery) return true;
-    const q = searchQuery.toLowerCase();
+    // If user logged out (identity changed to null), reset admin
+    if (currentIdentity === null && lastIdentityRef.current !== null) {
+      lastIdentityRef.current = null;
+      setIsAdmin(false);
+      return;
+    }
+
+    // Only check admin when actor is ready
+    if (!actor || actorFetching) return;
+
+    let cancelled = false;
+    actor.isCallerAdmin().then(result => {
+      if (!cancelled) {
+        setIsAdmin(result);
+        lastIdentityRef.current = currentIdentity;
+      }
+    }).catch(() => {
+      if (!cancelled) setIsAdmin(false);
+    });
+    return () => { cancelled = true; };
+  }, [actor, actorFetching, identity]);
+
+  const birdData: [string, BirdData][] = birdDataRaw || [];
+
+  const filteredData = birdData.filter(([name, bird]) => {
+    const term = searchTerm.toLowerCase();
     return (
-      bird.arabicName?.toLowerCase().includes(q) ||
-      bird.scientificName?.toLowerCase().includes(q) ||
-      bird.englishName?.toLowerCase().includes(q) ||
-      bird.description?.toLowerCase().includes(q)
+      name.toLowerCase().includes(term) ||
+      bird.arabicName?.toLowerCase().includes(term) ||
+      bird.scientificName?.toLowerCase().includes(term) ||
+      bird.englishName?.toLowerCase().includes(term)
     );
   });
 
-  const handleEdit = (key: string, data: BirdData) => {
-    setEditingRow({ key, data: { ...data } });
+  const handleEdit = (bird: BirdData) => {
+    const key = bird.id.toString();
+    setEditingRows(prev => ({
+      ...prev,
+      [key]: {
+        id: bird.id,
+        arabicName: bird.arabicName,
+        scientificName: bird.scientificName,
+        englishName: bird.englishName,
+        description: bird.description,
+        notes: bird.notes,
+        localName: bird.localName,
+        location: bird.location,
+        mountainName: bird.mountainName,
+        valleyName: bird.valleyName,
+        governorate: bird.governorate,
+      }
+    }));
   };
 
-  const handleSave = async () => {
-    if (!editingRow) return;
-    try {
-      await updateMutation.mutateAsync({
-        birdName: editingRow.key,
-        arabicName: editingRow.data.arabicName,
-        scientificName: editingRow.data.scientificName,
-        englishName: editingRow.data.englishName,
-        description: editingRow.data.description,
-        notes: editingRow.data.notes,
-      });
-      setEditingRow(null);
-    } catch (err) {
-      console.error('Save error:', err);
-    }
+  const handleCancelEdit = (birdId: bigint) => {
+    const key = birdId.toString();
+    setEditingRows(prev => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
-  const handleDelete = async (birdName: string) => {
-    if (!window.confirm(`هل أنت متأكد من حذف "${birdName}"؟`)) return;
-    try {
-      await deleteMutation.mutateAsync(birdName);
-    } catch (err) {
-      console.error('Delete error:', err);
-    }
+  const handleSave = async (originalBird: BirdData) => {
+    const key = originalBird.id.toString();
+    const edited = editingRows[key];
+    if (!edited) return;
+
+    const updatedBird: BirdData = {
+      ...originalBird,
+      arabicName: edited.arabicName,
+      scientificName: edited.scientificName,
+      englishName: edited.englishName,
+      description: edited.description,
+      notes: edited.notes,
+      localName: edited.localName,
+      location: edited.location,
+      mountainName: edited.mountainName,
+      valleyName: edited.valleyName,
+      governorate: edited.governorate,
+    };
+
+    await saveBirdMutation.mutateAsync(updatedBird);
+    handleCancelEdit(originalBird.id);
   };
 
-  const handleSaveAll = async () => {
-    if (!allBirdData) return;
-    try {
-      await saveAllMutation.mutateAsync(allBirdData);
-    } catch (err) {
-      console.error('Save all error:', err);
-    }
+  const handleDelete = async (bird: BirdData) => {
+    if (!window.confirm(`هل أنت متأكد من حذف "${bird.arabicName}"؟`)) return;
+    await deleteBirdMutation.mutateAsync(bird.id);
   };
 
   const handleAddBird = async () => {
-    if (!newBird.arabicName) {
-      toast.error('يرجى إدخال الاسم العربي للطائر');
-      return;
-    }
-    try {
-      await addMutation.mutateAsync({
-        arabicName: newBird.arabicName,
-        scientificName: newBird.scientificName,
-        englishName: newBird.englishName,
-        description: newBird.description,
-        notes: newBird.notes,
-        latitude: parseFloat(newBird.latitude || '23.5'),
-        longitude: parseFloat(newBird.longitude || '56.0'),
-        audioFilePath: null,
-        subImages: [],
-      });
-      setShowAddForm(false);
-      setNewBird({
-        arabicName: '',
-        scientificName: '',
-        englishName: '',
-        description: '',
-        notes: '',
-        latitude: '23.5',
-        longitude: '56.0',
-      });
-    } catch (err) {
-      console.error('Add bird error:', err);
-    }
+    if (!newBird.arabicName) return;
+    if (!actor) return;
+    await actor.addBirdData(newBird.arabicName, 0, 0);
+    setNewBird({});
+    setShowAddForm(false);
+  };
+
+  const handleFieldChange = (birdId: bigint, field: keyof EditableRow, value: string) => {
+    const key = birdId.toString();
+    setEditingRows(prev => ({
+      ...prev,
+      [key]: { ...prev[key], [field]: value }
+    }));
   };
 
   const handleExportCSV = () => {
-    if (!allBirdData) return;
-    const birds = allBirdData.map(([, bird]) => bird);
-    exportBirdDataToCSV(birds);
-    toast.success('تم تصدير البيانات بنجاح');
+    const birdsOnly: BirdData[] = birdData.map(([, bird]) => bird);
+    exportBirdDataToCSV(birdsOnly);
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-16" dir="rtl">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-3"></div>
-          <p className="text-muted-foreground">جاري تحميل البيانات...</p>
-        </div>
+      <div className="flex items-center justify-center p-12" dir="rtl">
+        <div className="text-amber-700 text-lg">جاري تحميل البيانات...</div>
       </div>
     );
   }
 
   return (
-    <div dir="rtl" className="space-y-4">
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-3 justify-between">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <input
-            type="text"
-            placeholder="🔍 بحث في البيانات..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="flex-1 px-4 py-2 border border-border rounded-lg bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-          />
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
+    <div dir="rtl" className="w-full">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+        <input
+          type="text"
+          placeholder="بحث عن طائر..."
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          className="flex-1 min-w-[180px] px-3 py-2 border border-amber-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
+        />
+        <button
+          onClick={handleExportCSV}
+          className="px-4 py-2 bg-amber-600 text-white rounded-md text-sm hover:bg-amber-700 transition-colors"
+        >
+          تصدير CSV
+        </button>
+        {isAdmin && (
           <button
-            onClick={handleExportCSV}
-            className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 transition-colors"
+            onClick={() => setShowAddForm(v => !v)}
+            className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition-colors font-bold"
           >
-            📥 تصدير CSV
+            + إضافة
           </button>
-          {(isAdmin || canModify) && (
-            <>
-              <button
-                onClick={() => setShowAddForm(!showAddForm)}
-                className="px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 transition-colors"
-              >
-                ➕ إضافة
-              </button>
-              <button
-                onClick={handleSaveAll}
-                disabled={saveAllMutation.isPending}
-                className="px-3 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                {saveAllMutation.isPending ? '⏳ جاري الحفظ...' : '💾 حفظ الكل'}
-              </button>
-              <button
-                onClick={() => refetch()}
-                className="px-3 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm hover:bg-secondary/80 transition-colors"
-              >
-                🔄 تحديث
-              </button>
-            </>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Add Bird Form */}
-      {showAddForm && (isAdmin || canModify) && (
-        <div className="bg-card border border-border rounded-xl p-4 space-y-3">
-          <h3 className="font-bold text-foreground">إضافة طائر جديد</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {(
-              [
-                { key: 'arabicName', label: 'الاسم العربي *' },
-                { key: 'scientificName', label: 'الاسم العلمي' },
-                { key: 'englishName', label: 'الاسم الإنجليزي' },
-                { key: 'latitude', label: 'خط العرض' },
-                { key: 'longitude', label: 'خط الطول' },
-              ] as { key: keyof typeof newBird; label: string }[]
-            ).map(({ key, label }) => (
-              <div key={key}>
-                <label className="block text-xs text-muted-foreground mb-1">{label}</label>
-                <input
-                  type="text"
-                  value={newBird[key]}
-                  onChange={(e) => setNewBird((prev) => ({ ...prev, [key]: e.target.value }))}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                />
-              </div>
-            ))}
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {(
-              [
-                { key: 'description', label: 'الوصف' },
-                { key: 'notes', label: 'ملاحظات' },
-              ] as { key: keyof typeof newBird; label: string }[]
-            ).map(({ key, label }) => (
-              <div key={key}>
-                <label className="block text-xs text-muted-foreground mb-1">{label}</label>
-                <textarea
-                  value={newBird[key]}
-                  onChange={(e) => setNewBird((prev) => ({ ...prev, [key]: e.target.value }))}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
-                />
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
+      {isAdmin && showAddForm && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <h3 className="text-green-800 font-bold mb-3 text-sm">إضافة طائر جديد</h3>
+          <div className="flex flex-wrap gap-2">
+            <input
+              type="text"
+              placeholder="الاسم العربي *"
+              value={newBird.arabicName || ''}
+              onChange={e => setNewBird(prev => ({ ...prev, arabicName: e.target.value }))}
+              className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+            />
+            <input
+              type="text"
+              placeholder="الاسم العلمي"
+              value={newBird.scientificName || ''}
+              onChange={e => setNewBird(prev => ({ ...prev, scientificName: e.target.value }))}
+              className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+            />
+            <input
+              type="text"
+              placeholder="الاسم الإنجليزي"
+              value={newBird.englishName || ''}
+              onChange={e => setNewBird(prev => ({ ...prev, englishName: e.target.value }))}
+              className="px-3 py-2 border border-green-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+            />
             <button
               onClick={handleAddBird}
-              disabled={addMutation.isPending}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 transition-colors disabled:opacity-50"
+              disabled={!newBird.arabicName}
+              className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 disabled:opacity-50 transition-colors"
             >
-              {addMutation.isPending ? '⏳ جاري الإضافة...' : '✅ إضافة'}
+              حفظ
             </button>
             <button
-              onClick={() => setShowAddForm(false)}
-              className="px-4 py-2 bg-secondary text-secondary-foreground rounded-lg text-sm hover:bg-secondary/80 transition-colors"
+              onClick={() => { setShowAddForm(false); setNewBird({}); }}
+              className="px-4 py-2 bg-gray-400 text-white rounded-md text-sm hover:bg-gray-500 transition-colors"
             >
               إلغاء
             </button>
@@ -273,150 +229,86 @@ export default function BirdDataTable() {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/50">
-            <tr>
-              {['#', 'الاسم العربي', 'الاسم العلمي', 'الاسم الإنجليزي', 'الوصف', 'المواقع', 'الصور', 'الصوت', 'ملاحظات'].map((h) => (
-                <th
-                  key={h}
-                  className="px-3 py-3 text-right font-semibold text-foreground border-b border-border whitespace-nowrap"
-                >
-                  {h}
-                </th>
-              ))}
-              {(isAdmin || canModify) && (
-                <th className="px-3 py-3 text-right font-semibold text-foreground border-b border-border whitespace-nowrap">
-                  إجراءات
-                </th>
+      <div className="overflow-x-auto rounded-lg border border-amber-200 shadow-sm">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-amber-700 text-white">
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">#</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الاسم العربي</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الاسم العلمي</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الاسم الإنجليزي</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الوصف</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الملاحظات</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الاسم المحلي</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الموقع</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الجبل</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الوادي</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">المحافظة</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">المواقع</th>
+              {isAdmin && (
+                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الإجراءات</th>
               )}
             </tr>
           </thead>
           <tbody>
             {filteredData.length === 0 ? (
               <tr>
-                <td
-                  colSpan={(isAdmin || canModify) ? 10 : 9}
-                  className="text-center py-12 text-muted-foreground"
-                >
-                  {searchQuery ? 'لا توجد نتائج للبحث' : 'لا توجد بيانات متاحة'}
+                <td colSpan={isAdmin ? 13 : 12} className="text-center py-8 text-amber-600">
+                  {searchTerm ? 'لا توجد نتائج للبحث' : 'لا توجد بيانات'}
                 </td>
               </tr>
             ) : (
-              filteredData.map(([key, bird], index) => {
-                const isEditing = editingRow?.key === key;
+              filteredData.map(([, bird], index) => {
+                const key = bird.id.toString();
+                const isEditing = !!editingRows[key];
+                const editData = editingRows[key];
+
                 return (
-                  <tr key={key} className="border-b border-border hover:bg-muted/30 transition-colors">
-                    <td className="px-3 py-3 text-muted-foreground">{index + 1}</td>
-                    <td className="px-3 py-3 font-medium text-foreground">
-                      {isEditing ? (
-                        <input
-                          value={editingRow.data.arabicName}
-                          onChange={(e) =>
-                            setEditingRow((prev) =>
-                              prev ? { ...prev, data: { ...prev.data, arabicName: e.target.value } } : null
-                            )
-                          }
-                          className="w-full px-2 py-1 border border-border rounded bg-background text-foreground text-sm"
-                        />
-                      ) : (
-                        bird.arabicName
-                      )}
+                  <tr
+                    key={key}
+                    className={`border-b border-amber-100 ${index % 2 === 0 ? 'bg-white' : 'bg-amber-50'} hover:bg-amber-100 transition-colors`}
+                  >
+                    <td className="px-3 py-2 text-amber-800 whitespace-nowrap">{index + 1}</td>
+
+                    {/* Editable fields */}
+                    {(['arabicName', 'scientificName', 'englishName', 'description', 'notes', 'localName', 'location', 'mountainName', 'valleyName', 'governorate'] as (keyof EditableRow)[]).map(field => (
+                      <td key={field} className="px-3 py-2 text-amber-900">
+                        {isEditing ? (
+                          <input
+                            type="text"
+                            value={editData[field] as string}
+                            onChange={e => handleFieldChange(bird.id, field, e.target.value)}
+                            className="w-full min-w-[80px] px-2 py-1 border border-amber-300 rounded text-sm bg-white focus:outline-none focus:ring-1 focus:ring-amber-400"
+                          />
+                        ) : (
+                          <span className="block max-w-[150px] truncate" title={bird[field] as string}>
+                            {bird[field] as string || '—'}
+                          </span>
+                        )}
+                      </td>
+                    ))}
+
+                    {/* Locations count */}
+                    <td className="px-3 py-2 text-amber-800 whitespace-nowrap text-center">
+                      {bird.locations?.length || 0}
                     </td>
-                    <td className="px-3 py-3 text-muted-foreground italic">
-                      {isEditing ? (
-                        <input
-                          value={editingRow.data.scientificName}
-                          onChange={(e) =>
-                            setEditingRow((prev) =>
-                              prev ? { ...prev, data: { ...prev.data, scientificName: e.target.value } } : null
-                            )
-                          }
-                          className="w-full px-2 py-1 border border-border rounded bg-background text-foreground text-sm"
-                        />
-                      ) : (
-                        bird.scientificName || '-'
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-muted-foreground">
-                      {isEditing ? (
-                        <input
-                          value={editingRow.data.englishName}
-                          onChange={(e) =>
-                            setEditingRow((prev) =>
-                              prev ? { ...prev, data: { ...prev.data, englishName: e.target.value } } : null
-                            )
-                          }
-                          className="w-full px-2 py-1 border border-border rounded bg-background text-foreground text-sm"
-                        />
-                      ) : (
-                        bird.englishName || '-'
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-muted-foreground max-w-xs">
-                      {isEditing ? (
-                        <textarea
-                          value={editingRow.data.description}
-                          onChange={(e) =>
-                            setEditingRow((prev) =>
-                              prev ? { ...prev, data: { ...prev.data, description: e.target.value } } : null
-                            )
-                          }
-                          rows={2}
-                          className="w-full px-2 py-1 border border-border rounded bg-background text-foreground text-sm resize-none"
-                        />
-                      ) : (
-                        <span className="line-clamp-2">{bird.description || '-'}</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="inline-flex items-center justify-center w-7 h-7 bg-primary/10 text-primary rounded-full text-xs font-bold">
-                        {bird.locations?.length || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="inline-flex items-center justify-center w-7 h-7 bg-secondary/50 text-secondary-foreground rounded-full text-xs font-bold">
-                        {bird.subImages?.length || 0}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      {bird.audioFile ? (
-                        <span className="text-green-600 text-lg">🔊</span>
-                      ) : (
-                        <span className="text-muted-foreground text-lg">🔇</span>
-                      )}
-                    </td>
-                    <td className="px-3 py-3 text-muted-foreground max-w-xs">
-                      {isEditing ? (
-                        <textarea
-                          value={editingRow.data.notes}
-                          onChange={(e) =>
-                            setEditingRow((prev) =>
-                              prev ? { ...prev, data: { ...prev.data, notes: e.target.value } } : null
-                            )
-                          }
-                          rows={2}
-                          className="w-full px-2 py-1 border border-border rounded bg-background text-foreground text-sm resize-none"
-                        />
-                      ) : (
-                        <span className="line-clamp-2">{bird.notes || '-'}</span>
-                      )}
-                    </td>
-                    {(isAdmin || canModify) && (
-                      <td className="px-3 py-3">
-                        <div className="flex items-center gap-1">
+
+                    {/* Admin actions */}
+                    {isAdmin && (
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex gap-1">
                           {isEditing ? (
                             <>
                               <button
-                                onClick={handleSave}
-                                disabled={updateMutation.isPending}
-                                className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 transition-colors disabled:opacity-50"
+                                onClick={() => handleSave(bird)}
+                                disabled={saveBirdMutation.isPending}
+                                className="px-2 py-1 bg-green-600 text-white rounded text-xs hover:bg-green-700 disabled:opacity-50 transition-colors"
                               >
-                                💾 حفظ
+                                {saveBirdMutation.isPending ? '...' : 'حفظ'}
                               </button>
                               <button
-                                onClick={() => setEditingRow(null)}
-                                className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs hover:bg-secondary/80 transition-colors"
+                                onClick={() => handleCancelEdit(bird.id)}
+                                className="px-2 py-1 bg-gray-400 text-white rounded text-xs hover:bg-gray-500 transition-colors"
                               >
                                 إلغاء
                               </button>
@@ -424,17 +316,23 @@ export default function BirdDataTable() {
                           ) : (
                             <>
                               <button
-                                onClick={() => handleEdit(key, bird)}
+                                onClick={() => handleEdit(bird)}
                                 className="px-2 py-1 bg-amber-500 text-white rounded text-xs hover:bg-amber-600 transition-colors"
                               >
-                                ✏️ تعديل
+                                تعديل
                               </button>
                               <button
-                                onClick={() => handleDelete(key)}
-                                disabled={deleteMutation.isPending}
-                                className="px-2 py-1 bg-destructive text-destructive-foreground rounded text-xs hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                                onClick={() => handleEdit(bird)}
+                                className="px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 transition-colors"
                               >
-                                🗑️ حذف
+                                تحرير
+                              </button>
+                              <button
+                                onClick={() => handleDelete(bird)}
+                                disabled={deleteBirdMutation.isPending}
+                                className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 disabled:opacity-50 transition-colors"
+                              >
+                                {deleteBirdMutation.isPending ? '...' : 'حذف'}
                               </button>
                             </>
                           )}
@@ -450,9 +348,9 @@ export default function BirdDataTable() {
       </div>
 
       {/* Summary */}
-      <div className="text-sm text-muted-foreground text-center">
+      <div className="mt-3 text-xs text-amber-600 text-left">
         إجمالي السجلات: {filteredData.length}
-        {searchQuery && ` (من أصل ${allBirdData?.length || 0})`}
+        {searchTerm && ` (من أصل ${birdData.length})`}
       </div>
     </div>
   );
