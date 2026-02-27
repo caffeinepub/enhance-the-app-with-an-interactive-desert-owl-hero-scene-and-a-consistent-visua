@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 121,
+  "projectStateVersion": 127,
   "summary": "Bird distribution tracker app for Al Buraimi Governorate. After multiple failed revert/restore attempts (versions 521-528), user is requesting restoration to version 510, which was an earlier stable version. The app title should be 'مواقع انتشار البوم بمحافظة البريمي'.",
   "architectural_notes": [
     "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)",
@@ -719,6 +719,30 @@
         "REQ-113"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-update-the-computed-zone-column-so-that-any-cell-currently-displaying-the-value-tropical-renders-40-instead-this-change-must-apply-to-both-the-read-only-display-cells-and-the-editable-input-fields-in-inline-edit-mode-do-not-change-any-other-column-definitions-layout-rtl-orientation-horizontal-scrolling-behavior-color-scheme-admin-access-control-logic-data-fetching-logic-font-sizes-action-buttons-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, update the computed 'Zone' (المنطقة) column so that any cell currently displaying the value 'Tropical' renders '40' instead. This change must apply to both the read-only display cells and the editable input fields in inline-edit mode. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-115"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-frontend-src-components-birddatatable-tsx-to-reflect-the-backend-change-that-allows-multiple-location-entries-per-bird-type-ensure-the-table-correctly-displays-all-rows-returned-by-the-backend-including-multiple-rows-for-the-same-species-type-each-with-its-own-location-coordinates-mountain-name-valley-name-governorate-and-notes-the-table-must-not-collapse-or-deduplicate-rows-that-share-the-same-species-name-the-add-form-and-inline-edit-mode-must-remain-functional-for-creating-and-editing-individual-location-entries-do-not-change-any-other-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-admin-access-control-logic-font-sizes-action-buttons-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Update frontend/src/components/BirdDataTable.tsx to reflect the backend change that allows multiple location entries per bird type. Ensure the table correctly displays all rows returned by the backend, including multiple rows for the same species/type — each with its own location, coordinates, mountain name, valley name, governorate, and notes. The table must not collapse or deduplicate rows that share the same species name. The Add form and inline Edit mode must remain functional for creating and editing individual location entries. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling, color scheme, admin access control logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-118"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-update-the-zone-column-so-that-any-cell-displaying-the-value-tropical-renders-40-instead-this-change-must-apply-to-both-the-read-only-display-cells-and-the-editable-input-fields-in-inline-edit-mode-do-not-change-any-other-column-definitions-layout-rtl-orientation-horizontal-scrolling-behavior-color-scheme-admin-access-control-logic-data-fetching-logic-font-sizes-action-buttons-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, update the 'Zone' (المنطقة) column so that any cell displaying the value 'Tropical' renders '40' instead. This change must apply to both the read-only display cells and the editable input fields in inline-edit mode. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-119"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -1076,6 +1100,36 @@
       "id": "AR-63",
       "summary": "Restore the missing 'Northern Hemisphere', 'Latitude (°)', and 'Zone' columns/fields to the bird data table (BirdDataTable.tsx) so that data can sync with the interactive map and gallery. Also restore the main image upload, sub-image upload, and audio upload functionality so that uploaded content appears directly in the photo gallery. Do not change anything else in the app.",
       "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-64",
+      "summary": "In the bird data table, replace the value 'Tropical' under the 'Region Title' field with '40'. Synchronize the data with the interactive map so that all related points are correctly displayed. Update the table structure to allow multiple locations under the same type/category. Do not change any other features, design, or functionality.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-65",
+      "summary": "Rebuild and redeploy the current project state without making any code changes to any file. Ensure the backend (backend/main.mo) compiles and deploys correctly, and all frontend source files are bundled and served without errors. The deployment must restore the app to its last intended state including: the nine-column BirdDataTable with all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) visible and functional for authenticated admin users; the interactive AllLocationsMap with bird filtering and show/hide toggle; the BirdGallery with admin action buttons and image click modal; the HomePage with splash screen, hero section, navigation cards, map upload section, and team table; the HamburgerMenu with all navigation links; and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions).",
+      "reqIds": [
+        "REQ-114"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-67",
+      "summary": "In frontend/src/components/AllLocationsMap.tsx only, ensure that the interactive map correctly displays markers for all bird records whose Zone/Region value is '40' (previously 'Tropical'). The map marker data must be fully synchronized with the updated bird records returned by the backend, so that all location points with the updated zone classification are visible on the map. Do NOT change any other aspect of AllLocationsMap.tsx — bird-name filter dropdown, show/hide toggle, Return to Home button, RTL orientation, styling, and all other existing functionality must remain exactly as they are.",
+      "reqIds": [
+        "REQ-116"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-68",
+      "summary": "Update the backend BirdData type and related functions in backend/main.mo to support multiple location entries per bird record under the same type or category. Specifically, allow a single bird record (identified by species/type) to have multiple associated location entries — each with its own coordinates, mountain name, valley name, governorate, and notes — rather than being limited to a single location per record. Implement this by either converting the location-related fields into an array of location objects within a single BirdData record, or by ensuring the addBirdData() and updateBirdData() functions correctly handle multiple records with the same species name without overwriting existing ones. Preserve all existing stable variables (birdData, nextId, users, teams, blobStorage, mapReferenceId, access control settings) and ensure migration.mo is updated if the BirdData type changes, so no existing data is lost.",
+      "reqIds": [
+        "REQ-117"
+      ],
       "status": "pending"
     }
   ],

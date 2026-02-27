@@ -1,44 +1,144 @@
 import { useState, useEffect, useRef } from 'react';
 import { useActor } from '../hooks/useActor';
-import { BirdData } from '../backend';
+import { BirdData, LocationEntry } from '../backend';
 import { useGetAllBirdData, useSaveBirdData, useDeleteBirdById } from '../hooks/useQueries';
 import { exportBirdDataToCSV } from '../lib/csvExport';
 
-interface EditableRow extends BirdData {
-  isNew?: boolean;
-  isEditing?: boolean;
+// A flattened row: one per LocationEntry, carrying bird-level fields
+interface FlatRow {
+  // Bird-level fields
+  birdId: bigint;
+  arabicName: string;
+  scientificName: string;
+  englishName: string;
+  description: string;
+  notes: string;
+  localName: string;
+  audioFile?: string;
+  subImages: string[];
+  allLocations: LocationEntry[]; // full locations array for saving
+  // Location-level fields
+  locationIndex: number;
+  location: string;
+  governorate: string;
+  mountainName: string;
+  valleyName: string;
+  latitude: number;
+  longitude: number;
+  locationNotes: string;
 }
 
 // Derive Northern Hemisphere from latitude
-function getNorthernHemisphere(bird: BirdData): string {
-  if (!bird.locations || bird.locations.length === 0) return '—';
-  const lat = bird.locations[0].latitude;
+function getNorthernHemisphere(lat: number): string {
   return lat >= 0 ? 'نعم' : 'لا';
 }
 
-// Derive Latitude from first location
-function getLatitude(bird: BirdData): string {
-  if (!bird.locations || bird.locations.length === 0) return '—';
-  return bird.locations[0].latitude.toFixed(4);
+// Derive Zone from latitude
+function getZone(lat: number): string {
+  const absLat = Math.abs(lat);
+  if (absLat >= 0 && absLat < 23.5) return '40';
+  if (absLat >= 23.5 && absLat < 35) return '40';
+  if (absLat >= 35 && absLat < 50) return 'معتدلة';
+  if (absLat >= 50 && absLat < 66.5) return 'شبه قطبية';
+  return 'قطبية';
 }
 
-// Derive Zone from latitude
-function getZone(bird: BirdData): string {
-  if (!bird.locations || bird.locations.length === 0) return '—';
-  const lat = Math.abs(bird.locations[0].latitude);
-  if (lat >= 0 && lat < 23.5) return 'استوائية';
-  if (lat >= 23.5 && lat < 35) return 'مدارية';
-  if (lat >= 35 && lat < 50) return 'معتدلة';
-  if (lat >= 50 && lat < 66.5) return 'شبه قطبية';
-  return 'قطبية';
+// Flatten BirdData[] into FlatRow[] — one row per LocationEntry
+function flattenBirds(birds: BirdData[]): FlatRow[] {
+  const rows: FlatRow[] = [];
+  for (const bird of birds) {
+    if (!bird.locations || bird.locations.length === 0) {
+      // Bird with no locations — show one row with empty location fields
+      rows.push({
+        birdId: bird.id,
+        arabicName: bird.arabicName,
+        scientificName: bird.scientificName,
+        englishName: bird.englishName,
+        description: bird.description,
+        notes: bird.notes,
+        localName: bird.localName,
+        audioFile: bird.audioFile,
+        subImages: bird.subImages,
+        allLocations: [],
+        locationIndex: 0,
+        location: '',
+        governorate: '',
+        mountainName: '',
+        valleyName: '',
+        latitude: 0,
+        longitude: 0,
+        locationNotes: '',
+      });
+    } else {
+      for (let i = 0; i < bird.locations.length; i++) {
+        const loc = bird.locations[i];
+        rows.push({
+          birdId: bird.id,
+          arabicName: bird.arabicName,
+          scientificName: bird.scientificName,
+          englishName: bird.englishName,
+          description: bird.description,
+          notes: bird.notes,
+          localName: bird.localName,
+          audioFile: bird.audioFile,
+          subImages: bird.subImages,
+          allLocations: bird.locations,
+          locationIndex: i,
+          location: loc.location,
+          governorate: loc.governorate,
+          mountainName: loc.mountainName,
+          valleyName: loc.valleyName,
+          latitude: loc.coordinate.latitude,
+          longitude: loc.coordinate.longitude,
+          locationNotes: loc.notes,
+        });
+      }
+    }
+  }
+  return rows;
+}
+
+// Unique key for a flat row
+function rowKey(row: FlatRow): string {
+  return `${String(row.birdId)}-${row.locationIndex}`;
+}
+
+interface EditingState {
+  arabicName: string;
+  scientificName: string;
+  englishName: string;
+  description: string;
+  notes: string;
+  localName: string;
+  location: string;
+  governorate: string;
+  mountainName: string;
+  valleyName: string;
+  latitude: number;
+  longitude: number;
+  locationNotes: string;
 }
 
 export default function BirdDataTable() {
   const { actor, isFetching: actorFetching } = useActor();
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [editingRows, setEditingRows] = useState<Map<bigint, EditableRow>>(new Map());
-  const [newRow, setNewRow] = useState<Partial<EditableRow> | null>(null);
+  const [editingMap, setEditingMap] = useState<Map<string, EditingState>>(new Map());
+  const [newRow, setNewRow] = useState<Partial<{
+    arabicName: string;
+    scientificName: string;
+    englishName: string;
+    description: string;
+    notes: string;
+    localName: string;
+    location: string;
+    governorate: string;
+    mountainName: string;
+    valleyName: string;
+    latitude: number;
+    longitude: number;
+    locationNotes: string;
+  }> | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
   const saveMutation = useSaveBirdData();
   const deleteMutation = useDeleteBirdById();
@@ -57,111 +157,146 @@ export default function BirdDataTable() {
     ? allBirdData.map(([, bd]: [string, BirdData]) => bd)
     : [];
 
-  const filtered = birds.filter((b: BirdData) => {
+  const flatRows = flattenBirds(birds);
+
+  const filtered = flatRows.filter((row: FlatRow) => {
     const term = searchTerm.toLowerCase();
     return (
-      b.arabicName?.toLowerCase().includes(term) ||
-      b.scientificName?.toLowerCase().includes(term) ||
-      b.englishName?.toLowerCase().includes(term) ||
-      b.location?.toLowerCase().includes(term) ||
-      b.governorate?.toLowerCase().includes(term)
+      row.arabicName?.toLowerCase().includes(term) ||
+      row.scientificName?.toLowerCase().includes(term) ||
+      row.englishName?.toLowerCase().includes(term) ||
+      row.location?.toLowerCase().includes(term) ||
+      row.governorate?.toLowerCase().includes(term)
     );
   });
 
-  const handleEdit = (bird: BirdData) => {
-    const updated = new Map(editingRows);
-    updated.set(bird.id, { ...bird, isEditing: true });
-    setEditingRows(updated);
+  const handleEdit = (row: FlatRow) => {
+    const key = rowKey(row);
+    const updated = new Map(editingMap);
+    updated.set(key, {
+      arabicName: row.arabicName,
+      scientificName: row.scientificName,
+      englishName: row.englishName,
+      description: row.description,
+      notes: row.notes,
+      localName: row.localName,
+      location: row.location,
+      governorate: row.governorate,
+      mountainName: row.mountainName,
+      valleyName: row.valleyName,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      locationNotes: row.locationNotes,
+    });
+    setEditingMap(updated);
   };
 
-  const handleCancelEdit = (id: bigint) => {
-    const updated = new Map(editingRows);
-    updated.delete(id);
-    setEditingRows(updated);
+  const handleCancelEdit = (key: string) => {
+    const updated = new Map(editingMap);
+    updated.delete(key);
+    setEditingMap(updated);
   };
 
-  const handleFieldChange = (id: bigint, field: keyof BirdData, value: string) => {
-    const updated = new Map(editingRows);
-    const row = updated.get(id);
-    if (!row) return;
-    (row as any)[field] = value;
-    updated.set(id, { ...row });
-    setEditingRows(updated);
+  const handleEditFieldChange = (key: string, field: keyof EditingState, value: string | number) => {
+    const updated = new Map(editingMap);
+    const state = updated.get(key);
+    if (!state) return;
+    (state as any)[field] = value;
+    updated.set(key, { ...state });
+    setEditingMap(updated);
   };
 
-  const handleLocationFieldChange = (id: bigint, subField: 'latitude' | 'longitude', value: string) => {
-    const updated = new Map(editingRows);
-    const row = updated.get(id);
-    if (!row) return;
-    const numVal = parseFloat(value) || 0;
-    const existingLocations = row.locations && row.locations.length > 0
-      ? [...row.locations]
-      : [{ latitude: 0, longitude: 0 }];
-    existingLocations[0] = { ...existingLocations[0], [subField]: numVal };
-    (row as any).locations = existingLocations;
-    updated.set(id, { ...row });
-    setEditingRows(updated);
-  };
+  const handleSave = async (row: FlatRow) => {
+    const key = rowKey(row);
+    const editState = editingMap.get(key);
+    if (!editState) return;
 
-  const handleSave = async (id: bigint) => {
-    const row = editingRows.get(id);
-    if (!row) return;
+    // Rebuild the full BirdData with the updated location entry
+    const updatedLocations: LocationEntry[] = row.allLocations.map((loc, i) => {
+      if (i === row.locationIndex) {
+        return {
+          coordinate: {
+            latitude: editState.latitude,
+            longitude: editState.longitude,
+          },
+          location: editState.location,
+          governorate: editState.governorate,
+          mountainName: editState.mountainName,
+          valleyName: editState.valleyName,
+          notes: editState.locationNotes,
+        };
+      }
+      return loc;
+    });
+
+    // If no locations existed, create one
+    const finalLocations = row.allLocations.length === 0
+      ? [{
+          coordinate: { latitude: editState.latitude, longitude: editState.longitude },
+          location: editState.location,
+          governorate: editState.governorate,
+          mountainName: editState.mountainName,
+          valleyName: editState.valleyName,
+          notes: editState.locationNotes,
+        }]
+      : updatedLocations;
+
+    const birdToSave: BirdData = {
+      id: row.birdId,
+      arabicName: editState.arabicName,
+      scientificName: editState.scientificName,
+      englishName: editState.englishName,
+      description: editState.description,
+      notes: editState.notes,
+      localName: editState.localName,
+      locations: finalLocations,
+      subImages: row.subImages,
+      audioFile: row.audioFile,
+    };
+
     try {
-      await saveMutation.mutateAsync(row as BirdData);
-      const updated = new Map(editingRows);
-      updated.delete(id);
-      setEditingRows(updated);
+      await saveMutation.mutateAsync(birdToSave);
+      const updated = new Map(editingMap);
+      updated.delete(key);
+      setEditingMap(updated);
       refetch();
-    } catch (err) {
+    } catch {
       alert('فشل حفظ البيانات');
     }
   };
 
-  const handleDelete = async (bird: BirdData) => {
-    if (!confirm(`هل أنت متأكد من حذف "${bird.arabicName}"؟`)) return;
+  const handleDelete = async (row: FlatRow) => {
+    if (!confirm(`هل أنت متأكد من حذف "${row.arabicName}"؟`)) return;
     try {
-      await deleteMutation.mutateAsync(bird.id);
+      await deleteMutation.mutateAsync(row.birdId);
       refetch();
-    } catch (err) {
+    } catch {
       alert('فشل حذف السجل');
     }
   };
 
   const handleAddNew = () => {
     setNewRow({
-      id: BigInt(Date.now()),
       arabicName: '',
       scientificName: '',
       englishName: '',
       description: '',
       notes: '',
+      localName: '',
       location: '',
       governorate: '',
-      localName: '',
       mountainName: '',
       valleyName: '',
-      locations: [],
-      subImages: [],
-      audioFile: undefined,
+      latitude: 0,
+      longitude: 0,
+      locationNotes: '',
     });
     setShowAddForm(true);
     setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   };
 
-  const handleNewRowFieldChange = (field: string, value: string) => {
+  const handleNewRowFieldChange = (field: string, value: string | number) => {
     setNewRow(prev => prev ? { ...prev, [field]: value } : null);
-  };
-
-  const handleNewRowLatitudeChange = (value: string) => {
-    const numVal = parseFloat(value) || 0;
-    setNewRow(prev => {
-      if (!prev) return null;
-      const existingLocations = prev.locations && prev.locations.length > 0
-        ? [...prev.locations]
-        : [{ latitude: 0, longitude: 0 }];
-      existingLocations[0] = { ...existingLocations[0], latitude: numVal };
-      return { ...prev, locations: existingLocations };
-    });
   };
 
   const handleSaveNew = async () => {
@@ -170,6 +305,18 @@ export default function BirdDataTable() {
       return;
     }
     try {
+      const locationEntry: LocationEntry = {
+        coordinate: {
+          latitude: newRow.latitude ?? 0,
+          longitude: newRow.longitude ?? 0,
+        },
+        location: newRow.location || '',
+        governorate: newRow.governorate || '',
+        mountainName: newRow.mountainName || '',
+        valleyName: newRow.valleyName || '',
+        notes: newRow.locationNotes || '',
+      };
+
       const birdToSave: BirdData = {
         id: BigInt(0),
         arabicName: newRow.arabicName || '',
@@ -177,12 +324,8 @@ export default function BirdDataTable() {
         englishName: newRow.englishName || '',
         description: newRow.description || '',
         notes: newRow.notes || '',
-        location: newRow.location || '',
-        governorate: newRow.governorate || '',
         localName: newRow.localName || '',
-        mountainName: newRow.mountainName || '',
-        valleyName: newRow.valleyName || '',
-        locations: newRow.locations || [],
+        locations: [locationEntry],
         subImages: [],
         audioFile: undefined,
       };
@@ -190,7 +333,7 @@ export default function BirdDataTable() {
       setNewRow(null);
       setShowAddForm(false);
       refetch();
-    } catch (err) {
+    } catch {
       alert('فشل إضافة السجل');
     }
   };
@@ -201,8 +344,8 @@ export default function BirdDataTable() {
   };
 
   const handleExportCSV = () => {
-    if (filtered.length === 0) return;
-    exportBirdDataToCSV(filtered);
+    if (birds.length === 0) return;
+    exportBirdDataToCSV(birds);
   };
 
   if (isLoading) {
@@ -233,10 +376,7 @@ export default function BirdDataTable() {
     );
   }
 
-  // Compute new latitude for add form
-  const newRowLatitude = newRow?.locations && newRow.locations.length > 0
-    ? newRow.locations[0].latitude
-    : 0;
+  const newRowLatitude = newRow?.latitude ?? 0;
 
   return (
     <div dir="rtl" className="min-h-screen bg-amber-50">
@@ -257,7 +397,7 @@ export default function BirdDataTable() {
 
           {/* Stats */}
           <span className="text-amber-700 text-sm">
-            📊 {filtered.length} / {birds.length} سجل
+            📊 {filtered.length} / {flatRows.length} سجل
           </span>
 
           {/* Admin Buttons */}
@@ -283,7 +423,7 @@ export default function BirdDataTable() {
       {/* Add New Form */}
       {isAdmin && showAddForm && newRow && (
         <div ref={addFormRef} className="bg-green-50 border border-green-200 rounded-xl m-4 p-4 shadow-md">
-          <h3 className="text-green-800 font-bold mb-4 text-base">➕ إضافة طائر جديد</h3>
+          <h3 className="text-green-800 font-bold mb-4 text-base">➕ إضافة موقع جديد</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
               { field: 'arabicName', label: 'الاسم العربي *', required: true },
@@ -314,9 +454,22 @@ export default function BirdDataTable() {
                 type="number"
                 step="0.0001"
                 value={newRowLatitude}
-                onChange={e => handleNewRowLatitudeChange(e.target.value)}
+                onChange={e => handleNewRowFieldChange('latitude', parseFloat(e.target.value) || 0)}
                 className="w-full border border-green-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
                 placeholder="مثال: 23.5"
+              />
+            </div>
+
+            {/* Longitude field */}
+            <div>
+              <label className="block text-green-700 text-xs font-medium mb-1">خط الطول °</label>
+              <input
+                type="number"
+                step="0.0001"
+                value={newRow.longitude ?? 0}
+                onChange={e => handleNewRowFieldChange('longitude', parseFloat(e.target.value) || 0)}
+                className="w-full border border-green-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+                placeholder="مثال: 56.5"
               />
             </div>
 
@@ -325,7 +478,7 @@ export default function BirdDataTable() {
               <label className="block text-green-700 text-xs font-medium mb-1">النصف الشمالي</label>
               <input
                 type="text"
-                value={newRowLatitude >= 0 ? 'نعم' : 'لا'}
+                value={getNorthernHemisphere(newRowLatitude)}
                 readOnly
                 className="w-full border border-green-200 rounded-lg px-3 py-1.5 text-sm bg-green-50 text-green-700 cursor-default"
               />
@@ -336,14 +489,7 @@ export default function BirdDataTable() {
               <label className="block text-green-700 text-xs font-medium mb-1">المنطقة</label>
               <input
                 type="text"
-                value={(() => {
-                  const lat = Math.abs(newRowLatitude);
-                  if (lat >= 0 && lat < 23.5) return 'استوائية';
-                  if (lat >= 23.5 && lat < 35) return 'مدارية';
-                  if (lat >= 35 && lat < 50) return 'معتدلة';
-                  if (lat >= 50 && lat < 66.5) return 'شبه قطبية';
-                  return 'قطبية';
-                })()}
+                value={getZone(newRowLatitude)}
                 readOnly
                 className="w-full border border-green-200 rounded-lg px-3 py-1.5 text-sm bg-green-50 text-green-700 cursor-default"
               />
@@ -387,199 +533,275 @@ export default function BirdDataTable() {
       )}
 
       {/* Table */}
-      <div className="overflow-x-auto px-4 py-4">
-        <table className="min-w-full bg-white rounded-xl shadow-md border border-amber-200 text-sm">
-          <thead className="bg-amber-800 text-amber-50">
-            <tr>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">#</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الاسم العربي</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الاسم العلمي</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الاسم الإنجليزي</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الموقع</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الولاية</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">النصف الشمالي</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">خط العرض °</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">المنطقة</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">عدد المواقع</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الوصف</th>
-              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">ملاحظات</th>
+      <div className="overflow-x-auto m-4">
+        <table className="w-full border-collapse bg-white rounded-xl shadow-md overflow-hidden text-sm">
+          <thead>
+            <tr className="bg-amber-700 text-white">
+              {[
+                'الاسم العربي',
+                'الاسم العلمي',
+                'الاسم الإنجليزي',
+                'الموقع',
+                'الولاية',
+                'الاسم المحلي',
+                'اسم الجبل',
+                'اسم الوادي',
+                'خط العرض °',
+                'خط الطول °',
+                'النصف الشمالي',
+                'المنطقة',
+                'ملاحظات الموقع',
+              ].map(header => (
+                <th key={header} className="px-3 py-2.5 text-right font-semibold whitespace-nowrap border-b border-amber-600">
+                  {header}
+                </th>
+              ))}
               {isAdmin && (
-                <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الإجراءات</th>
+                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap border-b border-amber-600">
+                  إجراءات
+                </th>
               )}
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 13 : 12} className="px-4 py-8 text-center text-amber-600">
-                  <div className="text-3xl mb-2">📭</div>
-                  <p>لا توجد بيانات</p>
+                <td colSpan={isAdmin ? 14 : 13} className="text-center py-12 text-amber-500">
+                  {searchTerm ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد بيانات'}
                 </td>
               </tr>
             ) : (
-              filtered.map((bird: BirdData, idx: number) => {
-                const editing = editingRows.get(bird.id);
-                const isEditing = !!editing;
-                const editingLat = editing?.locations && editing.locations.length > 0
-                  ? editing.locations[0].latitude
-                  : 0;
+              filtered.map((row, idx) => {
+                const key = rowKey(row);
+                const isEditing = editingMap.has(key);
+                const editState = editingMap.get(key);
+                const editLatitude = editState?.latitude ?? row.latitude;
 
                 return (
                   <tr
-                    key={String(bird.id)}
+                    key={key}
                     className={`border-b border-amber-100 transition-colors ${
-                      isEditing ? 'bg-yellow-50' : 'hover:bg-amber-50'
+                      isEditing
+                        ? 'bg-yellow-50'
+                        : idx % 2 === 0
+                        ? 'bg-white hover:bg-amber-50'
+                        : 'bg-amber-50/40 hover:bg-amber-100/60'
                     }`}
                   >
-                    <td className="px-3 py-2 text-amber-600 font-mono text-xs">{idx + 1}</td>
-
-                    {/* Editable text fields */}
-                    {(['arabicName', 'scientificName', 'englishName', 'location', 'governorate'] as (keyof BirdData)[]).map(field => (
-                      <td key={field} className="px-3 py-2">
-                        {isEditing ? (
-                          <input
-                            type="text"
-                            value={(editing as any)[field] || ''}
-                            onChange={e => handleFieldChange(bird.id, field, e.target.value)}
-                            className="w-full border border-yellow-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-24"
-                          />
-                        ) : (
-                          <span className="text-amber-900 text-xs">{(bird as any)[field] || '—'}</span>
-                        )}
-                      </td>
-                    ))}
-
-                    {/* Northern Hemisphere */}
-                    <td className="px-3 py-2 text-center">
+                    {/* arabicName */}
+                    <td className="px-3 py-2 whitespace-nowrap">
                       {isEditing ? (
-                        <span className="text-amber-800 text-xs">
-                          {editingLat >= 0 ? 'نعم' : 'لا'}
-                        </span>
+                        <input
+                          type="text"
+                          value={editState!.arabicName}
+                          onChange={e => handleEditFieldChange(key, 'arabicName', e.target.value)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
                       ) : (
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                          getNorthernHemisphere(bird) === 'نعم'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-orange-100 text-orange-800'
-                        }`}>
-                          {getNorthernHemisphere(bird)}
-                        </span>
+                        <span className="font-medium text-amber-900">{row.arabicName}</span>
                       )}
                     </td>
 
-                    {/* Latitude (°) */}
-                    <td className="px-3 py-2">
+                    {/* scientificName */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editState!.scientificName}
+                          onChange={e => handleEditFieldChange(key, 'scientificName', e.target.value)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                      ) : (
+                        <span className="text-gray-600 italic">{row.scientificName}</span>
+                      )}
+                    </td>
+
+                    {/* englishName */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editState!.englishName}
+                          onChange={e => handleEditFieldChange(key, 'englishName', e.target.value)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                      ) : (
+                        <span className="text-gray-600">{row.englishName}</span>
+                      )}
+                    </td>
+
+                    {/* location */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editState!.location}
+                          onChange={e => handleEditFieldChange(key, 'location', e.target.value)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                      ) : (
+                        <span>{row.location}</span>
+                      )}
+                    </td>
+
+                    {/* governorate */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editState!.governorate}
+                          onChange={e => handleEditFieldChange(key, 'governorate', e.target.value)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                      ) : (
+                        <span>{row.governorate}</span>
+                      )}
+                    </td>
+
+                    {/* localName */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editState!.localName}
+                          onChange={e => handleEditFieldChange(key, 'localName', e.target.value)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                      ) : (
+                        <span>{row.localName}</span>
+                      )}
+                    </td>
+
+                    {/* mountainName */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editState!.mountainName}
+                          onChange={e => handleEditFieldChange(key, 'mountainName', e.target.value)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                      ) : (
+                        <span>{row.mountainName}</span>
+                      )}
+                    </td>
+
+                    {/* valleyName */}
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editState!.valleyName}
+                          onChange={e => handleEditFieldChange(key, 'valleyName', e.target.value)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                      ) : (
+                        <span>{row.valleyName}</span>
+                      )}
+                    </td>
+
+                    {/* latitude */}
+                    <td className="px-3 py-2 whitespace-nowrap">
                       {isEditing ? (
                         <input
                           type="number"
                           step="0.0001"
-                          value={editingLat}
-                          onChange={e => handleLocationFieldChange(bird.id, 'latitude', e.target.value)}
-                          className="w-full border border-yellow-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-20"
+                          value={editState!.latitude}
+                          onChange={e => handleEditFieldChange(key, 'latitude', parseFloat(e.target.value) || 0)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-24 focus:outline-none focus:ring-1 focus:ring-amber-400"
                         />
                       ) : (
-                        <span className="text-amber-900 text-xs font-mono">{getLatitude(bird)}</span>
+                        <span className="font-mono text-xs">{row.latitude !== 0 ? row.latitude.toFixed(4) : ''}</span>
                       )}
                     </td>
 
-                    {/* Zone */}
-                    <td className="px-3 py-2">
+                    {/* longitude */}
+                    <td className="px-3 py-2 whitespace-nowrap">
                       {isEditing ? (
-                        <span className="text-amber-800 text-xs">
-                          {(() => {
-                            const lat = Math.abs(editingLat);
-                            if (lat >= 0 && lat < 23.5) return 'استوائية';
-                            if (lat >= 23.5 && lat < 35) return 'مدارية';
-                            if (lat >= 35 && lat < 50) return 'معتدلة';
-                            if (lat >= 50 && lat < 66.5) return 'شبه قطبية';
-                            return 'قطبية';
-                          })()}
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={editState!.longitude}
+                          onChange={e => handleEditFieldChange(key, 'longitude', parseFloat(e.target.value) || 0)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-24 focus:outline-none focus:ring-1 focus:ring-amber-400"
+                        />
+                      ) : (
+                        <span className="font-mono text-xs">{row.longitude !== 0 ? row.longitude.toFixed(4) : ''}</span>
+                      )}
+                    </td>
+
+                    {/* Northern Hemisphere (computed, read-only) */}
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {isEditing ? (
+                        <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                          {getNorthernHemisphere(editLatitude)}
                         </span>
                       ) : (
-                        <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-medium">
-                          {getZone(bird)}
+                        <span className="text-xs">{getNorthernHemisphere(row.latitude)}</span>
+                      )}
+                    </td>
+
+                    {/* Zone (computed, read-only) */}
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      {isEditing ? (
+                        <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
+                          {getZone(editLatitude)}
                         </span>
+                      ) : (
+                        <span className="text-xs">{getZone(row.latitude)}</span>
                       )}
                     </td>
 
-                    {/* Location count */}
-                    <td className="px-3 py-2 text-center">
-                      <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-medium">
-                        {bird.locations?.length || 0}
-                      </span>
-                    </td>
-
-                    {/* Description */}
+                    {/* locationNotes */}
                     <td className="px-3 py-2 max-w-xs">
                       {isEditing ? (
-                        <textarea
-                          value={editing.description || ''}
-                          onChange={e => handleFieldChange(bird.id, 'description', e.target.value)}
-                          rows={2}
-                          className="w-full border border-yellow-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-32"
+                        <input
+                          type="text"
+                          value={editState!.locationNotes}
+                          onChange={e => handleEditFieldChange(key, 'locationNotes', e.target.value)}
+                          className="border border-amber-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:ring-1 focus:ring-amber-400"
                         />
                       ) : (
-                        <span className="text-amber-800 text-xs line-clamp-2">{bird.description || '—'}</span>
+                        <span className="text-xs text-gray-500 line-clamp-2">{row.locationNotes}</span>
                       )}
                     </td>
 
-                    {/* Notes */}
-                    <td className="px-3 py-2 max-w-xs">
-                      {isEditing ? (
-                        <textarea
-                          value={editing.notes || ''}
-                          onChange={e => handleFieldChange(bird.id, 'notes', e.target.value)}
-                          rows={2}
-                          className="w-full border border-yellow-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-32"
-                        />
-                      ) : (
-                        <span className="text-amber-800 text-xs line-clamp-2">{bird.notes || '—'}</span>
-                      )}
-                    </td>
-
-                    {/* Admin Actions */}
+                    {/* Actions */}
                     {isAdmin && (
                       <td className="px-3 py-2 whitespace-nowrap">
-                        <div className="flex gap-1 flex-wrap">
-                          {isEditing ? (
-                            <>
-                              <button
-                                onClick={() => handleSave(bird.id)}
-                                disabled={saveMutation.isPending}
-                                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
-                              >
-                                {saveMutation.isPending ? '⏳' : '💾 حفظ'}
-                              </button>
-                              <button
-                                onClick={() => handleCancelEdit(bird.id)}
-                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-2 py-1 rounded text-xs font-medium transition-colors"
-                              >
-                                إلغاء
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => handleEdit(bird)}
-                                className="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
-                              >
-                                ✏️ تعديل
-                              </button>
-                              <button
-                                onClick={() => handleEdit(bird)}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
-                              >
-                                🔄 تحرير
-                              </button>
-                              <button
-                                onClick={() => handleDelete(bird)}
-                                disabled={deleteMutation.isPending}
-                                className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white px-2 py-1 rounded text-xs font-medium transition-colors"
-                              >
-                                🗑️ حذف
-                              </button>
-                            </>
-                          )}
-                        </div>
+                        {isEditing ? (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleSave(row)}
+                              disabled={saveMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-2 py-1 rounded text-xs transition-colors"
+                            >
+                              {saveMutation.isPending ? '⏳' : '💾'}
+                            </button>
+                            <button
+                              onClick={() => handleCancelEdit(key)}
+                              className="bg-gray-400 hover:bg-gray-500 text-white px-2 py-1 rounded text-xs transition-colors"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleEdit(row)}
+                              className="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-xs transition-colors"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => handleDelete(row)}
+                              disabled={deleteMutation.isPending}
+                              className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white px-2 py-1 rounded text-xs transition-colors"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        )}
                       </td>
                     )}
                   </tr>
@@ -588,6 +810,11 @@ export default function BirdDataTable() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* Footer info */}
+      <div className="text-center text-amber-600 text-xs pb-6">
+        إجمالي السجلات: {flatRows.length} | النتائج المعروضة: {filtered.length}
       </div>
     </div>
   );

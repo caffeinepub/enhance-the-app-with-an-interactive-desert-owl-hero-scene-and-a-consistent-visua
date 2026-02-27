@@ -16,19 +16,23 @@ export interface BirdData {
   'localName' : string,
   'description' : string,
   'audioFile' : [] | [string],
-  'valleyName' : string,
   'arabicName' : string,
-  'mountainName' : string,
   'englishName' : string,
   'notes' : string,
   'scientificName' : string,
-  'locations' : Array<Coordinate>,
-  'governorate' : string,
-  'location' : string,
+  'locations' : Array<LocationEntry>,
 }
 export interface Coordinate { 'latitude' : number, 'longitude' : number }
 export interface FileReference { 'hash' : string, 'path' : string }
 export interface LocationData { 'birdName' : string, 'coordinate' : Coordinate }
+export interface LocationEntry {
+  'valleyName' : string,
+  'mountainName' : string,
+  'notes' : string,
+  'governorate' : string,
+  'coordinate' : Coordinate,
+  'location' : string,
+}
 export interface TeamGroup {
   'members' : Array<string>,
   'projectManagers' : Array<string>,
@@ -75,7 +79,10 @@ export interface _SERVICE {
   >,
   '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
   'addAudioFile' : ActorMethod<[string, string], string>,
-  'addBirdData' : ActorMethod<[string, number, number], undefined>,
+  'addBirdData' : ActorMethod<
+    [string, number, number, string, string, string, string, string],
+    undefined
+  >,
   'addBirdWithDetails' : ActorMethod<
     [
       string,
@@ -85,6 +92,10 @@ export interface _SERVICE {
       string,
       number,
       number,
+      string,
+      string,
+      string,
+      string,
       [] | [string],
       Array<string>,
     ],
@@ -99,6 +110,10 @@ export interface _SERVICE {
       string,
       number,
       number,
+      string,
+      string,
+      string,
+      string,
       [] | [string],
       Array<string>,
     ],
@@ -132,7 +147,7 @@ export interface _SERVICE {
   'getAudioFile' : ActorMethod<[string], [] | [string]>,
   'getBackupMapReference' : ActorMethod<[], [] | [string]>,
   'getBirdDetails' : ActorMethod<[string], [] | [BirdData]>,
-  'getBirdLocations' : ActorMethod<[string], [] | [Array<Coordinate>]>,
+  'getBirdLocations' : ActorMethod<[string], [] | [Array<LocationEntry>]>,
   'getBirdNames' : ActorMethod<[], Array<string>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,

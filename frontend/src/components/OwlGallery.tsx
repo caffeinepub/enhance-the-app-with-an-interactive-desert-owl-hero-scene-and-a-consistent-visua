@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Play, Pause, Volume2, Loader2 } from 'lucide-react';
-import { useGetAudioFile, useAddAudioFile } from '../hooks/useQueries';
+import { useGetAudioFile } from '../hooks/useQueries';
 import { useFileUrl } from '../blob-storage/FileStorage';
 
 interface OwlGalleryProps {

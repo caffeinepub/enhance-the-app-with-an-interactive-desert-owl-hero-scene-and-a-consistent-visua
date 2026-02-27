@@ -1,61 +1,39 @@
 {
   "kind": "build_request",
-  "title": "Restore missing columns and upload functionality in BirdDataTable",
+  "title": "Replace 'Tropical' zone value with '40' in BirdDataTable",
   "projectName": "Al Buraimi Owl Atlas",
-  "priority": "high",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-112",
-      "text": "In frontend/src/components/BirdDataTable.tsx only, restore the missing 'Northern Hemisphere' (النصف الشمالي), 'Latitude (°)' (خط العرض °), and 'Zone' (المنطقة) column headers and their corresponding data cells to the bird data table. These columns must appear in the correct position within the existing table structure, display the corresponding field values from each bird record, and be included as editable input fields in both the Add new row form and the inline Edit mode for each existing row. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+      "id": "REQ-119",
+      "text": "In frontend/src/components/BirdDataTable.tsx only, update the 'Zone' (المنطقة) column so that any cell displaying the value 'Tropical' renders '40' instead. This change must apply to both the read-only display cells and the editable input fields in inline-edit mode. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-1"
         ],
         "quotes": [
-          "جدول بيانات الطيور لا يوجد عنوان Northern Hemisphere و Latitude (°) و Zone لتمكين البيانات من مزامنة الخريطة التفاعلية و معرض الصور"
+          "استبد في جدول البيانات المنطقة استوائية الى 40 بدون ان تغير اي شيء اخر في الجدول"
         ]
       },
       "acceptanceCriteria": [
-        "The bird data table displays 'Northern Hemisphere' (النصف الشمالي), 'Latitude (°)' (خط العرض °), and 'Zone' (المنطقة) column headers",
-        "Each data row renders the corresponding field values for these three columns",
-        "The Add new row form includes input fields for Northern Hemisphere, Latitude (°), and Zone",
-        "The inline Edit mode for each row includes editable input fields for Northern Hemisphere, Latitude (°), and Zone",
-        "All existing columns, buttons, layout, RTL orientation, and functionality are unchanged",
-        "No other file is modified"
-      ]
-    },
-    {
-      "id": "REQ-113",
-      "text": "In frontend/src/components/BirdGallery.tsx only, restore the main image upload, sub-image upload, and audio upload functionality so that images and audio uploaded through the gallery admin controls are immediately reflected in the photo gallery cards without requiring a separate navigation step. Specifically: (1) The 'إضافة' (Add) button's form/modal must correctly upload the main image and sub-images as blobs to the backend, store the resulting blob IDs in the bird record's images array, and refresh the gallery so the new card with its images is immediately visible. (2) The 'تحرير' (Update/Edit) button's editable state must correctly upload replacement images and persist them to the bird record. (3) The 'إضافة الصوت' (Add Audio) button must upload the audio file as a blob, associate the blob ID with the bird record's audio field, and the audio must be immediately accessible from the gallery card. Do NOT change any other aspect of BirdGallery.tsx — existing search, card layout, RTL orientation, data-fetching logic, image-click modal, admin guard logic, or any other admin buttons must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-1"
-        ],
-        "quotes": [
-          "لا رفع الصور الرءيسية و الفرعية و رفع الصوت لتظهر مباشرة الى معرض الصور"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Uploading a main image and sub-images via the Add form causes the new bird card with those images to appear immediately in the gallery after save",
-        "Uploading replacement images via the Update/Edit (تحرير) action persists the new images to the bird record and they are visible on the card",
-        "Uploading an audio file via the Add Audio (إضافة الصوت) button associates the audio blob ID with the bird record and the audio is playable from the gallery card",
-        "All existing gallery functionality (search, card layout, image-click modal, admin buttons) is unchanged",
-        "No other file is modified"
+        "Any cell in the 'Zone' (المنطقة) column that previously displayed 'Tropical' now displays '40'.",
+        "The substitution applies to read-only display cells in normal table view.",
+        "The substitution applies to the editable input fields when a row is in inline-edit mode.",
+        "No other column, row, styling, layout, or functionality of BirdDataTable.tsx is changed.",
+        "No other file, component, page, route, or backend file is modified."
       ]
     }
   ],
   "constraints": [
-    "Do not change any other aspect of BirdDataTable.tsx beyond adding/restoring the missing columns",
-    "Do not change any other aspect of BirdGallery.tsx beyond restoring the upload functionality",
-    "Do not modify any other file, component, page, route, or backend file"
+    "Only frontend/src/components/BirdDataTable.tsx may be modified.",
+    "No other file, component, page, route, or backend file may be changed.",
+    "All existing column definitions, layout, RTL orientation, horizontal scrolling, color scheme, admin access control logic, data-fetching logic, font sizes, and action buttons must remain exactly as they are."
   ],
   "nonGoals": [
-    "Changing the backend BirdData type or any backend file",
-    "Modifying any other frontend component, page, or route",
-    "Redesigning or restyling any part of the application",
-    "Adding new features not mentioned in this request"
+    "Changing the backend data model or stored zone values.",
+    "Modifying any other column or field in the table.",
+    "Altering any other component, page, or route."
   ],
   "imageRequirements": {
     "required": [],

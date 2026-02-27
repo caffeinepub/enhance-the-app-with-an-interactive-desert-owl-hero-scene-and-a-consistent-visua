@@ -19,21 +19,26 @@ actor {
         longitude : Float;
     };
 
+    type LocationEntry = {
+        coordinate : Coordinate;
+        mountainName : Text;
+        valleyName : Text;
+        governorate : Text;
+        notes : Text;
+        location : Text;
+    };
+
     type BirdData = {
         id : Nat;
         arabicName : Text;
         scientificName : Text;
         englishName : Text;
         description : Text;
-        locations : [Coordinate];
+        locations : [LocationEntry];
         audioFile : ?Text;
         subImages : [Text];
         notes : Text;
         localName : Text;
-        location : Text;
-        mountainName : Text;
-        valleyName : Text;
-        governorate : Text;
     };
 
     type LocationData = {
@@ -135,7 +140,6 @@ actor {
     };
 
     public shared ({ caller }) func assignCallerUserRole(user : Principal, role : AccessControl.UserRole) : async () {
-        // Admin-only check happens inside AccessControl.assignRole
         AccessControl.assignRole(accessControlState, caller, user, role);
     };
 
@@ -242,7 +246,7 @@ actor {
         normalizedNames;
     };
 
-    public query func getBirdLocations(birdName : Text) : async ?[Coordinate] {
+    public query func getBirdLocations(birdName : Text) : async ?[LocationEntry] {
         switch (textMap.get(birdLocationsSnapshot, birdName)) {
             case (null) { null };
             case (?birdData) { ?birdData.locations };
@@ -261,8 +265,8 @@ actor {
     public query func getAllCoordinates() : async [Coordinate] {
         var allCoordinates = List.nil<Coordinate>();
         for ((_, birdData) in textMap.entries(birdLocationsSnapshot)) {
-            for (coord in birdData.locations.vals()) {
-                allCoordinates := List.push(coord, allCoordinates);
+            for (loc in birdData.locations.vals()) {
+                allCoordinates := List.push(loc.coordinate, allCoordinates);
             };
         };
         List.toArray(allCoordinates);
@@ -271,8 +275,8 @@ actor {
     public query func getAllLocationsWithNames() : async [LocationData] {
         var allLocations = List.nil<LocationData>();
         for ((birdName, birdData) in textMap.entries(birdLocationsSnapshot)) {
-            for (coord in birdData.locations.vals()) {
-                allLocations := List.push({ birdName; coordinate = coord }, allLocations);
+            for (loc in birdData.locations.vals()) {
+                allLocations := List.push({ birdName; coordinate = loc.coordinate }, allLocations);
             };
         };
         List.toArray(allLocations);
@@ -302,12 +306,12 @@ actor {
         var allLocations = List.nil<LocationData>();
         for ((birdName, birdData) in textMap.entries(birdLocationsSnapshot)) {
             if (filter == "all") {
-                for (coord in birdData.locations.vals()) {
-                    allLocations := List.push({ birdName; coordinate = coord }, allLocations);
+                for (loc in birdData.locations.vals()) {
+                    allLocations := List.push({ birdName; coordinate = loc.coordinate }, allLocations);
                 };
             } else if (birdName == filter) {
-                for (coord in birdData.locations.vals()) {
-                    allLocations := List.push({ birdName; coordinate = coord }, allLocations);
+                for (loc in birdData.locations.vals()) {
+                    allLocations := List.push({ birdName; coordinate = loc.coordinate }, allLocations);
                 };
             };
         };
@@ -425,12 +429,20 @@ actor {
     };
 
     // --- CRUD Operations for Birds (Admin-only) ---
-    public shared ({ caller }) func addBirdData(birdName : Text, latitude : Float, longitude : Float) : async () {
+    public shared ({ caller }) func addBirdData(birdName : Text, latitude : Float, longitude : Float, mountainName : Text, valleyName : Text, governorate : Text, notes : Text, locationDesc : Text) : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("Unauthorized: Only admins can add bird data");
         };
 
         let coordinate = { latitude; longitude };
+        let locationEntry = {
+            coordinate;
+            mountainName;
+            valleyName;
+            governorate;
+            notes;
+            location = locationDesc;
+        };
         let normalizedBirdName = normalizeBirdName(birdName);
 
         switch (findBirdByNormalizedName(normalizedBirdName)) {
@@ -441,36 +453,37 @@ actor {
                     scientificName = "";
                     englishName = "";
                     description = "";
-                    locations = [coordinate];
+                    locations = [locationEntry];
                     audioFile = null;
                     subImages = [];
                     notes = "";
                     localName = "";
-                    location = "";
-                    mountainName = "";
-                    valleyName = "";
-                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
-                let updatedLocations = Array.append(birdData.locations, [coordinate]);
-                let updatedBirdData = {
-                    birdData with
-                    locations = updatedLocations
-                };
+                let updatedLocations = Array.append(birdData.locations, [locationEntry]);
+                let updatedBirdData = { birdData with locations = updatedLocations };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
             };
         };
     };
 
-    public shared ({ caller }) func addBirdWithDetails(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, audioFilePath : ?Text, subImages : [Text]) : async () {
+    public shared ({ caller }) func addBirdWithDetails(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, mountainName : Text, valleyName : Text, governorate : Text, locationDesc : Text, audioFilePath : ?Text, subImages : [Text]) : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("Unauthorized: Only admins can add bird data");
         };
 
         let coordinate = { latitude; longitude };
+        let locationEntry = {
+            coordinate;
+            mountainName;
+            valleyName;
+            governorate;
+            notes;
+            location = locationDesc;
+        };
         let normalizedBirdName = normalizeBirdName(arabicName);
 
         switch (findBirdByNormalizedName(normalizedBirdName)) {
@@ -481,36 +494,37 @@ actor {
                     scientificName;
                     englishName;
                     description;
-                    locations = [coordinate];
+                    locations = [locationEntry];
                     audioFile = audioFilePath;
                     subImages;
                     notes;
                     localName = "";
-                    location = "";
-                    mountainName = "";
-                    valleyName = "";
-                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
-                let updatedLocations = Array.append(birdData.locations, [coordinate]);
-                let updatedBirdData = {
-                    birdData with
-                    locations = updatedLocations
-                };
+                let updatedLocations = Array.append(birdData.locations, [locationEntry]);
+                let updatedBirdData = { birdData with locations = updatedLocations };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
             };
         };
     };
 
-    public shared ({ caller }) func addOrUpdateBird(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, audioFilePath : ?Text, subImages : [Text]) : async () {
+    public shared ({ caller }) func addOrUpdateBird(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, mountainName : Text, valleyName : Text, governorate : Text, locationDesc : Text, audioFilePath : ?Text, subImages : [Text]) : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("Unauthorized: Only admins can add or update bird data");
         };
 
         let coordinate = { latitude; longitude };
+        let locationEntry = {
+            coordinate;
+            mountainName;
+            valleyName;
+            governorate;
+            notes;
+            location = locationDesc;
+        };
         let normalizedBirdName = normalizeBirdName(arabicName);
 
         switch (findBirdByNormalizedName(normalizedBirdName)) {
@@ -521,25 +535,18 @@ actor {
                     scientificName;
                     englishName;
                     description;
-                    locations = [coordinate];
+                    locations = [locationEntry];
                     audioFile = audioFilePath;
                     subImages;
                     notes;
                     localName = "";
-                    location = "";
-                    mountainName = "";
-                    valleyName = "";
-                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
-                let updatedLocations = Array.append(birdData.locations, [coordinate]);
-                let updatedBirdData = {
-                    birdData with
-                    locations = updatedLocations
-                };
+                let updatedLocations = Array.append(birdData.locations, [locationEntry]);
+                let updatedBirdData = { birdData with locations = updatedLocations };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
             };
         };
@@ -565,19 +572,12 @@ actor {
                     subImages = [];
                     notes = "";
                     localName = "";
-                    location = "";
-                    mountainName = "";
-                    valleyName = "";
-                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
-                let updatedBirdData = {
-                    birdData with
-                    audioFile = ?audioFilePath
-                };
+                let updatedBirdData = { birdData with audioFile = ?audioFilePath };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
             };
         };
@@ -605,20 +605,13 @@ actor {
                     subImages = [imagePath];
                     notes = "";
                     localName = "";
-                    location = "";
-                    mountainName = "";
-                    valleyName = "";
-                    governorate = "";
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
                 let updatedSubImages = Array.append(birdData.subImages, [imagePath]);
-                let updatedBirdData = {
-                    birdData with
-                    subImages = updatedSubImages
-                };
+                let updatedBirdData = { birdData with subImages = updatedSubImages };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
             };
         };
@@ -656,11 +649,7 @@ actor {
         switch (findBirdByNormalizedName(normalizedBirdName)) {
             case (null) { Debug.trap("Bird not found: " # birdName) };
             case (?(originalName, birdData)) {
-                let updatedBirdData = {
-                    birdData with
-                    description = newDescription;
-                    notes = newNotes;
-                };
+                let updatedBirdData = { birdData with description = newDescription; notes = newNotes };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
             };
         };
@@ -677,12 +666,7 @@ actor {
             case (null) { Debug.trap("Bird not found: " # birdName) };
             case (?(originalName, birdData)) {
                 let updatedBirdData = {
-                    birdData with
-                    arabicName;
-                    scientificName;
-                    englishName;
-                    description;
-                    notes;
+                    birdData with arabicName; scientificName; englishName; description; notes
                 };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
             };
@@ -714,10 +698,7 @@ actor {
             case (null) { Debug.trap("Bird not found: " # birdName) };
             case (?(originalName, birdData)) {
                 let updatedSubImages = Array.filter<Text>(birdData.subImages, func(img) { img != imagePath });
-                let updatedBirdData = {
-                    birdData with
-                    subImages = updatedSubImages
-                };
+                let updatedBirdData = { birdData with subImages = updatedSubImages };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
             };
         };
@@ -733,10 +714,7 @@ actor {
         switch (findBirdByNormalizedName(normalizedBirdName)) {
             case (null) { Debug.trap("Bird not found: " # birdName) };
             case (?(originalName, birdData)) {
-                let updatedBirdData = {
-                    birdData with
-                    audioFile = null
-                };
+                let updatedBirdData = { birdData with audioFile = null };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
             };
         };
@@ -753,10 +731,7 @@ actor {
             case (null) { Debug.trap("Bird not found: " # birdName) };
             case (?(originalName, birdData)) {
                 let updatedSubImages = Array.filter<Text>(birdData.subImages, func(img) { img != imagePath });
-                let updatedBirdData = {
-                    birdData with
-                    subImages = updatedSubImages
-                };
+                let updatedBirdData = { birdData with subImages = updatedSubImages };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
 
                 Registry.remove(registry, imagePath);
@@ -782,10 +757,7 @@ actor {
         for ((birdName, birdData) in textMap.entries(birdLocationsSnapshot)) {
             let updatedSubImages = Array.filter<Text>(birdData.subImages, func(img) { img != imagePath });
             if (Array.size(updatedSubImages) != Array.size(birdData.subImages)) {
-                let updatedBirdData = {
-                    birdData with
-                    subImages = updatedSubImages
-                };
+                let updatedBirdData = { birdData with subImages = updatedSubImages };
                 birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, birdName, updatedBirdData);
             };
         };
@@ -933,3 +905,4 @@ actor {
         isBackupInProgress;
     };
 };
+

@@ -7,21 +7,21 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface FileReference {
+    hash: string;
+    path: string;
+}
 export interface BirdData {
     id: bigint;
     subImages: Array<string>;
     localName: string;
     description: string;
     audioFile?: string;
-    valleyName: string;
     arabicName: string;
-    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
-    locations: Array<Coordinate>;
-    governorate: string;
-    location: string;
+    locations: Array<LocationEntry>;
 }
 export interface TeamGroup {
     members: Array<string>;
@@ -46,9 +46,13 @@ export interface LocationData {
     birdName: string;
     coordinate: Coordinate;
 }
-export interface FileReference {
-    hash: string;
-    path: string;
+export interface LocationEntry {
+    valleyName: string;
+    mountainName: string;
+    notes: string;
+    governorate: string;
+    coordinate: Coordinate;
+    location: string;
 }
 export interface UserProfile {
     name: string;
@@ -61,9 +65,9 @@ export enum UserRole {
 }
 export interface backendInterface {
     addAudioFile(birdName: string, audioFilePath: string): Promise<string>;
-    addBirdData(birdName: string, latitude: number, longitude: number): Promise<void>;
-    addBirdWithDetails(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
-    addOrUpdateBird(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
+    addBirdData(birdName: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, notes: string, locationDesc: string): Promise<void>;
+    addBirdWithDetails(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
+    addOrUpdateBird(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
     addSubImage(birdName: string, imagePath: string): Promise<string>;
     addTeamMember(fullNameTribe: string, university: string, specialization: string, residence: string, contactNumber: string, number: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
@@ -89,7 +93,7 @@ export interface backendInterface {
     getAudioFile(birdName: string): Promise<string | null>;
     getBackupMapReference(): Promise<string | null>;
     getBirdDetails(birdName: string): Promise<BirdData | null>;
-    getBirdLocations(birdName: string): Promise<Array<Coordinate> | null>;
+    getBirdLocations(birdName: string): Promise<Array<LocationEntry> | null>;
     getBirdNames(): Promise<Array<string>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;

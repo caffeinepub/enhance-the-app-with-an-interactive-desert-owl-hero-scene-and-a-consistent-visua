@@ -1,32 +1,32 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T02:57:52.798Z",
-  "summary": "Both REQ-112 and REQ-113 appear to be implemented in the diff. BirdDataTable.tsx was modified to include the three restored columns with helper functions. BirdGallery.tsx was modified with AddBirdModal, AddAudioModal, and EditBirdModal supporting blob uploads with immediate gallery refresh. The diff is truncated so some details cannot be fully verified. A concern exists around whether Northern Hemisphere and Zone are truly editable fields vs read-only computed values, and whether audio upload stores a blob ID vs a path string.",
+  "generatedAt": "2026-02-27T04:01:55.282Z",
+  "summary": "The diff modifies frontend/src/components/BirdDataTable.tsx and updates the getZone function. The implementation returns '40' for the latitude range 23.5–35° (which previously returned 'Tropical' or equivalent) as well as the 0–23.5° range. The file summary confirms this. However, the requirement targets cells displaying 'Tropical' in both read-only and inline-edit modes. Two other ancillary files were also modified.",
   "missing_requirements": [
     {
-      "id": "REQ-113",
-      "requirement": "The 'إضافة الصوت' (Add Audio) button must upload the audio file as a blob, associate the blob ID with the bird record's audio field",
-      "reason": "In the visible AddAudioModal code, uploadFile is called and then actor.addAudioFile is called with a path string rather than a blob ID. The requirement specifies storing the resulting blob ID in the bird record's audio field so audio is immediately playable from the gallery card.",
-      "evidence": [
-        "frontend/src/components/BirdGallery.tsx"
-      ]
-    },
-    {
-      "id": "REQ-112",
-      "requirement": "Northern Hemisphere and Zone must be included as editable input fields in both the Add new row form and the inline Edit mode for each existing row",
-      "reason": "The implementation uses getNorthernHemisphere and getZone as computed read-only derived functions based on latitude, suggesting these fields are not independently editable. The AC explicitly requires editable input fields for all three columns in both Add and Edit modes.",
+      "id": "REQ-119",
+      "requirement": "The substitution of 'Tropical' to '40' must apply to the editable input fields when a row is in inline-edit mode.",
+      "reason": "The diff shows getZone() was updated but there is no evidence in the truncated diff that the editable input field in inline-edit mode explicitly handles the 'Tropical' to '40' substitution for display purposes.",
       "evidence": [
         "frontend/src/components/BirdDataTable.tsx"
       ]
     }
   ],
-  "hallucinated_features": [],
-  "confidence": 0.6,
+  "hallucinated_features": [
+    {
+      "description": "The getZone function also returns '40' for the equatorial range (0-23.5 degrees), which was not 'Tropical' before and was not requested to be changed.",
+      "reason": "REQ-119 only asks to replace cells displaying 'Tropical' with '40'. Changing the equatorial zone (0-23.5 degrees) to also return '40' goes beyond the stated requirement.",
+      "evidence": [
+        "frontend/src/components/BirdDataTable.tsx",
+        "frontend-file-summaries.txt"
+      ]
+    }
+  ],
+  "confidence": 0.62,
   "changed_files": [
     "frontend-file-summaries.txt",
     "frontend/src/components/BirdDataTable.tsx",
-    "frontend/src/components/BirdGallery.tsx",
     "project_state.json"
   ]
 }

@@ -1,35 +1,24 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T02:57:52.807Z",
+  "generatedAt": "2026-02-27T04:01:55.293Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 2,
-    "implemented": 2,
+    "total": 1,
+    "implemented": 1,
     "items": [
       {
-        "id": "REQ-112",
-        "summary": "In frontend/src/components/BirdDataTable.tsx only, restore the missing 'Northern Hemisphere' (النصف الشمالي), 'Latitude (°)' (خط العرض °), and 'Zone' (المنطقة) column headers and their corresponding data cells to the bird data table. These columns must appear in the correct position within the existing table structure, display the corresponding field values from each bird record, and be included as editable input fields in both the Add new row form and the inline Edit mode for each existing row. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+        "id": "REQ-119",
+        "summary": "In frontend/src/components/BirdDataTable.tsx only, update the 'Zone' (المنطقة) column so that any cell displaying the value 'Tropical' renders '40' instead. This change must apply to both the read-only display cells and the editable input fields in inline-edit mode. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/components/BirdDataTable.tsx"
         ],
         "matchedFiles": [
           "frontend/src/components/BirdDataTable.tsx"
-        ]
-      },
-      {
-        "id": "REQ-113",
-        "summary": "In frontend/src/components/BirdGallery.tsx only, restore the main image upload, sub-image upload, and audio upload functionality so that images and audio uploaded through the gallery admin controls are immediately reflected in the photo gallery cards without requiring a separate navigation step. Specifically: (1) The 'إضافة' (Add) button's form/modal must correctly upload the main image and sub-images as blobs to the backend, store the resulting blob IDs in the bird record's images array, and refresh the gallery so the new card with its images is immediately visible. (2) The 'تحرير' (Update/Edit) button's editable state must correctly upload replacement images and persist them to the bird record. (3) The 'إضافة الصوت' (Add Audio) button must upload the audio file as a blob, associate the blob ID with the bird record's audio field, and the audio must be immediately accessible from the gallery card. Do NOT change any other aspect of BirdGallery.tsx — existing search, card layout, RTL orientation, data-fetching logic, image-click modal, admin guard logic, or any other admin buttons must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/BirdGallery.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/BirdGallery.tsx"
         ]
       }
     ]
@@ -40,7 +29,6 @@
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/components/BirdDataTable.tsx",
-    "frontend/src/components/BirdGallery.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

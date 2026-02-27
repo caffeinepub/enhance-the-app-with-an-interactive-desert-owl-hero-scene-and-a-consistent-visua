@@ -89,21 +89,21 @@ export class ExternalBlob {
         return this;
     }
 }
+export interface FileReference {
+    hash: string;
+    path: string;
+}
 export interface BirdData {
     id: bigint;
     subImages: Array<string>;
     localName: string;
     description: string;
     audioFile?: string;
-    valleyName: string;
     arabicName: string;
-    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
-    locations: Array<Coordinate>;
-    governorate: string;
-    location: string;
+    locations: Array<LocationEntry>;
 }
 export interface TeamGroup {
     members: Array<string>;
@@ -135,9 +135,13 @@ export interface LocationData {
     birdName: string;
     coordinate: Coordinate;
 }
-export interface FileReference {
-    hash: string;
-    path: string;
+export interface LocationEntry {
+    valleyName: string;
+    mountainName: string;
+    notes: string;
+    governorate: string;
+    coordinate: Coordinate;
+    location: string;
 }
 export interface UserProfile {
     name: string;
@@ -159,9 +163,9 @@ export interface backendInterface {
     _caffeineStorageRefillCashier(refillInformation: _CaffeineStorageRefillInformation | null): Promise<_CaffeineStorageRefillResult>;
     _caffeineStorageUpdateGatewayPrincipals(): Promise<void>;
     addAudioFile(birdName: string, audioFilePath: string): Promise<string>;
-    addBirdData(birdName: string, latitude: number, longitude: number): Promise<void>;
-    addBirdWithDetails(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
-    addOrUpdateBird(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
+    addBirdData(birdName: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, notes: string, locationDesc: string): Promise<void>;
+    addBirdWithDetails(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
+    addOrUpdateBird(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
     addSubImage(birdName: string, imagePath: string): Promise<string>;
     addTeamMember(fullNameTribe: string, university: string, specialization: string, residence: string, contactNumber: string, number: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
@@ -187,7 +191,7 @@ export interface backendInterface {
     getAudioFile(birdName: string): Promise<string | null>;
     getBackupMapReference(): Promise<string | null>;
     getBirdDetails(birdName: string): Promise<BirdData | null>;
-    getBirdLocations(birdName: string): Promise<Array<Coordinate> | null>;
+    getBirdLocations(birdName: string): Promise<Array<LocationEntry> | null>;
     getBirdNames(): Promise<Array<string>>;
     getCallerUserProfile(): Promise<UserProfile | null>;
     getCallerUserRole(): Promise<UserRole>;
@@ -220,7 +224,7 @@ export interface backendInterface {
     updateDescriptionAndNotes(birdName: string, newDescription: string, newNotes: string): Promise<void>;
     uploadMapImage(mapPath: string): Promise<void>;
 }
-import type { BirdData as _BirdData, Coordinate as _Coordinate, UserProfile as _UserProfile, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
+import type { BirdData as _BirdData, LocationEntry as _LocationEntry, UserProfile as _UserProfile, UserRole as _UserRole, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _caffeineStorageBlobsToDelete(): Promise<Array<string>> {
@@ -307,45 +311,45 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addBirdData(arg0: string, arg1: number, arg2: number): Promise<void> {
+    async addBirdData(arg0: string, arg1: number, arg2: number, arg3: string, arg4: string, arg5: string, arg6: string, arg7: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addBirdData(arg0, arg1, arg2);
+                const result = await this.actor.addBirdData(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addBirdData(arg0, arg1, arg2);
+            const result = await this.actor.addBirdData(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
             return result;
         }
     }
-    async addBirdWithDetails(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: number, arg7: string | null, arg8: Array<string>): Promise<void> {
+    async addBirdWithDetails(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: number, arg7: string, arg8: string, arg9: string, arg10: string, arg11: string | null, arg12: Array<string>): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addBirdWithDetails(arg0, arg1, arg2, arg3, arg4, arg5, arg6, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg7), arg8);
+                const result = await this.actor.addBirdWithDetails(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addBirdWithDetails(arg0, arg1, arg2, arg3, arg4, arg5, arg6, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg7), arg8);
+            const result = await this.actor.addBirdWithDetails(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12);
             return result;
         }
     }
-    async addOrUpdateBird(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: number, arg7: string | null, arg8: Array<string>): Promise<void> {
+    async addOrUpdateBird(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: number, arg7: string, arg8: string, arg9: string, arg10: string, arg11: string | null, arg12: Array<string>): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addOrUpdateBird(arg0, arg1, arg2, arg3, arg4, arg5, arg6, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg7), arg8);
+                const result = await this.actor.addOrUpdateBird(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addOrUpdateBird(arg0, arg1, arg2, arg3, arg4, arg5, arg6, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg7), arg8);
+            const result = await this.actor.addOrUpdateBird(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12);
             return result;
         }
     }
@@ -699,7 +703,7 @@ export class Backend implements backendInterface {
             return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
         }
     }
-    async getBirdLocations(arg0: string): Promise<Array<Coordinate> | null> {
+    async getBirdLocations(arg0: string): Promise<Array<LocationEntry> | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getBirdLocations(arg0);
@@ -1163,7 +1167,7 @@ function from_candid_opt_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
 function from_candid_opt_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_BirdData]): BirdData | null {
     return value.length === 0 ? null : from_candid_BirdData_n18(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Array<_Coordinate>]): Array<Coordinate> | null {
+function from_candid_opt_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Array<_LocationEntry>]): Array<LocationEntry> | null {
     return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
@@ -1184,30 +1188,22 @@ function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uin
     localName: string;
     description: string;
     audioFile: [] | [string];
-    valleyName: string;
     arabicName: string;
-    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
-    locations: Array<_Coordinate>;
-    governorate: string;
-    location: string;
+    locations: Array<_LocationEntry>;
 }): {
     id: bigint;
     subImages: Array<string>;
     localName: string;
     description: string;
     audioFile?: string;
-    valleyName: string;
     arabicName: string;
-    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
-    locations: Array<Coordinate>;
-    governorate: string;
-    location: string;
+    locations: Array<LocationEntry>;
 } {
     return {
         id: value.id,
@@ -1215,15 +1211,11 @@ function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uin
         localName: value.localName,
         description: value.description,
         audioFile: record_opt_to_undefined(from_candid_opt_n15(_uploadFile, _downloadFile, value.audioFile)),
-        valleyName: value.valleyName,
         arabicName: value.arabicName,
-        mountainName: value.mountainName,
         englishName: value.englishName,
         notes: value.notes,
         scientificName: value.scientificName,
-        locations: value.locations,
-        governorate: value.governorate,
-        location: value.location
+        locations: value.locations
     };
 }
 function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1277,30 +1269,22 @@ function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     localName: string;
     description: string;
     audioFile?: string;
-    valleyName: string;
     arabicName: string;
-    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
-    locations: Array<Coordinate>;
-    governorate: string;
-    location: string;
+    locations: Array<LocationEntry>;
 }): {
     id: bigint;
     subImages: Array<string>;
     localName: string;
     description: string;
     audioFile: [] | [string];
-    valleyName: string;
     arabicName: string;
-    mountainName: string;
     englishName: string;
     notes: string;
     scientificName: string;
-    locations: Array<_Coordinate>;
-    governorate: string;
-    location: string;
+    locations: Array<_LocationEntry>;
 } {
     return {
         id: value.id,
@@ -1308,15 +1292,11 @@ function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         localName: value.localName,
         description: value.description,
         audioFile: value.audioFile ? candid_some(value.audioFile) : candid_none(),
-        valleyName: value.valleyName,
         arabicName: value.arabicName,
-        mountainName: value.mountainName,
         englishName: value.englishName,
         notes: value.notes,
         scientificName: value.scientificName,
-        locations: value.locations,
-        governorate: value.governorate,
-        location: value.location
+        locations: value.locations
     };
 }
 function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {

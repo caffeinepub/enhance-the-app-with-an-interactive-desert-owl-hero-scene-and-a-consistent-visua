@@ -1,668 +1,647 @@
-import { useState, useEffect } from 'react';
-import { useActor } from '../hooks/useActor';
-import { BirdData } from '../backend';
-import { useGetAllBirdData, useDeleteBirdById, useSaveBirdData } from '../hooks/useQueries';
-import { useFileUpload, useFileUrl } from '../blob-storage/FileStorage';
+import { useState, useCallback } from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { BirdData, LocationEntry } from '../backend';
+import {
+  useGetAllBirdDetails,
+  useAddBirdWithDetails,
+  useDeleteBirdById,
+  useSaveBirdData,
+} from '../hooks/useQueries';
+import { useActor } from '../hooks/useActor';
+import { useFileUrl, useFileUpload, useFileDelete } from '../blob-storage/FileStorage';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import LazyGalleryGrid from './LazyGalleryGrid';
 
-// ---- AddAudioModal ----
-interface AddAudioModalProps {
-  bird: BirdData;
-  onClose: () => void;
-  onSuccess: () => void;
-}
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-function AddAudioModal({ bird, onClose, onSuccess }: AddAudioModalProps) {
-  const { actor } = useActor();
-  const { uploadFile, isUploading } = useFileUpload();
-  const queryClient = useQueryClient();
-  const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleUpload = async () => {
-    if (!audioFile || !actor) return;
-    setUploading(true);
-    setError(null);
-    try {
-      const path = `audio/${bird.arabicName}/${audioFile.name}`;
-      await uploadFile(path, audioFile);
-      await actor.addAudioFile(bird.arabicName, path);
-      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
-      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
-      onSuccess();
-      onClose();
-    } catch (err) {
-      setError('فشل رفع الملف الصوتي');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" dir="rtl">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-        <h3 className="text-amber-800 font-bold text-lg mb-4">🎵 إضافة ملف صوتي — {bird.arabicName}</h3>
-        <input
-          type="file"
-          accept="audio/*"
-          onChange={e => setAudioFile(e.target.files?.[0] || null)}
-          className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm mb-4"
-        />
-        {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
-        <div className="flex gap-2">
-          <button
-            onClick={handleUpload}
-            disabled={!audioFile || uploading || isUploading}
-            className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            {uploading || isUploading ? '⏳ جاري الرفع...' : '📤 رفع'}
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            إلغاء
-          </button>
-        </div>
+function BirdImage({ imagePath, alt }: { imagePath: string; alt: string }) {
+  const { data: url } = useFileUrl(imagePath);
+  if (!url) {
+    return (
+      <div className="w-full h-48 bg-amber-100 flex items-center justify-center rounded-t-xl">
+        <span className="text-5xl">🦉</span>
       </div>
-    </div>
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={alt}
+      className="w-full h-48 object-cover rounded-t-xl"
+      loading="lazy"
+    />
   );
 }
 
-// ---- AddBirdModal ----
-interface AddBirdModalProps {
-  onClose: () => void;
-  onSuccess: () => void;
+function AudioPlayerInline({ audioPath }: { audioPath: string }) {
+  const { data: audioUrl } = useFileUrl(audioPath);
+  if (!audioUrl) return null;
+  return (
+    <audio controls className="w-full mt-2 h-8">
+      <source src={audioUrl} />
+    </audio>
+  );
 }
 
-function AddBirdModal({ onClose, onSuccess }: AddBirdModalProps) {
-  const { actor } = useActor();
-  const { uploadFile, isUploading } = useFileUpload();
-  const saveMutation = useSaveBirdData();
-  const queryClient = useQueryClient();
-  const [form, setForm] = useState({
-    arabicName: '',
-    scientificName: '',
-    englishName: '',
-    description: '',
-    notes: '',
-    location: '',
-    governorate: '',
-  });
+// ─── Add Bird Modal ────────────────────────────────────────────────────────────
+
+interface AddBirdForm {
+  arabicName: string;
+  scientificName: string;
+  englishName: string;
+  description: string;
+  notes: string;
+  location: string;
+  governorate: string;
+  mountainName: string;
+  valleyName: string;
+  latitude: string;
+  longitude: string;
+  localName: string;
+}
+
+const emptyAddForm: AddBirdForm = {
+  arabicName: '',
+  scientificName: '',
+  englishName: '',
+  description: '',
+  notes: '',
+  location: '',
+  governorate: '',
+  mountainName: '',
+  valleyName: '',
+  latitude: '',
+  longitude: '',
+  localName: '',
+};
+
+function AddBirdModal({
+  open,
+  onClose,
+  onSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [form, setForm] = useState<AddBirdForm>(emptyAddForm);
   const [mainImageFile, setMainImageFile] = useState<File | null>(null);
-  const [subImageFiles, setSubImageFiles] = useState<File[]>([]);
   const [audioFile, setAudioFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { uploadFile } = useFileUpload();
+  const addBirdMutation = useAddBirdWithDetails();
+
+  const handleChange = (field: keyof AddBirdForm, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  };
 
   const handleSubmit = async () => {
-    if (!form.arabicName.trim()) {
-      setError('الاسم العربي مطلوب');
-      return;
-    }
-    if (!actor) return;
-    setUploading(true);
-    setError(null);
+    if (!form.arabicName.trim()) return;
+    setIsSubmitting(true);
     try {
-      const subImages: string[] = [];
-      let audioFilePath: string | undefined = undefined;
+      let mainImagePath: string | null = null;
+      let audioFilePath: string | null = null;
 
       if (mainImageFile) {
-        const path = `birds/${form.arabicName}/main/${mainImageFile.name}`;
-        await uploadFile(path, mainImageFile);
-        subImages.push(path);
-      }
-
-      for (const file of subImageFiles) {
-        const path = `birds/${form.arabicName}/sub/${file.name}`;
-        await uploadFile(path, file);
-        subImages.push(path);
+        const ext = mainImageFile.name.split('.').pop() || 'jpg';
+        const path = `birds/${Date.now()}-main.${ext}`;
+        const result = await uploadFile(path, mainImageFile);
+        mainImagePath = result.path;
       }
 
       if (audioFile) {
-        const path = `audio/${form.arabicName}/${audioFile.name}`;
-        await uploadFile(path, audioFile);
-        audioFilePath = path;
+        const ext = audioFile.name.split('.').pop() || 'mp3';
+        const path = `birds/audio/${Date.now()}.${ext}`;
+        const result = await uploadFile(path, audioFile);
+        audioFilePath = result.path;
       }
 
-      const birdData: BirdData = {
-        id: BigInt(0),
+      await addBirdMutation.mutateAsync({
         arabicName: form.arabicName,
         scientificName: form.scientificName,
         englishName: form.englishName,
         description: form.description,
         notes: form.notes,
-        location: form.location,
+        latitude: parseFloat(form.latitude) || 0,
+        longitude: parseFloat(form.longitude) || 0,
+        mountainName: form.mountainName,
+        valleyName: form.valleyName,
         governorate: form.governorate,
-        localName: '',
-        mountainName: '',
-        valleyName: '',
-        locations: [],
-        subImages,
-        audioFile: audioFilePath,
-      };
+        locationDesc: form.location,
+        audioFilePath,
+        subImages: mainImagePath ? [mainImagePath] : [],
+      });
 
-      await saveMutation.mutateAsync(birdData);
-      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
-      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+      setForm(emptyAddForm);
+      setMainImageFile(null);
+      setAudioFile(null);
       onSuccess();
       onClose();
     } catch (err) {
-      setError('فشل إضافة الطائر');
+      console.error('Failed to add bird:', err);
     } finally {
-      setUploading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto" dir="rtl">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 my-4">
-        <h3 className="text-amber-800 font-bold text-lg mb-4">➕ إضافة طائر جديد</h3>
-        <div className="space-y-3">
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogHeader>
+          <DialogTitle>إضافة طائر جديد</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
           {[
             { field: 'arabicName', label: 'الاسم العربي *' },
             { field: 'scientificName', label: 'الاسم العلمي' },
             { field: 'englishName', label: 'الاسم الإنجليزي' },
+            { field: 'localName', label: 'الاسم المحلي' },
             { field: 'location', label: 'الموقع' },
             { field: 'governorate', label: 'الولاية' },
+            { field: 'mountainName', label: 'اسم الجبل' },
+            { field: 'valleyName', label: 'اسم الوادي' },
+            { field: 'latitude', label: 'خط العرض' },
+            { field: 'longitude', label: 'خط الطول' },
           ].map(({ field, label }) => (
             <div key={field}>
-              <label className="block text-amber-700 text-xs font-medium mb-1">{label}</label>
-              <input
-                type="text"
+              <Label className="text-xs">{label}</Label>
+              <Input
                 value={(form as any)[field]}
-                onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
-                className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                onChange={e => handleChange(field as keyof AddBirdForm, e.target.value)}
+                className="mt-1"
               />
             </div>
           ))}
-          <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">الوصف</label>
-            <textarea
+          <div className="sm:col-span-2">
+            <Label className="text-xs">الوصف</Label>
+            <Textarea
               value={form.description}
-              onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
-              rows={2}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              onChange={e => handleChange('description', e.target.value)}
+              rows={3}
+              className="mt-1"
             />
           </div>
-          <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">ملاحظات</label>
-            <textarea
+          <div className="sm:col-span-2">
+            <Label className="text-xs">ملاحظات</Label>
+            <Textarea
               value={form.notes}
-              onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
+              onChange={e => handleChange('notes', e.target.value)}
               rows={2}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="mt-1"
             />
           </div>
           <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">الصورة الرئيسية</label>
-            <input
+            <Label className="text-xs">الصورة الرئيسية</Label>
+            <Input
               type="file"
               accept="image/*"
               onChange={e => setMainImageFile(e.target.files?.[0] || null)}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm"
+              className="mt-1"
             />
-            {mainImageFile && (
-              <p className="text-green-600 text-xs mt-1">✅ {mainImageFile.name}</p>
-            )}
           </div>
           <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">صور إضافية</label>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={e => setSubImageFiles(Array.from(e.target.files || []))}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm"
-            />
-            {subImageFiles.length > 0 && (
-              <p className="text-green-600 text-xs mt-1">✅ {subImageFiles.length} صورة محددة</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">ملف صوتي (اختياري)</label>
-            <input
+            <Label className="text-xs">ملف الصوت (اختياري)</Label>
+            <Input
               type="file"
               accept="audio/*"
               onChange={e => setAudioFile(e.target.files?.[0] || null)}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm"
+              className="mt-1"
             />
-            {audioFile && (
-              <p className="text-green-600 text-xs mt-1">✅ {audioFile.name}</p>
-            )}
           </div>
         </div>
-        {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={handleSubmit}
-            disabled={!form.arabicName.trim() || uploading || isUploading || saveMutation.isPending}
-            className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            {uploading || isUploading || saveMutation.isPending ? '⏳ جاري الحفظ...' : '💾 حفظ'}
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
+        <div className="flex gap-2 mt-4 justify-end">
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             إلغاء
-          </button>
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={!form.arabicName.trim() || isSubmitting}
+          >
+            {isSubmitting ? '⏳ جاري الإضافة...' : '➕ إضافة'}
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-// ---- EditBirdModal ----
-interface EditBirdModalProps {
-  bird: BirdData;
-  onClose: () => void;
-  onSuccess: () => void;
+// ─── Edit Bird Modal ───────────────────────────────────────────────────────────
+
+interface EditBirdForm {
+  arabicName: string;
+  scientificName: string;
+  englishName: string;
+  description: string;
+  notes: string;
+  localName: string;
 }
 
-function EditBirdModal({ bird, onClose, onSuccess }: EditBirdModalProps) {
-  const { uploadFile, isUploading } = useFileUpload();
+function EditBirdModal({
+  bird,
+  open,
+  onClose,
+  onSuccess,
+}: {
+  bird: BirdData;
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [form, setForm] = useState<EditBirdForm>({
+    arabicName: bird.arabicName,
+    scientificName: bird.scientificName,
+    englishName: bird.englishName,
+    description: bird.description,
+    notes: bird.notes,
+    localName: bird.localName,
+  });
+  const [newMainImageFile, setNewMainImageFile] = useState<File | null>(null);
+  const [newSubImageFile, setNewSubImageFile] = useState<File | null>(null);
+  const [newAudioFile, setNewAudioFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { uploadFile } = useFileUpload();
+  const { deleteFile } = useFileDelete();
   const saveMutation = useSaveBirdData();
   const queryClient = useQueryClient();
-  const [editData, setEditData] = useState<BirdData>({ ...bird });
-  const [newMainImageFile, setNewMainImageFile] = useState<File | null>(null);
-  const [newSubImageFiles, setNewSubImageFiles] = useState<File[]>([]);
-  const [newAudioFile, setNewAudioFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleSave = async () => {
-    setUploading(true);
-    setError(null);
+  const handleChange = (field: keyof EditBirdForm, value: string) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
     try {
-      let updatedSubImages = [...editData.subImages];
-      let updatedAudioFile = editData.audioFile;
+      let subImages = [...bird.subImages];
+      let audioFile = bird.audioFile;
 
+      // Replace main image (first sub-image)
       if (newMainImageFile) {
-        const path = `birds/${editData.arabicName}/main/${newMainImageFile.name}`;
-        await uploadFile(path, newMainImageFile);
-        // Replace first image (main) or prepend
-        if (updatedSubImages.length > 0) {
-          updatedSubImages[0] = path;
-        } else {
-          updatedSubImages = [path, ...updatedSubImages];
+        if (subImages.length > 0) {
+          await deleteFile(subImages[0]).catch(() => {});
+          subImages = subImages.slice(1);
         }
+        const ext = newMainImageFile.name.split('.').pop() || 'jpg';
+        const path = `birds/${Date.now()}-main.${ext}`;
+        const result = await uploadFile(path, newMainImageFile);
+        subImages = [result.path, ...subImages];
       }
 
-      for (const file of newSubImageFiles) {
-        const path = `birds/${editData.arabicName}/sub/${file.name}`;
-        await uploadFile(path, file);
-        updatedSubImages.push(path);
+      // Add additional sub-image
+      if (newSubImageFile) {
+        const ext = newSubImageFile.name.split('.').pop() || 'jpg';
+        const path = `birds/${Date.now()}-sub.${ext}`;
+        const result = await uploadFile(path, newSubImageFile);
+        subImages = [...subImages, result.path];
       }
 
+      // Replace audio
       if (newAudioFile) {
-        const path = `audio/${editData.arabicName}/${newAudioFile.name}`;
-        await uploadFile(path, newAudioFile);
-        updatedAudioFile = path;
+        if (audioFile) {
+          await deleteFile(audioFile).catch(() => {});
+        }
+        const ext = newAudioFile.name.split('.').pop() || 'mp3';
+        const path = `birds/audio/${Date.now()}.${ext}`;
+        const result = await uploadFile(path, newAudioFile);
+        audioFile = result.path;
       }
 
       const updatedBird: BirdData = {
-        ...editData,
-        subImages: updatedSubImages,
-        audioFile: updatedAudioFile,
+        ...bird,
+        arabicName: form.arabicName,
+        scientificName: form.scientificName,
+        englishName: form.englishName,
+        description: form.description,
+        notes: form.notes,
+        localName: form.localName,
+        subImages,
+        audioFile,
       };
 
       await saveMutation.mutateAsync(updatedBird);
-      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
       queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
       onSuccess();
       onClose();
     } catch (err) {
-      setError('فشل حفظ التعديلات');
+      console.error('Failed to edit bird:', err);
     } finally {
-      setUploading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto" dir="rtl">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 my-4">
-        <h3 className="text-amber-800 font-bold text-lg mb-4">✏️ تحرير — {bird.arabicName}</h3>
-        <div className="space-y-3">
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl">
+        <DialogHeader>
+          <DialogTitle>تعديل: {bird.arabicName}</DialogTitle>
+        </DialogHeader>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
           {[
             { field: 'arabicName', label: 'الاسم العربي' },
             { field: 'scientificName', label: 'الاسم العلمي' },
             { field: 'englishName', label: 'الاسم الإنجليزي' },
-            { field: 'location', label: 'الموقع' },
-            { field: 'governorate', label: 'الولاية' },
+            { field: 'localName', label: 'الاسم المحلي' },
           ].map(({ field, label }) => (
             <div key={field}>
-              <label className="block text-amber-700 text-xs font-medium mb-1">{label}</label>
-              <input
-                type="text"
-                value={(editData as any)[field] || ''}
-                onChange={e => setEditData(prev => ({ ...prev, [field]: e.target.value }))}
-                className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              <Label className="text-xs">{label}</Label>
+              <Input
+                value={(form as any)[field]}
+                onChange={e => handleChange(field as keyof EditBirdForm, e.target.value)}
+                className="mt-1"
               />
             </div>
           ))}
-          <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">الوصف</label>
-            <textarea
-              value={editData.description || ''}
-              onChange={e => setEditData(prev => ({ ...prev, description: e.target.value }))}
+          <div className="sm:col-span-2">
+            <Label className="text-xs">الوصف</Label>
+            <Textarea
+              value={form.description}
+              onChange={e => handleChange('description', e.target.value)}
+              rows={3}
+              className="mt-1"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <Label className="text-xs">ملاحظات</Label>
+            <Textarea
+              value={form.notes}
+              onChange={e => handleChange('notes', e.target.value)}
               rows={2}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              className="mt-1"
             />
           </div>
           <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">ملاحظات</label>
-            <textarea
-              value={editData.notes || ''}
-              onChange={e => setEditData(prev => ({ ...prev, notes: e.target.value }))}
-              rows={2}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-            />
-          </div>
-          <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">
-              استبدال الصورة الرئيسية
-              {editData.subImages?.[0] && <span className="text-amber-500 mr-1">(موجودة)</span>}
-            </label>
-            <input
+            <Label className="text-xs">استبدال الصورة الرئيسية</Label>
+            <Input
               type="file"
               accept="image/*"
               onChange={e => setNewMainImageFile(e.target.files?.[0] || null)}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm"
+              className="mt-1"
             />
-            {newMainImageFile && (
-              <p className="text-green-600 text-xs mt-1">✅ {newMainImageFile.name}</p>
-            )}
           </div>
           <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">
-              إضافة صور فرعية
-              {editData.subImages?.length > 1 && (
-                <span className="text-amber-500 mr-1">({editData.subImages.length - 1} موجودة)</span>
-              )}
-            </label>
-            <input
+            <Label className="text-xs">إضافة صورة فرعية</Label>
+            <Input
               type="file"
               accept="image/*"
-              multiple
-              onChange={e => setNewSubImageFiles(Array.from(e.target.files || []))}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm"
+              onChange={e => setNewSubImageFile(e.target.files?.[0] || null)}
+              className="mt-1"
             />
-            {newSubImageFiles.length > 0 && (
-              <p className="text-green-600 text-xs mt-1">✅ {newSubImageFiles.length} صورة محددة</p>
-            )}
           </div>
           <div>
-            <label className="block text-amber-700 text-xs font-medium mb-1">
-              استبدال الملف الصوتي
-              {editData.audioFile && <span className="text-amber-500 mr-1">(موجود)</span>}
-            </label>
-            <input
+            <Label className="text-xs">استبدال ملف الصوت</Label>
+            <Input
               type="file"
               accept="audio/*"
               onChange={e => setNewAudioFile(e.target.files?.[0] || null)}
-              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm"
+              className="mt-1"
             />
-            {newAudioFile && (
-              <p className="text-green-600 text-xs mt-1">✅ {newAudioFile.name}</p>
-            )}
           </div>
         </div>
-        {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={handleSave}
-            disabled={uploading || isUploading || saveMutation.isPending}
-            className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
-            {uploading || isUploading || saveMutation.isPending ? '⏳ جاري الحفظ...' : '💾 حفظ'}
-          </button>
-          <button
-            onClick={onClose}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-          >
+        <div className="flex gap-2 mt-4 justify-end">
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             إلغاء
-          </button>
+          </Button>
+          <Button onClick={handleSubmit} disabled={isSubmitting}>
+            {isSubmitting ? '⏳ جاري الحفظ...' : '💾 حفظ التعديلات'}
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-// ---- BirdCard ----
-interface BirdCardProps {
-  bird: BirdData;
-  isAdmin: boolean;
-  onImageClick: (images: string[], index: number, birdName: string) => void;
-  onRefetch: () => void;
-}
+// ─── Add Audio Modal ───────────────────────────────────────────────────────────
 
-function BirdImageDisplay({ path }: { path: string }) {
-  const { data: url } = useFileUrl(path);
-  if (!url) return (
-    <div className="w-full h-48 bg-amber-100 flex items-center justify-center rounded-t-xl">
-      <span className="text-amber-400 text-4xl">🦅</span>
-    </div>
-  );
-  return (
-    <img
-      src={url}
-      alt="bird"
-      className="w-full h-48 object-cover rounded-t-xl"
-    />
-  );
-}
+function AddAudioModal({
+  birdName,
+  open,
+  onClose,
+  onSuccess,
+}: {
+  birdName: string;
+  open: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { uploadFile } = useFileUpload();
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
 
-function BirdCard({ bird, isAdmin, onImageClick, onRefetch }: BirdCardProps) {
-  const deleteMutation = useDeleteBirdById();
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showAudioModal, setShowAudioModal] = useState(false);
-
-  const mainImage = bird.subImages?.[0];
-  const hasAudio = !!bird.audioFile;
-
-  const handleDelete = async () => {
-    if (!confirm(`هل أنت متأكد من حذف "${bird.arabicName}"؟`)) return;
+  const handleSubmit = async () => {
+    if (!audioFile || !actor) return;
+    setIsSubmitting(true);
     try {
-      await deleteMutation.mutateAsync(bird.id);
-      onRefetch();
-    } catch {
-      alert('فشل الحذف');
+      const ext = audioFile.name.split('.').pop() || 'mp3';
+      const path = `birds/audio/${Date.now()}.${ext}`;
+      const result = await uploadFile(path, audioFile);
+      await actor.addAudioFile(birdName, result.path);
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['birdDetails', birdName] });
+      onSuccess();
+      onClose();
+    } catch (err) {
+      console.error('Failed to add audio:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-amber-200 hover:shadow-lg overflow-hidden transition-all">
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent dir="rtl">
+        <DialogHeader>
+          <DialogTitle>إضافة صوت: {birdName}</DialogTitle>
+        </DialogHeader>
+        <div className="mt-2">
+          <Label className="text-xs">ملف الصوت</Label>
+          <Input
+            type="file"
+            accept="audio/*"
+            onChange={e => setAudioFile(e.target.files?.[0] || null)}
+            className="mt-1"
+          />
+        </div>
+        <div className="flex gap-2 mt-4 justify-end">
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+            إلغاء
+          </Button>
+          <Button onClick={handleSubmit} disabled={!audioFile || isSubmitting}>
+            {isSubmitting ? '⏳ جاري الرفع...' : '🎵 رفع الصوت'}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Bird Card ─────────────────────────────────────────────────────────────────
+
+function BirdCard({
+  bird,
+  isAdmin,
+  onEdit,
+  onDelete,
+  onAddAudio,
+  onViewDetails,
+}: {
+  bird: BirdData;
+  isAdmin: boolean;
+  onEdit: (bird: BirdData) => void;
+  onDelete: (bird: BirdData) => void;
+  onAddAudio: (bird: BirdData) => void;
+  onViewDetails: (bird: BirdData) => void;
+}) {
+  const mainImage = bird.subImages?.[0];
+  // Get first location for display
+  const firstLocation: LocationEntry | undefined = bird.locations?.[0];
+
+  return (
+    <div className="bg-card border border-border rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden flex flex-col">
       {/* Image */}
-      <div
-        className="cursor-pointer relative"
-        onClick={() => {
-          if (bird.subImages?.length > 0) {
-            onImageClick(bird.subImages, 0, bird.arabicName);
-          }
-        }}
-      >
+      <div className="cursor-pointer" onClick={() => onViewDetails(bird)}>
         {mainImage ? (
-          <BirdImageDisplay path={mainImage} />
+          <BirdImage imagePath={mainImage} alt={bird.arabicName} />
         ) : (
           <div className="w-full h-48 bg-amber-100 flex items-center justify-center">
-            <span className="text-amber-400 text-5xl">🦅</span>
+            <span className="text-5xl">🦉</span>
           </div>
-        )}
-        {hasAudio && (
-          <span className="absolute top-2 left-2 bg-amber-600 text-white text-xs px-2 py-0.5 rounded-full">
-            🎵 صوت
-          </span>
-        )}
-        {bird.subImages?.length > 1 && (
-          <span className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
-            📷 {bird.subImages.length}
-          </span>
         )}
       </div>
 
       {/* Content */}
-      <div className="p-4" dir="rtl">
-        <h3 className="text-amber-900 font-bold text-base mb-1">{bird.arabicName}</h3>
+      <div className="p-3 flex flex-col flex-1">
+        <h3
+          className="font-bold text-foreground text-base mb-1 cursor-pointer hover:text-primary transition-colors"
+          onClick={() => onViewDetails(bird)}
+        >
+          {bird.arabicName}
+        </h3>
         {bird.scientificName && (
-          <p className="text-amber-600 text-xs italic mb-1">{bird.scientificName}</p>
+          <p className="text-muted-foreground text-xs italic mb-1">{bird.scientificName}</p>
         )}
         {bird.englishName && (
-          <p className="text-amber-700 text-xs mb-2">{bird.englishName}</p>
+          <p className="text-muted-foreground text-xs mb-1">{bird.englishName}</p>
+        )}
+        {firstLocation?.location && (
+          <p className="text-amber-600 text-xs">📍 {firstLocation.location}</p>
+        )}
+        {bird.locations && bird.locations.length > 1 && (
+          <p className="text-amber-500 text-xs mt-0.5">
+            🗺️ {bird.locations.length} مواقع
+          </p>
         )}
         {bird.description && (
-          <p className="text-amber-800 text-xs line-clamp-2 mb-2">{bird.description}</p>
-        )}
-        {bird.location && (
-          <p className="text-amber-600 text-xs">📍 {bird.location}</p>
+          <p className="text-muted-foreground text-xs mt-2 line-clamp-2">{bird.description}</p>
         )}
 
-        {/* Admin Buttons */}
+        {/* Audio */}
+        {bird.audioFile && <AudioPlayerInline audioPath={bird.audioFile} />}
+
+        {/* Admin Actions */}
         {isAdmin && (
-          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-amber-100">
+          <div className="flex flex-wrap gap-1 mt-3 pt-2 border-t border-border">
             <button
-              onClick={() => setShowEditModal(true)}
-              className="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+              onClick={() => onEdit(bird)}
+              className="bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded text-xs font-medium transition-colors"
             >
-              ✏️ تحرير
+              ✏️ تعديل
             </button>
             <button
-              onClick={() => setShowAudioModal(true)}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+              onClick={() => onAddAudio(bird)}
+              className="bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded text-xs font-medium transition-colors"
             >
-              🎵 إضافة الصوت
+              🎵 صوت
             </button>
             <button
-              onClick={handleDelete}
-              disabled={deleteMutation.isPending}
-              className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+              onClick={() => onDelete(bird)}
+              className="bg-red-100 hover:bg-red-200 text-red-800 px-2 py-1 rounded text-xs font-medium transition-colors"
             >
               🗑️ حذف
             </button>
           </div>
         )}
       </div>
-
-      {showEditModal && (
-        <EditBirdModal
-          bird={bird}
-          onClose={() => setShowEditModal(false)}
-          onSuccess={onRefetch}
-        />
-      )}
-
-      {showAudioModal && (
-        <AddAudioModal
-          bird={bird}
-          onClose={() => setShowAudioModal(false)}
-          onSuccess={onRefetch}
-        />
-      )}
     </div>
   );
 }
 
-// ---- Image Viewer Modal ----
-interface ImageViewerProps {
-  images: string[];
-  currentIndex: number;
-  birdName: string;
-  onClose: () => void;
-  onNavigate: (index: number) => void;
-}
+// ─── Main Gallery Component ────────────────────────────────────────────────────
 
-function ImageViewer({ images, currentIndex, birdName, onClose, onNavigate }: ImageViewerProps) {
-  const { data: url } = useFileUrl(images[currentIndex]);
-
-  return (
-    <div
-      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-      dir="rtl"
-    >
-      <div className="relative max-w-4xl w-full" onClick={e => e.stopPropagation()}>
-        <button
-          onClick={onClose}
-          className="absolute -top-10 left-0 text-white text-2xl hover:text-amber-300 transition-colors"
-        >
-          ✕
-        </button>
-        <p className="text-amber-300 text-center mb-2 text-sm">{birdName} — {currentIndex + 1} / {images.length}</p>
-        {url ? (
-          <img src={url} alt={birdName} className="w-full max-h-[80vh] object-contain rounded-xl" />
-        ) : (
-          <div className="w-full h-64 bg-amber-900/30 flex items-center justify-center rounded-xl">
-            <span className="text-amber-400 text-4xl animate-pulse">🦅</span>
-          </div>
-        )}
-        {images.length > 1 && (
-          <div className="flex justify-center gap-3 mt-4">
-            <button
-              onClick={() => onNavigate(Math.max(0, currentIndex - 1))}
-              disabled={currentIndex === 0}
-              className="bg-amber-600 hover:bg-amber-700 disabled:opacity-30 text-white px-4 py-2 rounded-lg text-sm"
-            >
-              ◀ السابق
-            </button>
-            <button
-              onClick={() => onNavigate(Math.min(images.length - 1, currentIndex + 1))}
-              disabled={currentIndex === images.length - 1}
-              className="bg-amber-600 hover:bg-amber-700 disabled:opacity-30 text-white px-4 py-2 rounded-lg text-sm"
-            >
-              التالي ▶
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ---- Main BirdGallery ----
 export default function BirdGallery() {
+  const navigate = useNavigate();
+  const { identity } = useInternetIdentity();
   const { actor, isFetching: actorFetching } = useActor();
   const [isAdmin, setIsAdmin] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [viewerState, setViewerState] = useState<{
-    images: string[];
-    index: number;
-    birdName: string;
-  } | null>(null);
-  const { data: allBirdData, isLoading, error, refetch } = useGetAllBirdData();
+  const [editingBird, setEditingBird] = useState<BirdData | null>(null);
+  const [audioModalBird, setAudioModalBird] = useState<BirdData | null>(null);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
+  const { data: allBirdDetails, isLoading, error, refetch } = useGetAllBirdDetails();
+  const deleteMutation = useDeleteBirdById();
+
+  // Check admin status
+  useState(() => {
     if (!actor || actorFetching) return;
     actor.isCallerAdmin().then((result: boolean) => {
       setIsAdmin(result);
     }).catch(() => setIsAdmin(false));
-  }, [actor, actorFetching]);
+  });
 
-  const birds: BirdData[] = allBirdData
-    ? allBirdData.map(([, bd]: [string, BirdData]) => bd)
+  // Suppress unused variable warning — identity used for auth context
+  void identity;
+
+  const birds: BirdData[] = allBirdDetails
+    ? allBirdDetails.map(([, bd]: [string, BirdData]) => bd)
     : [];
 
-  const filtered = birds.filter((b: BirdData) => {
+  const filtered = birds.filter((bird: BirdData) => {
     const term = searchTerm.toLowerCase();
     return (
-      b.arabicName?.toLowerCase().includes(term) ||
-      b.scientificName?.toLowerCase().includes(term) ||
-      b.englishName?.toLowerCase().includes(term) ||
-      b.location?.toLowerCase().includes(term)
+      bird.arabicName?.toLowerCase().includes(term) ||
+      bird.scientificName?.toLowerCase().includes(term) ||
+      bird.englishName?.toLowerCase().includes(term) ||
+      bird.locations?.some((loc: LocationEntry) =>
+        loc.location?.toLowerCase().includes(term) ||
+        loc.governorate?.toLowerCase().includes(term)
+      )
     );
   });
 
-  const handleImageClick = (images: string[], index: number, birdName: string) => {
-    setViewerState({ images, index, birdName });
-  };
+  const handleDelete = useCallback(async (bird: BirdData) => {
+    if (!confirm(`هل أنت متأكد من حذف "${bird.arabicName}"؟`)) return;
+    try {
+      await deleteMutation.mutateAsync(bird.id);
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+    } catch {
+      alert('فشل حذف الطائر');
+    }
+  }, [deleteMutation, queryClient]);
+
+  // Navigate to bird details — route is /bird/$name with param "name"
+  const handleViewDetails = useCallback((bird: BirdData) => {
+    navigate({ to: '/bird/$name', params: { name: encodeURIComponent(bird.arabicName) } });
+  }, [navigate]);
+
+  const handleSuccess = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+    refetch();
+  }, [queryClient, refetch]);
 
   if (isLoading) {
     return (
-      <div dir="rtl" className="min-h-screen bg-amber-50 flex items-center justify-center">
+      <div dir="rtl" className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="text-5xl mb-4 animate-spin inline-block">⏳</div>
-          <p className="text-amber-700 font-medium text-lg">جاري تحميل معرض الطيور...</p>
+          <p className="text-muted-foreground">جاري تحميل معرض الطيور...</p>
         </div>
       </div>
     );
@@ -670,13 +649,13 @@ export default function BirdGallery() {
 
   if (error) {
     return (
-      <div dir="rtl" className="min-h-screen bg-amber-50 flex items-center justify-center">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center max-w-md">
+      <div dir="rtl" className="min-h-screen bg-background flex items-center justify-center">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-xl p-8 text-center max-w-md">
           <div className="text-4xl mb-3">❌</div>
-          <p className="text-red-700 font-medium mb-4">فشل تحميل البيانات</p>
+          <p className="text-destructive font-medium mb-4">فشل تحميل المعرض</p>
           <button
             onClick={() => refetch()}
-            className="bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-lg text-sm"
+            className="bg-destructive/10 hover:bg-destructive/20 text-destructive px-4 py-2 rounded-lg text-sm"
           >
             إعادة المحاولة
           </button>
@@ -686,72 +665,106 @@ export default function BirdGallery() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-amber-50">
-      {/* Toolbar */}
-      <div className="bg-white border-b border-amber-200 px-4 py-3 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-full flex flex-wrap items-center gap-3">
+    <div dir="rtl" className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="bg-card border-b border-border px-4 py-3 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center gap-3">
+          <h1 className="text-lg font-bold text-foreground">🦉 معرض الطيور</h1>
           <div className="flex items-center gap-2 flex-1 min-w-48">
-            <span className="text-amber-600">🔍</span>
+            <span className="text-muted-foreground">🔍</span>
             <input
               type="text"
               placeholder="بحث في المعرض..."
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
-              className="border border-amber-300 rounded-lg px-3 py-1.5 text-sm bg-amber-50 text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400 w-full"
+              className="border border-input rounded-lg px-3 py-1.5 text-sm bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring w-full"
             />
           </div>
-          <span className="text-amber-700 text-sm">
-            🦅 {filtered.length} / {birds.length} طائر
-          </span>
+          <span className="text-muted-foreground text-sm">{filtered.length} طائر</span>
           {isAdmin && (
             <button
               onClick={() => setShowAddModal(true)}
               className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
             >
-              ➕ إضافة
+              ➕ إضافة طائر
             </button>
           )}
+          <button
+            onClick={() => navigate({ to: '/' })}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          >
+            🏠 الرئيسية
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Grid */}
-      <div className="px-4 py-6">
+      {/* Gallery Grid */}
+      <main className="max-w-7xl mx-auto px-4 py-6">
         {filtered.length === 0 ? (
           <div className="text-center py-16">
-            <div className="text-5xl mb-4">📭</div>
-            <p className="text-amber-600 text-lg">لا توجد طيور في المعرض</p>
+            <div className="text-6xl mb-4">📭</div>
+            <p className="text-muted-foreground text-lg">
+              {searchTerm ? 'لا توجد نتائج للبحث' : 'لا توجد طيور في المعرض'}
+            </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {filtered.map((bird: BirdData) => (
+          <LazyGalleryGrid
+            items={filtered}
+            renderItem={(bird: BirdData) => (
               <BirdCard
                 key={String(bird.id)}
                 bird={bird}
                 isAdmin={isAdmin}
-                onImageClick={handleImageClick}
-                onRefetch={refetch}
+                onEdit={setEditingBird}
+                onDelete={handleDelete}
+                onAddAudio={setAudioModalBird}
+                onViewDetails={handleViewDetails}
               />
-            ))}
-          </div>
+            )}
+          />
         )}
-      </div>
+      </main>
 
-      {/* Add Modal */}
+      {/* Footer */}
+      <footer className="border-t border-border py-6 text-center text-muted-foreground text-sm">
+        <p>
+          © {new Date().getFullYear()} — مشروع المسح الميداني لطائر البوم بمحافظة البريمي
+        </p>
+        <p className="mt-1">
+          Built with ❤️ using{' '}
+          <a
+            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-foreground transition-colors"
+          >
+            caffeine.ai
+          </a>
+        </p>
+      </footer>
+
+      {/* Modals */}
       {showAddModal && (
         <AddBirdModal
+          open={showAddModal}
           onClose={() => setShowAddModal(false)}
-          onSuccess={refetch}
+          onSuccess={handleSuccess}
         />
       )}
-
-      {/* Image Viewer */}
-      {viewerState && (
-        <ImageViewer
-          images={viewerState.images}
-          currentIndex={viewerState.index}
-          birdName={viewerState.birdName}
-          onClose={() => setViewerState(null)}
-          onNavigate={index => setViewerState(prev => prev ? { ...prev, index } : null)}
+      {editingBird && (
+        <EditBirdModal
+          bird={editingBird}
+          open={!!editingBird}
+          onClose={() => setEditingBird(null)}
+          onSuccess={handleSuccess}
+        />
+      )}
+      {audioModalBird && (
+        <AddAudioModal
+          birdName={audioModalBird.arabicName}
+          open={!!audioModalBird}
+          onClose={() => setAudioModalBird(null)}
+          onSuccess={handleSuccess}
         />
       )}
     </div>
