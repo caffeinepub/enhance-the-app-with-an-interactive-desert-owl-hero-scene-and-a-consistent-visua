@@ -1,121 +1,64 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Rebuild and Redeploy Al Buraimi Owl Atlas Without Code Changes",
+  "title": "Restore all bird data and admin control buttons after v598 regression",
   "requirements": [
     {
-      "id": "REQ-141",
-      "summary": "Perform a clean rebuild and redeploy of the entire application without modifying any source files, ensuring all frontend routes, components, and features render correctly after deployment",
+      "id": "REQ-144",
+      "summary": "Restore all five admin-only action buttons in BirdDataTable (إضافة, تعديل, حفظ, حذف, تحرير) for authenticated admin users, ensuring isAdmin check uses useState + useEffect pattern that triggers re-render after actor/identity resolves",
       "acceptanceCriteria": [
-        "No source files are modified — only a clean rebuild and redeploy is performed",
-        "Backend compiles and deploys without errors",
-        "All frontend routes (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions) are accessible",
-        "BirdDataTable renders with all five admin-only action buttons visible after admin login",
-        "BirdGallery renders with admin action buttons and image-click modal",
-        "AllLocationsMap renders with interactive Leaflet map, bird-name filter, and show/hide toggle",
-        "HomePage renders with splash screen, hero section, navigation cards, map upload section, and team table",
-        "HamburgerMenu renders with all navigation links"
+        "Authenticated admin user sees all five action buttons (إضافة, تعديل, حفظ, حذف, تحرير) in BirdDataTable",
+        "Add button appears in the toolbar/header area and creates a new empty editable row",
+        "Edit button on each row switches it into inline edit mode",
+        "Save button replaces Edit when a row is in edit mode and commits changes to the backend",
+        "Delete button on each row removes the record from the backend",
+        "Update/Edit (تحرير) button on each row provides alternative update action",
+        "Non-admin and unauthenticated users do not see any action buttons",
+        "All existing column definitions, RTL orientation, horizontal scrolling, color scheme, and data-fetching logic are unchanged"
       ],
       "file_operations": [
         {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Verify TanStack Router configuration includes all required routes (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions) and lazy-loads page components correctly. Ensure QueryClientProvider, MainHeader, and MemoryRecoveryNotification are wired into the layout. No code changes—validation only."
-        },
-        {
           "path": "frontend/src/components/BirdDataTable.tsx",
           "operation": "modify",
-          "description": "Verify the table component renders all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) when the user is authenticated as admin via the backend actor. Confirm search, multi-column sorting, and CSV/Excel/PDF export functionality are intact. No code changes—validation only."
-        },
+          "description": "Restore all five admin-only action buttons (إضافة in toolbar, تعديل/حفظ/حذف/تحرير on each row) by implementing a useState + useEffect pattern for isAdmin that properly triggers re-render after the actor and identity resolve. Ensure the isAdmin state is initially false, then updated in useEffect when isCallerAdmin() query resolves successfully. Keep all existing column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic exactly as they are. The Add button must insert a new empty editable row at the top of the table. The Edit button must switch the row into inline edit mode. The Save button must replace Edit when in edit mode and commit changes to the backend. The Delete button must remove the record from the backend. The Update/Edit (تحرير) button must provide alternative update action. Use the authorization component's isCallerAdmin backend capability via React Query to determine admin status. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-145",
+      "summary": "Restore all admin-only action buttons in BirdGallery (إضافة, حفظ, حذف, تحرير, إضافة الصوت) for authenticated admin users, ensuring isAdmin check uses useState + useEffect pattern that triggers re-render after actor/identity resolves",
+      "acceptanceCriteria": [
+        "Authenticated admin user sees Add (إضافة), Save (حفظ), Delete (حذف), Update/Edit (تحرير), and Add Audio (إضافة الصوت) buttons in BirdGallery",
+        "Add button opens a form/modal for uploading main image and sub-images for a new bird record",
+        "Save button on each card commits pending edits to the backend",
+        "Delete button on each card removes the record from the backend",
+        "Update/Edit button on each card switches the entry into an editable state",
+        "Add Audio button opens a file picker restricted to audio types and uploads the audio blob to the backend",
+        "Non-admin and unauthenticated users do not see any action buttons",
+        "Existing gallery search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal are unchanged"
+      ],
+      "file_operations": [
         {
           "path": "frontend/src/components/BirdGallery.tsx",
           "operation": "modify",
-          "description": "Verify the gallery component displays admin action buttons (add, edit, delete) for authenticated admin users via the backend actor. Confirm image-click modal, main image upload, sub-image upload, and audio file upload are wired correctly. No code changes—validation only."
-        },
+          "description": "Restore all admin-only action buttons (إضافة in toolbar, حفظ/حذف/تحرير/إضافة الصوت on each card) by implementing a useState + useEffect pattern for isAdmin that properly triggers re-render after the actor and identity resolve. Ensure the isAdmin state is initially false, then updated in useEffect when isCallerAdmin() query resolves successfully. Keep all existing gallery search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal exactly as they are. The Add button must open a form/modal for uploading main image and sub-images for a new bird record. The Save button on each card must commit pending edits to the backend. The Delete button on each card must remove the record from the backend. The Update/Edit (تحرير) button on each card must switch the entry into an editable state. The Add Audio (إضافة الصوت) button on each card must open a file picker restricted to audio file types and upload the selected audio blob to the backend using the blob-storage component. Use the authorization component's isCallerAdmin backend capability via React Query to determine admin status. Verify the blob-storage component's usage instructions before implementing file uploads."
+        }
+      ]
+    },
+    {
+      "id": "REQ-146",
+      "summary": "Restore all bird data records displayed in BirdDataTable by fixing the data-fetching logic if broken by v598, ensuring the table correctly fetches and displays all bird records returned by the backend via React Query / useActor pattern",
+      "acceptanceCriteria": [
+        "All bird records stored in the backend are visible in the BirdDataTable on the data page",
+        "Table renders all rows returned by the backend without deduplication or collapse",
+        "Data loads correctly on first render without requiring page refresh",
+        "No regression to existing table structure, columns, styling, or admin buttons"
+      ],
+      "file_operations": [
         {
-          "path": "frontend/src/components/AllLocationsMap.tsx",
+          "path": "frontend/src/components/BirdDataTable.tsx",
           "operation": "modify",
-          "description": "Verify the interactive Leaflet map component fetches all bird location data, renders filterable circle markers with popups, and supports bird-name filtering and marker visibility toggling. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/pages/HomePage.tsx",
-          "operation": "modify",
-          "description": "Verify the home page renders the splash screen, hero section, navigation cards to major app sections (/data, /gallery, /map, /eagle-owl, /statistics), admin map upload functionality, and team data table. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/components/HamburgerMenu.tsx",
-          "operation": "modify",
-          "description": "Verify the hamburger menu renders a dropdown navigation list with Arabic labels and icons for all app routes, closing on outside click or Escape key. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/components/MainHeader.tsx",
-          "operation": "modify",
-          "description": "Verify the sticky app header displays logo, desktop navigation links, Internet Identity login/logout, data refresh button, and hamburger menu for mobile. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/hooks/useActor.ts",
-          "operation": "modify",
-          "description": "Verify the custom hook creates and caches an ICP backend actor using React Query, returning an authenticated or anonymous actor based on Internet Identity state and invalidating dependent queries when the actor changes. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/hooks/useInternetIdentity.ts",
-          "operation": "modify",
-          "description": "Verify the Internet Identity authentication context manages login/logout state via DFINITY AuthClient and exposes identity, login status, and control functions. Confirm the authorization component's usage instructions are followed for login/logout and profile setup. No code changes—validation only."
-        },
-        {
-          "path": "frontend/index.html",
-          "operation": "modify",
-          "description": "Verify the HTML entry point mounts the React app via /src/main.tsx with correct Arabic RTL page title, favicon, and theme color. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/main.tsx",
-          "operation": "modify",
-          "description": "Verify the React app entry point mounts the root component wrapped with QueryClientProvider and InternetIdentityProvider. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/components/BirdDetailsPage.tsx",
-          "operation": "modify",
-          "description": "Verify the /bird/:name route displays detailed bird view including main image, sub-images, audio player, and metadata, with navigation back to home. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/components/EagleOwlPage.tsx",
-          "operation": "modify",
-          "description": "Verify the /eagle-owl route displays the dedicated eagle owl page with filtered bird and location data, stats, hero section, and lists of matching birds and observation locations. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/components/StatisticsPage.tsx",
-          "operation": "modify",
-          "description": "Verify the /statistics route displays bird observation statistics including total counts, bar chart of top birds by location count, and data table. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/components/ImageViewPage.tsx",
-          "operation": "modify",
-          "description": "Verify the /image-view route displays a full-screen image viewer with zoom, rotation, and reset controls, reading image URL from history state. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/components/PermissionManagement.tsx",
-          "operation": "modify",
-          "description": "Verify the /permissions route renders an admin-only page that allows assigning user roles by principal ID with access control checks via the authorization component. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/pages/BirdDataPage.tsx",
-          "operation": "modify",
-          "description": "Verify the /data route renders the BirdDataTable with header and back-navigation buttons to the home route. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/components/MapView.tsx",
-          "operation": "modify",
-          "description": "Verify the /map route renders an interactive Leaflet map showing bird sighting locations with markers and image popups, dynamically loading Leaflet from CDN. No code changes—validation only."
-        },
-        {
-          "path": "frontend/src/index.css",
-          "operation": "modify",
-          "description": "Verify global CSS sets up Tailwind, defines the desert-themed light/dark color palette, and includes styles for splash screen, RTL layout, and mobile responsiveness. No code changes—validation only."
-        },
-        {
-          "path": "frontend/tailwind.config.js",
-          "operation": "modify",
-          "description": "Verify Tailwind configuration defines custom OKLCH-based color tokens, border radii, box shadows, accordion keyframes, and enables typography, container-queries, and animate plugins. No code changes—validation only."
+          "description": "Identify and fix any data-fetching logic issues introduced in v598 that prevent bird records from loading in the table. Ensure the component correctly uses the existing React Query hook (likely useGetAllBirdDetails or similar from useQueries.ts) with the useActor pattern to fetch all bird records from the backend. Verify the query is enabled only when the actor is available, that loading states are handled properly, and that all returned records are displayed without deduplication or filtering. Do not change column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, admin guard logic, or action buttons. Only fix the data-fetching and rendering logic if it is broken."
         }
       ]
     }

@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 155,
+  "projectStateVersion": 161,
   "summary": "Bird distribution tracker app for Al Buraimi Governorate. After multiple failed revert/restore attempts (versions 521-528), user is requesting restoration to version 510, which was an earlier stable version. The app title should be 'مواقع انتشار البوم بمحافظة البريمي'.",
   "architectural_notes": [
     "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)",
@@ -903,6 +903,46 @@
         "REQ-140"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-fix-the-add-new-bird-dialog-modal-so-that-it-is-fully-visible-and-not-transparent-the-dialog-must-have-a-solid-opaque-background-using-the-existing-desert-amber-tailwind-color-scheme-e-g-white-or-amber-tinted-background-with-sufficient-contrast-all-dialog-title-header-text-must-be-clearly-readable-against-the-background-the-dialog-layout-must-be-horizontal-fields-arranged-in-a-multi-column-horizontal-grid-rather-than-a-single-vertical-column-making-it-easier-to-read-and-fill-in-do-not-change-any-other-aspect-of-birddatatable-tsx-the-table-structure-column-definitions-rtl-orientation-horizontal-scrolling-color-scheme-of-the-table-itself-font-sizes-data-fetching-logic-the-five-admin-action-buttons-or-the-admin-guard-logic-must-all-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, fix the 'Add New Bird' dialog/modal so that it is fully visible and not transparent. The dialog must have a solid, opaque background using the existing desert/amber Tailwind color scheme (e.g., white or amber-tinted background with sufficient contrast). All dialog title/header text must be clearly readable against the background. The dialog layout must be horizontal (fields arranged in a multi-column horizontal grid rather than a single vertical column), making it easier to read and fill in. Do NOT change any other aspect of BirdDataTable.tsx — the table structure, column definitions, RTL orientation, horizontal scrolling, color scheme of the table itself, font sizes, data-fetching logic, the five admin action buttons (إضافة, تعديل, حفظ, حذف, تحرير), or the admin guard logic must all remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-142"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-alllocationsmap-tsx-only-ensure-the-interactive-leaflet-map-is-fully-synchronized-with-the-bird-records-returned-by-the-backend-every-bird-record-that-has-valid-latitude-and-longitude-coordinate-data-must-appear-as-a-marker-on-the-map-the-component-must-fetch-bird-records-using-the-existing-react-query-useactor-pattern-same-data-source-used-by-birddatatable-tsx-parse-the-latitude-longitude-fields-from-each-record-and-render-one-leaflet-marker-per-valid-coordinate-entry-the-marker-set-must-reflect-the-current-state-of-the-database-in-real-time-new-records-must-produce-new-markers-on-next-data-refresh-updated-records-must-update-marker-position-and-popup-content-and-deleted-records-must-remove-their-markers-the-bird-name-filter-dropdown-show-hide-map-toggle-return-to-home-button-rtl-orientation-auto-fit-bounds-logic-and-all-other-existing-functionality-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/AllLocationsMap.tsx only, ensure the interactive Leaflet map is fully synchronized with the bird records returned by the backend. Every bird record that has valid latitude and longitude coordinate data must appear as a marker on the map. The component must fetch bird records using the existing React Query / useActor pattern (same data source used by BirdDataTable.tsx), parse the latitude/longitude fields from each record, and render one Leaflet marker per valid coordinate entry. The marker set must reflect the current state of the database in real time: new records must produce new markers on next data refresh, updated records must update marker position and popup content, and deleted records must remove their markers. The bird-name filter dropdown, show/hide map toggle, Return to Home button, RTL orientation, auto-fit bounds logic, and all other existing functionality must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-143"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-all-five-admin-only-action-buttons-in-frontend-src-components-birddatatable-tsx-so-they-are-present-visible-and-fully-functional-for-authenticated-admin-users-after-the-v598-deployment-the-five-buttons-must-be-1-add-in-the-table-toolbar-header-area-inserts-a-new-empty-editable-row-at-the-top-of-the-table-2-edit-on-each-data-row-switches-that-row-into-inline-edit-mode-3-save-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-changes-to-the-backend-4-delete-on-each-row-removes-the-record-from-the-backend-5-update-edit-on-each-row-alternative-update-action-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-correctly-triggers-a-re-render-after-the-actor-identity-resolves-ensuring-buttons-appear-once-admin-identity-is-confirmed-all-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-and-data-fetching-logic-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore all five admin-only action buttons in frontend/src/components/BirdDataTable.tsx so they are present, visible, and fully functional for authenticated admin users after the v598 deployment. The five buttons must be: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row at the top of the table; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-144"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-all-admin-only-action-buttons-in-frontend-src-components-birdgallery-tsx-so-they-are-present-visible-and-fully-functional-for-authenticated-admin-users-after-the-v598-deployment-the-buttons-must-be-1-add-in-the-gallery-toolbar-header-area-opens-a-form-modal-for-uploading-a-new-bird-record-with-a-main-image-and-sub-images-2-save-on-each-gallery-card-commits-pending-edits-to-the-backend-3-delete-on-each-gallery-card-removes-the-record-from-the-backend-4-update-edit-on-each-gallery-card-switches-the-entry-into-an-editable-state-5-add-audio-on-each-gallery-card-opens-a-file-picker-for-audio-files-and-uploads-the-selected-audio-as-a-blob-associated-with-the-bird-record-the-isadmin-check-must-use-a-usestate-useeffect-pattern-so-buttons-appear-once-admin-identity-is-confirmed-after-the-actor-resolves-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-and-image-click-modal-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore all admin-only action buttons in frontend/src/components/BirdGallery.tsx so they are present, visible, and fully functional for authenticated admin users after the v598 deployment. The buttons must be: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state; (5) 'إضافة الصوت' (Add Audio) on each gallery card — opens a file picker for audio files and uploads the selected audio as a blob associated with the bird record. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-145"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-all-bird-data-records-displayed-in-frontend-src-components-birddatatable-tsx-the-table-must-correctly-fetch-and-display-all-bird-records-returned-by-the-backend-via-the-existing-react-query-useactor-data-fetching-pattern-if-data-is-not-loading-due-to-a-query-or-actor-initialization-issue-introduced-in-v598-identify-and-fix-only-the-data-fetching-logic-within-birddatatable-tsx-do-not-change-any-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-admin-guard-logic-or-action-buttons-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore all bird data records displayed in frontend/src/components/BirdDataTable.tsx. The table must correctly fetch and display all bird records returned by the backend via the existing React Query / useActor data-fetching pattern. If data is not loading due to a query or actor initialization issue introduced in v598, identify and fix only the data-fetching logic within BirdDataTable.tsx. Do NOT change any column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, admin guard logic, or action buttons. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-146"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -1354,6 +1394,18 @@
       "reqIds": [
         "REQ-141"
       ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-79",
+      "summary": "Fix the data upload dialog/modal box in the app so that it is displayed horizontally and clearly (not transparent/invisible). The dialog titles/headers must be visible. No other changes to the app are allowed.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-80",
+      "summary": "Synchronize bird data with the interactive map so that all data points/markers appear on the map. Do not change anything else in the application.",
+      "reqIds": [],
       "status": "pending"
     }
   ],

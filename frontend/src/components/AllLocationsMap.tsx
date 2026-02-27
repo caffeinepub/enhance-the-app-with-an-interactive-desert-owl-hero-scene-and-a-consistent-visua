@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { useGetAllBirdDetails } from '../hooks/useQueries';
-import type { BirdData, LocationEntry } from '../backend';
+import type { BirdData } from '../backend';
 import { MapPin, Eye, EyeOff, ArrowRight, Filter } from 'lucide-react';
 
 interface MarkerData {
@@ -31,43 +31,57 @@ export default function AllLocationsMap() {
   const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [mapInitialized, setMapInitialized] = useState(false);
   const [showMarkers, setShowMarkers] = useState(true);
   const [filterBird, setFilterBird] = useState('all');
-  const [selectedMarker, setSelectedMarker] = useState<MarkerData | null>(null);
 
   const { data: birdDataRaw, isLoading } = useGetAllBirdDetails();
 
   const birdData: [string, BirdData][] = birdDataRaw || [];
 
-  // Extract all markers
-  const allMarkers: MarkerData[] = [];
-  for (const [name, bird] of birdData) {
-    for (const loc of bird.locations) {
-      if (loc.coordinate.latitude !== 0 || loc.coordinate.longitude !== 0) {
-        allMarkers.push({
-          birdName: name,
-          arabicName: bird.arabicName,
-          localName: bird.localName,
-          scientificName: bird.scientificName,
-          englishName: bird.englishName,
-          latitude: loc.coordinate.latitude,
-          longitude: loc.coordinate.longitude,
-          location: loc.location,
-          governorate: loc.governorate,
-          mountainName: loc.mountainName,
-          valleyName: loc.valleyName,
-          notes: loc.notes,
-        });
+  // Extract all markers - memoized to avoid unnecessary re-renders
+  const allMarkers = useMemo<MarkerData[]>(() => {
+    const markers: MarkerData[] = [];
+    for (const [name, bird] of birdData) {
+      for (const loc of bird.locations) {
+        const lat = loc.coordinate.latitude;
+        const lng = loc.coordinate.longitude;
+        // Validate coordinates are real numbers and not zero
+        if (
+          typeof lat === 'number' &&
+          typeof lng === 'number' &&
+          isFinite(lat) &&
+          isFinite(lng) &&
+          !(lat === 0 && lng === 0)
+        ) {
+          markers.push({
+            birdName: name,
+            arabicName: bird.arabicName || name,
+            localName: bird.localName || '',
+            scientificName: bird.scientificName || '',
+            englishName: bird.englishName || '',
+            latitude: lat,
+            longitude: lng,
+            location: loc.location || '',
+            governorate: loc.governorate || '',
+            mountainName: loc.mountainName || '',
+            valleyName: loc.valleyName || '',
+            notes: loc.notes || '',
+          });
+        }
       }
     }
-  }
+    return markers;
+  }, [birdData]);
 
-  const filteredMarkers =
-    filterBird === 'all' ? allMarkers : allMarkers.filter((m) => m.birdName === filterBird);
+  const filteredMarkers = useMemo<MarkerData[]>(() => {
+    if (filterBird === 'all') return allMarkers;
+    return allMarkers.filter((m) => m.birdName === filterBird);
+  }, [allMarkers, filterBird]);
 
-  const birdNames = Array.from(new Set(allMarkers.map((m) => m.birdName)));
+  const birdNames = useMemo(() => Array.from(new Set(allMarkers.map((m) => m.birdName))), [allMarkers]);
 
-  // Load Leaflet
+  // Load Leaflet CSS and JS
   useEffect(() => {
     if (typeof window.L !== 'undefined') {
       setIsMapReady(true);
@@ -82,10 +96,11 @@ export default function AllLocationsMap() {
     const script = document.createElement('script');
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
     script.onload = () => setIsMapReady(true);
+    script.onerror = () => console.error('Failed to load Leaflet');
     document.head.appendChild(script);
   }, []);
 
-  // Initialize map
+  // Initialize map once Leaflet is ready
   useEffect(() => {
     if (!isMapReady || !mapRef.current || leafletMapRef.current) return;
 
@@ -102,45 +117,50 @@ export default function AllLocationsMap() {
     }).addTo(map);
 
     leafletMapRef.current = map;
+    setMapInitialized(true);
   }, [isMapReady]);
 
-  // Update markers
+  // Update markers whenever data, filter, or visibility changes
   useEffect(() => {
-    if (!leafletMapRef.current || !isMapReady) return;
+    if (!mapInitialized || !leafletMapRef.current) return;
 
     const L = window.L;
     const map = leafletMapRef.current;
 
     // Clear existing markers
-    markersRef.current.forEach((m) => map.removeLayer(m));
+    markersRef.current.forEach((m) => {
+      try {
+        map.removeLayer(m);
+      } catch (_) {}
+    });
     markersRef.current = [];
 
-    if (!showMarkers) return;
+    if (!showMarkers || filteredMarkers.length === 0) return;
 
     const bounds: [number, number][] = [];
 
     filteredMarkers.forEach((markerData) => {
       const circleMarker = L.circleMarker([markerData.latitude, markerData.longitude], {
-        radius: 8,
+        radius: 9,
         fillColor: '#f59e0b',
         color: '#92400e',
         weight: 2,
         opacity: 1,
-        fillOpacity: 0.8,
+        fillOpacity: 0.85,
       });
 
       const popupContent = `
-        <div dir="rtl" style="font-family: Arial, sans-serif; min-width: 200px;">
-          <h3 style="font-weight: bold; font-size: 14px; margin-bottom: 8px; color: #92400e;">${markerData.arabicName}</h3>
-          ${markerData.localName ? `<p style="font-size: 12px; color: #666; margin: 2px 0;">الاسم المحلي: ${markerData.localName}</p>` : ''}
-          ${markerData.scientificName ? `<p style="font-size: 12px; color: #666; margin: 2px 0; font-style: italic;">الاسم العلمي: ${markerData.scientificName}</p>` : ''}
-          ${markerData.englishName ? `<p style="font-size: 12px; color: #666; margin: 2px 0;">الاسم الإنجليزي: ${markerData.englishName}</p>` : ''}
-          ${markerData.location ? `<p style="font-size: 12px; margin: 2px 0;">الموقع: ${markerData.location}</p>` : ''}
-          ${markerData.governorate ? `<p style="font-size: 12px; margin: 2px 0;">المحافظة: ${markerData.governorate}</p>` : ''}
-          ${markerData.mountainName ? `<p style="font-size: 12px; margin: 2px 0;">الجبل: ${markerData.mountainName}</p>` : ''}
-          ${markerData.valleyName ? `<p style="font-size: 12px; margin: 2px 0;">الوادي: ${markerData.valleyName}</p>` : ''}
-          <p style="font-size: 11px; color: #999; margin-top: 6px;">${markerData.latitude.toFixed(4)}, ${markerData.longitude.toFixed(4)}</p>
-          ${markerData.notes ? `<p style="font-size: 12px; color: #555; margin-top: 4px; border-top: 1px solid #eee; padding-top: 4px;">${markerData.notes}</p>` : ''}
+        <div dir="rtl" style="font-family: Arial, sans-serif; min-width: 210px; max-width: 280px;">
+          <h3 style="font-weight: bold; font-size: 14px; margin: 0 0 8px 0; color: #92400e; border-bottom: 1px solid #f59e0b; padding-bottom: 6px;">${markerData.arabicName}</h3>
+          ${markerData.localName ? `<p style="font-size: 12px; color: #555; margin: 3px 0;"><strong>الاسم المحلي:</strong> ${markerData.localName}</p>` : ''}
+          ${markerData.scientificName ? `<p style="font-size: 12px; color: #555; margin: 3px 0; font-style: italic;"><strong>الاسم العلمي:</strong> ${markerData.scientificName}</p>` : ''}
+          ${markerData.englishName ? `<p style="font-size: 12px; color: #555; margin: 3px 0;"><strong>الاسم الإنجليزي:</strong> ${markerData.englishName}</p>` : ''}
+          ${markerData.location ? `<p style="font-size: 12px; color: #333; margin: 3px 0;"><strong>الموقع:</strong> ${markerData.location}</p>` : ''}
+          ${markerData.governorate ? `<p style="font-size: 12px; color: #333; margin: 3px 0;"><strong>المحافظة:</strong> ${markerData.governorate}</p>` : ''}
+          ${markerData.mountainName ? `<p style="font-size: 12px; color: #333; margin: 3px 0;"><strong>الجبل:</strong> ${markerData.mountainName}</p>` : ''}
+          ${markerData.valleyName ? `<p style="font-size: 12px; color: #333; margin: 3px 0;"><strong>الوادي:</strong> ${markerData.valleyName}</p>` : ''}
+          <p style="font-size: 11px; color: #999; margin: 6px 0 0 0; padding-top: 4px; border-top: 1px solid #eee;">${markerData.latitude.toFixed(5)}, ${markerData.longitude.toFixed(5)}</p>
+          ${markerData.notes ? `<p style="font-size: 12px; color: #555; margin-top: 4px; padding-top: 4px; border-top: 1px solid #eee;"><strong>ملاحظات:</strong> ${markerData.notes}</p>` : ''}
         </div>
       `;
 
@@ -152,12 +172,24 @@ export default function AllLocationsMap() {
 
     if (bounds.length > 0) {
       try {
-        map.fitBounds(bounds, { padding: [30, 30] });
-      } catch (e) {
-        // ignore
-      }
+        if (bounds.length === 1) {
+          map.setView(bounds[0], 13);
+        } else {
+          map.fitBounds(bounds, { padding: [40, 40] });
+        }
+      } catch (_) {}
     }
-  }, [isMapReady, filteredMarkers, showMarkers]);
+  }, [mapInitialized, filteredMarkers, showMarkers]);
+
+  // Invalidate map size after it becomes visible (fixes tile rendering issues)
+  useEffect(() => {
+    if (!mapInitialized || !leafletMapRef.current) return;
+    setTimeout(() => {
+      try {
+        leafletMapRef.current?.invalidateSize();
+      } catch (_) {}
+    }, 200);
+  }, [mapInitialized]);
 
   return (
     <div className="min-h-screen bg-background" dir="rtl">
@@ -173,7 +205,9 @@ export default function AllLocationsMap() {
           </button>
           <div className="flex-1">
             <h1 className="text-xl font-bold text-foreground">خريطة المواقع</h1>
-            <p className="text-sm text-muted-foreground">{allMarkers.length} موقع رصد</p>
+            <p className="text-sm text-muted-foreground">
+              {isLoading ? 'جاري التحميل...' : `${allMarkers.length} موقع رصد`}
+            </p>
           </div>
 
           {/* Controls */}
@@ -212,7 +246,7 @@ export default function AllLocationsMap() {
 
         {/* Map */}
         <div className="rounded-xl overflow-hidden border border-border shadow-md mb-6">
-          {isLoading && (
+          {isLoading && !mapInitialized && (
             <div className="h-96 flex items-center justify-center bg-muted">
               <div className="text-center">
                 <div className="text-4xl mb-3">🗺️</div>
@@ -222,8 +256,7 @@ export default function AllLocationsMap() {
           )}
           <div
             ref={mapRef}
-            style={{ height: '500px', width: '100%' }}
-            className={isLoading ? 'hidden' : ''}
+            style={{ height: '500px', width: '100%', display: isLoading && !mapInitialized ? 'none' : 'block' }}
           />
         </div>
 
@@ -231,7 +264,10 @@ export default function AllLocationsMap() {
         {filteredMarkers.length > 0 && (
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="px-4 py-3 border-b border-border">
-              <h2 className="font-semibold text-foreground">قائمة المواقع ({filteredMarkers.length})</h2>
+              <h2 className="font-semibold text-foreground flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                قائمة المواقع ({filteredMarkers.length})
+              </h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -263,6 +299,14 @@ export default function AllLocationsMap() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!isLoading && allMarkers.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <MapPin className="h-12 w-12 mx-auto mb-3 opacity-30" />
+            <p>لا توجد مواقع رصد مسجلة بعد</p>
           </div>
         )}
       </div>

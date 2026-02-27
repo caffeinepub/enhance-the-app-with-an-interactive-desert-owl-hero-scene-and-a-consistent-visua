@@ -1,150 +1,128 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useActor } from '../hooks/useActor';
 import {
-  useGetAllBirdData,
-  useAddBirdWithDetails,
+  useGetAllBirdDetails,
   useDeleteBirdData,
-  useSaveChanges,
+  useUpdateBirdDetails,
+  useAddBirdWithDetails,
 } from '../hooks/useQueries';
 import { BirdData, LocationEntry } from '../backend';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { exportBirdDataToCSV } from '../lib/csvExport';
+import { exportBirdsToExcel } from '../lib/excelExport';
+import { exportBirdsToPDF } from '../lib/pdfExport';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
-import { Loader2, Plus, Pencil, Save, Trash2, FileText, Download } from 'lucide-react';
-import { exportBirdDataToCSV } from '../lib/csvExport';
-import { exportBirdsToExcel } from '../lib/excelExport';
-import { exportBirdsToPDF } from '../lib/pdfExport';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, Plus, Pencil, Save, Trash2, FileText, FileSpreadsheet, Download } from 'lucide-react';
+import { toast } from 'sonner';
 
-interface EditingRow {
-  birdName: string;
-  data: BirdData;
+interface EditableBirdRow {
+  key: string;
+  bird: BirdData;
 }
+
+const emptyBird = (): BirdData => ({
+  id: BigInt(0),
+  arabicName: '',
+  scientificName: '',
+  englishName: '',
+  description: '',
+  locations: [],
+  audioFile: undefined,
+  subImages: [],
+  notes: '',
+  localName: '',
+});
+
+const emptyLocation = (): LocationEntry => ({
+  coordinate: { latitude: 0, longitude: 0 },
+  mountainName: '',
+  valleyName: '',
+  governorate: '',
+  notes: '',
+  location: '',
+});
 
 export default function BirdDataTable() {
   const { identity } = useInternetIdentity();
   const { actor, isFetching: actorFetching } = useActor();
 
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isCheckingAdmin, setIsCheckingAdmin] = useState(false);
-
-  const principalStr = identity?.getPrincipal().toString() ?? null;
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const checkAdmin = async () => {
-      if (!actor || actorFetching || !principalStr) {
-        setIsAdmin(false);
-        return;
-      }
-      setIsCheckingAdmin(true);
-      try {
-        const result = await actor.isCallerAdmin();
-        if (!cancelled) {
-          setIsAdmin(result);
-        }
-      } catch {
-        if (!cancelled) setIsAdmin(false);
-      } finally {
-        if (!cancelled) setIsCheckingAdmin(false);
-      }
-    };
-
-    checkAdmin();
-    return () => { cancelled = true; };
-  }, [actor, actorFetching, principalStr]);
-
-  const { data: allBirdData, isLoading } = useGetAllBirdData();
-  const addBirdWithDetails = useAddBirdWithDetails();
-  const deleteBirdData = useDeleteBirdData();
-  const saveChanges = useSaveChanges();
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortField, setSortField] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const [editingRow, setEditingRow] = useState<EditingRow | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingRow, setEditingRow] = useState<EditableBirdRow | null>(null);
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [showEditDialog, setShowEditDialog] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [newBird, setNewBird] = useState<BirdData>(emptyBird());
+  const [newLocation, setNewLocation] = useState<LocationEntry>(emptyLocation());
 
-  const [newBird, setNewBird] = useState({
-    arabicName: '',
-    scientificName: '',
-    englishName: '',
-    localName: '',
-    description: '',
-    notes: '',
-    latitude: '',
-    longitude: '',
-    mountainName: '',
-    valleyName: '',
-    governorate: '',
-    location: '',
-  });
+  const { data: allBirds, isLoading: birdsLoading } = useGetAllBirdDetails();
+  const deleteMutation = useDeleteBirdData();
+  const updateMutation = useUpdateBirdDetails();
+  const addMutation = useAddBirdWithDetails();
 
-  const birdList: [string, BirdData][] = allBirdData ?? [];
+  // Proper isAdmin check using useState + useEffect
+  useEffect(() => {
+    if (!actor || actorFetching) {
+      setIsAdmin(false);
+      return;
+    }
+    let cancelled = false;
+    actor.isCallerAdmin().then((result) => {
+      if (!cancelled) setIsAdmin(result);
+    }).catch(() => {
+      if (!cancelled) setIsAdmin(false);
+    });
+    return () => { cancelled = true; };
+  }, [actor, actorFetching, identity]);
 
-  const filtered = birdList.filter(([, bird]) => {
-    const term = searchTerm.toLowerCase();
-    return (
-      bird.arabicName.toLowerCase().includes(term) ||
-      bird.scientificName.toLowerCase().includes(term) ||
-      bird.englishName.toLowerCase().includes(term) ||
-      bird.localName.toLowerCase().includes(term) ||
-      bird.locations.some(
-        (loc) =>
-          loc.governorate.toLowerCase().includes(term) ||
-          loc.mountainName.toLowerCase().includes(term) ||
-          loc.valleyName.toLowerCase().includes(term) ||
-          loc.location.toLowerCase().includes(term)
-      )
+  const filteredBirds = useMemo(() => {
+    if (!allBirds) return [];
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return allBirds;
+    return allBirds.filter(([, bird]) =>
+      bird.arabicName.toLowerCase().includes(q) ||
+      bird.scientificName.toLowerCase().includes(q) ||
+      bird.englishName.toLowerCase().includes(q) ||
+      bird.notes.toLowerCase().includes(q)
     );
-  });
+  }, [allBirds, searchQuery]);
 
-  const sorted = [...filtered].sort(([, birdA], [, birdB]) => {
-    if (!sortField) return 0;
-    let valA = '';
-    let valB = '';
-    if (sortField === 'arabicName') { valA = birdA.arabicName; valB = birdB.arabicName; }
-    else if (sortField === 'scientificName') { valA = birdA.scientificName; valB = birdB.scientificName; }
-    else if (sortField === 'englishName') { valA = birdA.englishName; valB = birdB.englishName; }
-    else if (sortField === 'localName') { valA = birdA.localName; valB = birdB.localName; }
-    else if (sortField === 'governorate') {
-      valA = birdA.locations[0]?.governorate ?? '';
-      valB = birdB.locations[0]?.governorate ?? '';
+  const handleDelete = async (birdName: string) => {
+    if (!confirm(`هل أنت متأكد من حذف "${birdName}"؟`)) return;
+    try {
+      await deleteMutation.mutateAsync(birdName);
+      toast.success('تم حذف الطائر بنجاح');
+    } catch {
+      toast.error('فشل حذف الطائر');
     }
-    else if (sortField === 'hemisphere') {
-      valA = (birdA.locations[0]?.coordinate?.latitude ?? 0) >= 0 ? 'Northern' : 'Southern';
-      valB = (birdB.locations[0]?.coordinate?.latitude ?? 0) >= 0 ? 'Northern' : 'Southern';
-    }
-    const cmp = valA.localeCompare(valB, 'ar');
-    return sortDir === 'asc' ? cmp : -cmp;
-  });
+  };
 
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('asc');
+  const handleEdit = (key: string, bird: BirdData) => {
+    setEditingRow({ key, bird: { ...bird } });
+  };
+
+  const handleSave = async () => {
+    if (!editingRow) return;
+    try {
+      await updateMutation.mutateAsync({
+        birdName: editingRow.key,
+        arabicName: editingRow.bird.arabicName,
+        scientificName: editingRow.bird.scientificName,
+        englishName: editingRow.bird.englishName,
+        description: editingRow.bird.description,
+        notes: editingRow.bird.notes,
+      });
+      toast.success('تم حفظ التعديلات بنجاح');
+      setEditingRow(null);
+    } catch {
+      toast.error('فشل حفظ التعديلات');
     }
   };
 
@@ -153,378 +131,437 @@ export default function BirdDataTable() {
       toast.error('الاسم العربي مطلوب');
       return;
     }
-    setIsSaving(true);
     try {
-      await addBirdWithDetails.mutateAsync({
+      await addMutation.mutateAsync({
         arabicName: newBird.arabicName,
         scientificName: newBird.scientificName,
         englishName: newBird.englishName,
         description: newBird.description,
         notes: newBird.notes,
-        latitude: parseFloat(newBird.latitude) || 0,
-        longitude: parseFloat(newBird.longitude) || 0,
-        mountainName: newBird.mountainName,
-        valleyName: newBird.valleyName,
-        governorate: newBird.governorate,
-        locationDesc: newBird.location,
+        latitude: newLocation.coordinate.latitude,
+        longitude: newLocation.coordinate.longitude,
+        mountainName: newLocation.mountainName,
+        valleyName: newLocation.valleyName,
+        governorate: newLocation.governorate,
+        locationDesc: newLocation.location,
         audioFilePath: null,
         subImages: [],
       });
       toast.success('تم إضافة الطائر بنجاح');
       setShowAddDialog(false);
-      setNewBird({
-        arabicName: '', scientificName: '', englishName: '', localName: '',
-        description: '', notes: '', latitude: '', longitude: '',
-        mountainName: '', valleyName: '', governorate: '', location: '',
-      });
-    } catch (e: any) {
-      toast.error('فشل في إضافة الطائر: ' + (e?.message ?? ''));
-    } finally {
-      setIsSaving(false);
+      setNewBird(emptyBird());
+      setNewLocation(emptyLocation());
+    } catch {
+      toast.error('فشل إضافة الطائر');
     }
   };
 
-  const handleEditSave = async () => {
-    if (!editingRow) return;
-    setIsSaving(true);
-    try {
-      await saveChanges.mutateAsync({
-        birdName: editingRow.birdName,
-        updatedData: editingRow.data,
-      });
-      toast.success('تم حفظ التعديلات بنجاح');
-      setShowEditDialog(false);
-      setEditingRow(null);
-    } catch (e: any) {
-      toast.error('فشل في حفظ التعديلات: ' + (e?.message ?? ''));
-    } finally {
-      setIsSaving(false);
-    }
+  const handleExportCSV = () => {
+    if (!allBirds) return;
+    exportBirdDataToCSV(allBirds.map(([, b]) => b));
   };
 
-  const handleDelete = async (birdName: string) => {
-    if (!window.confirm(`هل أنت متأكد من حذف "${birdName}"؟`)) return;
-    setIsDeleting(birdName);
-    try {
-      await deleteBirdData.mutateAsync(birdName);
-      toast.success('تم حذف الطائر بنجاح');
-    } catch (e: any) {
-      toast.error('فشل في الحذف: ' + (e?.message ?? ''));
-    } finally {
-      setIsDeleting(null);
-    }
+  const handleExportExcel = () => {
+    if (!allBirds) return;
+    exportBirdsToExcel(allBirds.map(([, b]) => b));
   };
 
-  const openEdit = (birdName: string, bird: BirdData) => {
-    setEditingRow({ birdName, data: { ...bird } });
-    setShowEditDialog(true);
+  const handleExportPDF = () => {
+    if (!allBirds) return;
+    exportBirdsToPDF(allBirds.map(([, b]) => b));
   };
-
-  const SortIcon = ({ field }: { field: string }) => (
-    <span className="mr-1 text-xs opacity-60">
-      {sortField === field ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
-    </span>
-  );
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-primary w-8 h-8" />
-        <span className="mr-2 text-muted-foreground">جاري تحميل البيانات...</span>
-      </div>
-    );
-  }
 
   return (
-    <div dir="rtl" className="w-full space-y-4">
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-2 justify-between">
+    <div dir="rtl" className="w-full">
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
         <Input
-          placeholder="بحث..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-xs text-sm"
+          placeholder="بحث عن طائر..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="max-w-xs text-right border-amber-300 bg-white"
         />
-        <div className="flex flex-wrap gap-2">
-          {isAdmin && !isCheckingAdmin && (
-            <Button
-              size="sm"
-              onClick={() => setShowAddDialog(true)}
-              className="gap-1"
-            >
-              <Plus className="w-4 h-4" />
-              إضافة
-            </Button>
-          )}
+        <div className="flex-1" />
+        {/* Export buttons */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportCSV}
+          className="border-amber-400 text-amber-800 hover:bg-amber-100"
+        >
+          <Download className="w-4 h-4 ml-1" />
+          CSV
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportExcel}
+          className="border-amber-400 text-amber-800 hover:bg-amber-100"
+        >
+          <FileSpreadsheet className="w-4 h-4 ml-1" />
+          Excel
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleExportPDF}
+          className="border-amber-400 text-amber-800 hover:bg-amber-100"
+        >
+          <FileText className="w-4 h-4 ml-1" />
+          PDF
+        </Button>
+        {/* Admin-only Add button */}
+        {isAdmin && (
           <Button
             size="sm"
-            variant="outline"
-            onClick={() => exportBirdDataToCSV(birdList.map(([, b]) => b))}
-            className="gap-1"
+            onClick={() => setShowAddDialog(true)}
+            className="bg-amber-600 hover:bg-amber-700 text-white"
           >
-            <Download className="w-4 h-4" />
-            CSV
+            <Plus className="w-4 h-4 ml-1" />
+            إضافة
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => exportBirdsToExcel(birdList.map(([, b]) => b))}
-            className="gap-1"
-          >
-            <FileText className="w-4 h-4" />
-            Excel
-          </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => exportBirdsToPDF(birdList.map(([, b]) => b))}
-            className="gap-1"
-          >
-            <FileText className="w-4 h-4" />
-            PDF
-          </Button>
-        </div>
+        )}
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg border border-border">
-        <Table className="min-w-[900px] text-sm">
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('arabicName')}>
-                <SortIcon field="arabicName" />الاسم العربي
-              </TableHead>
-              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('localName')}>
-                <SortIcon field="localName" />الاسم المحلي
-              </TableHead>
-              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('scientificName')}>
-                <SortIcon field="scientificName" />الاسم العلمي
-              </TableHead>
-              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('englishName')}>
-                <SortIcon field="englishName" />الاسم الإنجليزي
-              </TableHead>
-              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('governorate')}>
-                <SortIcon field="governorate" />الولاية
-              </TableHead>
-              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('hemisphere')}>
-                <SortIcon field="hemisphere" />Northern Hemisphere
-              </TableHead>
-              <TableHead className="text-right whitespace-nowrap">الإحداثيات</TableHead>
-              <TableHead className="text-right whitespace-nowrap">المواقع</TableHead>
-              {isAdmin && !isCheckingAdmin && (
-                <TableHead className="text-right whitespace-nowrap">الإجراءات</TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {sorted.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={isAdmin && !isCheckingAdmin ? 9 : 8} className="text-center text-muted-foreground py-10">
-                  لا توجد بيانات
-                </TableCell>
-              </TableRow>
-            ) : (
-              sorted.map(([birdName, bird]) => {
-                const firstLoc: LocationEntry | undefined = bird.locations[0];
-                const lat = firstLoc?.coordinate?.latitude ?? 0;
-                const isNorthern = lat >= 0;
+      <div className="overflow-x-auto rounded-lg border border-amber-200 shadow-sm">
+        {birdsLoading ? (
+          <div className="flex items-center justify-center py-12 text-amber-700">
+            <Loader2 className="w-6 h-6 animate-spin ml-2" />
+            <span>جاري تحميل البيانات...</span>
+          </div>
+        ) : filteredBirds.length === 0 ? (
+          <div className="text-center py-12 text-amber-600">
+            {searchQuery ? 'لا توجد نتائج للبحث' : 'لا توجد بيانات'}
+          </div>
+        ) : (
+          <table className="w-full text-sm text-right">
+            <thead className="bg-amber-700 text-white">
+              <tr>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">#</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">الاسم العربي</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">الاسم العلمي</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">الاسم الإنجليزي</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">الوصف</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">المواقع</th>
+                <th className="px-3 py-3 font-semibold whitespace-nowrap">الملاحظات</th>
+                {isAdmin && (
+                  <th className="px-3 py-3 font-semibold whitespace-nowrap">الإجراءات</th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBirds.map(([key, bird], index) => {
+                const isEditing = editingRow?.key === key;
                 return (
-                  <TableRow key={birdName} className="hover:bg-muted/30 transition-colors">
-                    <TableCell className="font-medium whitespace-nowrap">{bird.arabicName}</TableCell>
-                    <TableCell className="whitespace-nowrap">{bird.localName || '—'}</TableCell>
-                    <TableCell className="whitespace-nowrap italic">{bird.scientificName || '—'}</TableCell>
-                    <TableCell className="whitespace-nowrap">{bird.englishName || '—'}</TableCell>
-                    <TableCell className="whitespace-nowrap">{firstLoc?.governorate || '—'}</TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isNorthern ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'}`}>
-                        {isNorthern ? 'Northern' : 'Southern'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                      {firstLoc ? `${firstLoc.coordinate.latitude.toFixed(4)}, ${firstLoc.coordinate.longitude.toFixed(4)}` : '—'}
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-medium">
+                  <tr
+                    key={key}
+                    className={`border-b border-amber-100 ${index % 2 === 0 ? 'bg-white' : 'bg-amber-50'} hover:bg-amber-100 transition-colors`}
+                  >
+                    <td className="px-3 py-2 text-amber-700 font-medium whitespace-nowrap">
+                      {index + 1}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap font-semibold text-amber-900">
+                      {isEditing ? (
+                        <Input
+                          value={editingRow.bird.arabicName}
+                          onChange={(e) =>
+                            setEditingRow((prev) =>
+                              prev ? { ...prev, bird: { ...prev.bird, arabicName: e.target.value } } : prev
+                            )
+                          }
+                          className="w-32 text-right border-amber-300"
+                        />
+                      ) : (
+                        bird.arabicName
+                      )}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-700 italic">
+                      {isEditing ? (
+                        <Input
+                          value={editingRow.bird.scientificName}
+                          onChange={(e) =>
+                            setEditingRow((prev) =>
+                              prev ? { ...prev, bird: { ...prev.bird, scientificName: e.target.value } } : prev
+                            )
+                          }
+                          className="w-36 border-amber-300"
+                        />
+                      ) : (
+                        bird.scientificName || '—'
+                      )}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-gray-700">
+                      {isEditing ? (
+                        <Input
+                          value={editingRow.bird.englishName}
+                          onChange={(e) =>
+                            setEditingRow((prev) =>
+                              prev ? { ...prev, bird: { ...prev.bird, englishName: e.target.value } } : prev
+                            )
+                          }
+                          className="w-36 border-amber-300"
+                        />
+                      ) : (
+                        bird.englishName || '—'
+                      )}
+                    </td>
+                    <td className="px-3 py-2 max-w-xs">
+                      {isEditing ? (
+                        <Input
+                          value={editingRow.bird.description}
+                          onChange={(e) =>
+                            setEditingRow((prev) =>
+                              prev ? { ...prev, bird: { ...prev.bird, description: e.target.value } } : prev
+                            )
+                          }
+                          className="w-48 text-right border-amber-300"
+                        />
+                      ) : (
+                        <span className="line-clamp-2 text-gray-700">{bird.description || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-center">
+                      <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-100 text-amber-800 font-bold text-xs">
                         {bird.locations.length}
                       </span>
-                    </TableCell>
-                    {isAdmin && !isCheckingAdmin && (
-                      <TableCell className="whitespace-nowrap">
-                        <div className="flex gap-1">
+                    </td>
+                    <td className="px-3 py-2 max-w-xs">
+                      {isEditing ? (
+                        <Input
+                          value={editingRow.bird.notes}
+                          onChange={(e) =>
+                            setEditingRow((prev) =>
+                              prev ? { ...prev, bird: { ...prev.bird, notes: e.target.value } } : prev
+                            )
+                          }
+                          className="w-48 text-right border-amber-300"
+                        />
+                      ) : (
+                        <span className="line-clamp-2 text-gray-600">{bird.notes || '—'}</span>
+                      )}
+                    </td>
+                    {isAdmin && (
+                      <td className="px-3 py-2 whitespace-nowrap">
+                        <div className="flex items-center gap-1">
+                          {isEditing ? (
+                            <Button
+                              size="sm"
+                              onClick={handleSave}
+                              disabled={updateMutation.isPending}
+                              className="bg-green-600 hover:bg-green-700 text-white h-7 px-2 text-xs"
+                            >
+                              {updateMutation.isPending ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <Save className="w-3 h-3 ml-1" />
+                                  حفظ
+                                </>
+                              )}
+                            </Button>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(key, bird)}
+                              className="border-amber-400 text-amber-700 hover:bg-amber-100 h-7 px-2 text-xs"
+                            >
+                              <Pencil className="w-3 h-3 ml-1" />
+                              تعديل
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => openEdit(birdName, bird)}
-                            className="h-7 px-2 text-xs gap-1"
+                            onClick={() => handleEdit(key, bird)}
+                            className="border-blue-400 text-blue-700 hover:bg-blue-50 h-7 px-2 text-xs"
                           >
-                            <Pencil className="w-3 h-3" />
-                            تعديل
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => openEdit(birdName, bird)}
-                            className="h-7 px-2 text-xs gap-1"
-                          >
-                            <FileText className="w-3 h-3" />
+                            <Pencil className="w-3 h-3 ml-1" />
                             تحرير
                           </Button>
                           <Button
                             size="sm"
-                            variant="destructive"
-                            onClick={() => handleDelete(birdName)}
-                            disabled={isDeleting === birdName}
-                            className="h-7 px-2 text-xs gap-1"
+                            variant="outline"
+                            onClick={() => handleDelete(bird.arabicName)}
+                            disabled={deleteMutation.isPending}
+                            className="border-red-400 text-red-600 hover:bg-red-50 h-7 px-2 text-xs"
                           >
-                            {isDeleting === birdName ? (
+                            {deleteMutation.isPending ? (
                               <Loader2 className="w-3 h-3 animate-spin" />
                             ) : (
-                              <Trash2 className="w-3 h-3" />
+                              <>
+                                <Trash2 className="w-3 h-3 ml-1" />
+                                حذف
+                              </>
                             )}
-                            حذف
                           </Button>
                         </div>
-                      </TableCell>
+                      </td>
                     )}
-                  </TableRow>
+                  </tr>
                 );
-              })
-            )}
-          </TableBody>
-        </Table>
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
+
+      {/* Summary */}
+      {!birdsLoading && (
+        <div className="mt-3 text-sm text-amber-700 text-right">
+          إجمالي السجلات: <span className="font-bold">{filteredBirds.length}</span>
+          {searchQuery && allBirds && (
+            <span className="mr-2 text-amber-500">
+              (من أصل {allBirds.length})
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Add Bird Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" dir="rtl">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          style={{ background: '#fffbf5', border: '2px solid #b45309', direction: 'rtl' }}
+        >
           <DialogHeader>
-            <DialogTitle>إضافة طائر جديد</DialogTitle>
+            <DialogTitle className="text-amber-900 text-xl font-bold text-right">
+              إضافة طائر جديد
+            </DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-sm font-medium">الاسم العربي *</label>
-                <Input value={newBird.arabicName} onChange={e => setNewBird(p => ({ ...p, arabicName: e.target.value }))} placeholder="الاسم العربي" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">الاسم المحلي</label>
-                <Input value={newBird.localName} onChange={e => setNewBird(p => ({ ...p, localName: e.target.value }))} placeholder="الاسم المحلي" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">الاسم العلمي</label>
-                <Input value={newBird.scientificName} onChange={e => setNewBird(p => ({ ...p, scientificName: e.target.value }))} placeholder="الاسم العلمي" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">الاسم الإنجليزي</label>
-                <Input value={newBird.englishName} onChange={e => setNewBird(p => ({ ...p, englishName: e.target.value }))} placeholder="الاسم الإنجليزي" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">خط العرض</label>
-                <Input type="number" value={newBird.latitude} onChange={e => setNewBird(p => ({ ...p, latitude: e.target.value }))} placeholder="23.5" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">خط الطول</label>
-                <Input type="number" value={newBird.longitude} onChange={e => setNewBird(p => ({ ...p, longitude: e.target.value }))} placeholder="56.2" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">الولاية</label>
-                <Input value={newBird.governorate} onChange={e => setNewBird(p => ({ ...p, governorate: e.target.value }))} placeholder="الولاية" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">الموقع</label>
-                <Input value={newBird.location} onChange={e => setNewBird(p => ({ ...p, location: e.target.value }))} placeholder="الموقع" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">اسم الجبل</label>
-                <Input value={newBird.mountainName} onChange={e => setNewBird(p => ({ ...p, mountainName: e.target.value }))} placeholder="اسم الجبل" />
-              </div>
-              <div>
-                <label className="text-sm font-medium">اسم الوادي</label>
-                <Input value={newBird.valleyName} onChange={e => setNewBird(p => ({ ...p, valleyName: e.target.value }))} placeholder="اسم الوادي" />
-              </div>
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="space-y-1">
+              <Label className="text-amber-900 font-semibold">الاسم العربي *</Label>
+              <Input
+                value={newBird.arabicName}
+                onChange={(e) => setNewBird((p) => ({ ...p, arabicName: e.target.value }))}
+                className="text-right border-amber-300 bg-white text-gray-900"
+                placeholder="أدخل الاسم العربي"
+              />
             </div>
-            <div>
-              <label className="text-sm font-medium">الوصف</label>
-              <Input value={newBird.description} onChange={e => setNewBird(p => ({ ...p, description: e.target.value }))} placeholder="الوصف" />
+            <div className="space-y-1">
+              <Label className="text-amber-900 font-semibold">الاسم العلمي</Label>
+              <Input
+                value={newBird.scientificName}
+                onChange={(e) => setNewBird((p) => ({ ...p, scientificName: e.target.value }))}
+                className="border-amber-300 bg-white text-gray-900"
+                placeholder="Scientific name"
+              />
             </div>
-            <div>
-              <label className="text-sm font-medium">ملاحظات</label>
-              <Input value={newBird.notes} onChange={e => setNewBird(p => ({ ...p, notes: e.target.value }))} placeholder="ملاحظات" />
+            <div className="space-y-1">
+              <Label className="text-amber-900 font-semibold">الاسم الإنجليزي</Label>
+              <Input
+                value={newBird.englishName}
+                onChange={(e) => setNewBird((p) => ({ ...p, englishName: e.target.value }))}
+                className="border-amber-300 bg-white text-gray-900"
+                placeholder="English name"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-amber-900 font-semibold">المحافظة</Label>
+              <Input
+                value={newLocation.governorate}
+                onChange={(e) => setNewLocation((p) => ({ ...p, governorate: e.target.value }))}
+                className="text-right border-amber-300 bg-white text-gray-900"
+                placeholder="المحافظة"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-amber-900 font-semibold">اسم الجبل</Label>
+              <Input
+                value={newLocation.mountainName}
+                onChange={(e) => setNewLocation((p) => ({ ...p, mountainName: e.target.value }))}
+                className="text-right border-amber-300 bg-white text-gray-900"
+                placeholder="اسم الجبل"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-amber-900 font-semibold">اسم الوادي</Label>
+              <Input
+                value={newLocation.valleyName}
+                onChange={(e) => setNewLocation((p) => ({ ...p, valleyName: e.target.value }))}
+                className="text-right border-amber-300 bg-white text-gray-900"
+                placeholder="اسم الوادي"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-amber-900 font-semibold">خط العرض</Label>
+              <Input
+                type="number"
+                value={newLocation.coordinate.latitude}
+                onChange={(e) =>
+                  setNewLocation((p) => ({
+                    ...p,
+                    coordinate: { ...p.coordinate, latitude: parseFloat(e.target.value) || 0 },
+                  }))
+                }
+                className="border-amber-300 bg-white text-gray-900"
+                placeholder="23.0"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-amber-900 font-semibold">خط الطول</Label>
+              <Input
+                type="number"
+                value={newLocation.coordinate.longitude}
+                onChange={(e) =>
+                  setNewLocation((p) => ({
+                    ...p,
+                    coordinate: { ...p.coordinate, longitude: parseFloat(e.target.value) || 0 },
+                  }))
+                }
+                className="border-amber-300 bg-white text-gray-900"
+                placeholder="55.0"
+              />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label className="text-amber-900 font-semibold">وصف الموقع</Label>
+              <Input
+                value={newLocation.location}
+                onChange={(e) => setNewLocation((p) => ({ ...p, location: e.target.value }))}
+                className="text-right border-amber-300 bg-white text-gray-900"
+                placeholder="وصف الموقع"
+              />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label className="text-amber-900 font-semibold">الوصف</Label>
+              <Input
+                value={newBird.description}
+                onChange={(e) => setNewBird((p) => ({ ...p, description: e.target.value }))}
+                className="text-right border-amber-300 bg-white text-gray-900"
+                placeholder="وصف الطائر"
+              />
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label className="text-amber-900 font-semibold">الملاحظات</Label>
+              <Input
+                value={newBird.notes}
+                onChange={(e) => setNewBird((p) => ({ ...p, notes: e.target.value }))}
+                className="text-right border-amber-300 bg-white text-gray-900"
+                placeholder="ملاحظات إضافية"
+              />
             </div>
           </div>
-          <DialogFooter className="gap-2 mt-4">
-            <DialogClose asChild>
-              <Button variant="outline">إلغاء</Button>
-            </DialogClose>
-            <Button onClick={handleAddBird} disabled={isSaving} className="gap-1">
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              حفظ
+          <DialogFooter className="flex gap-2 justify-start mt-4">
+            <Button
+              onClick={handleAddBird}
+              disabled={addMutation.isPending || !newBird.arabicName.trim()}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              {addMutation.isPending ? (
+                <Loader2 className="w-4 h-4 animate-spin ml-1" />
+              ) : (
+                <Plus className="w-4 h-4 ml-1" />
+              )}
+              إضافة
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Bird Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" dir="rtl">
-          <DialogHeader>
-            <DialogTitle>تعديل بيانات الطائر</DialogTitle>
-          </DialogHeader>
-          {editingRow && (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium">الاسم العربي</label>
-                  <Input
-                    value={editingRow.data.arabicName}
-                    onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, arabicName: e.target.value } } : null)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">الاسم المحلي</label>
-                  <Input
-                    value={editingRow.data.localName}
-                    onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, localName: e.target.value } } : null)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">الاسم العلمي</label>
-                  <Input
-                    value={editingRow.data.scientificName}
-                    onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, scientificName: e.target.value } } : null)}
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">الاسم الإنجليزي</label>
-                  <Input
-                    value={editingRow.data.englishName}
-                    onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, englishName: e.target.value } } : null)}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-sm font-medium">الوصف</label>
-                <Input
-                  value={editingRow.data.description}
-                  onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, description: e.target.value } } : null)}
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">ملاحظات</label>
-                <Input
-                  value={editingRow.data.notes}
-                  onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, notes: e.target.value } } : null)}
-                />
-              </div>
-            </div>
-          )}
-          <DialogFooter className="gap-2 mt-4">
-            <DialogClose asChild>
-              <Button variant="outline">إلغاء</Button>
-            </DialogClose>
-            <Button onClick={handleEditSave} disabled={isSaving} className="gap-1">
-              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              حفظ
+            <Button
+              variant="outline"
+              onClick={() => setShowAddDialog(false)}
+              className="border-amber-400 text-amber-800"
+            >
+              إلغاء
             </Button>
           </DialogFooter>
         </DialogContent>

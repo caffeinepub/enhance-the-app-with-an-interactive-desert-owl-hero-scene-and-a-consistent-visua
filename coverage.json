@@ -1,50 +1,58 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T10:00:24.577Z",
+  "generatedAt": "2026-02-27T17:50:59.353Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 0,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
-        "id": "REQ-141",
-        "summary": "Rebuild and redeploy the current project state without making any code changes to any file. Ensure the backend (backend/main.mo) compiles and deploys correctly, and all frontend source files are bundled and served without errors. The deployment must restore the app to its last intended state including: the BirdDataTable with all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) visible and functional for authenticated admin users; the interactive AllLocationsMap with bird filtering and show/hide toggle; the BirdGallery with admin action buttons and image click modal; the HomePage with splash screen, hero section, navigation cards, map upload section, and team table; the HamburgerMenu with all navigation links; and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions).",
-        "status": "missing",
+        "id": "REQ-144",
+        "summary": "Restore all five admin-only action buttons in frontend/src/components/BirdDataTable.tsx so they are present, visible, and fully functional for authenticated admin users after the v598 deployment. The five buttons must be: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row at the top of the table; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+        "status": "implemented",
         "plannedFiles": [
-          "frontend/src/App.tsx",
-          "frontend/src/components/BirdDataTable.tsx",
-          "frontend/src/components/BirdGallery.tsx",
-          "frontend/src/components/AllLocationsMap.tsx",
-          "frontend/src/pages/HomePage.tsx",
-          "frontend/src/components/HamburgerMenu.tsx",
-          "frontend/src/components/MainHeader.tsx",
-          "frontend/src/hooks/useActor.ts",
-          "frontend/src/hooks/useInternetIdentity.ts",
-          "frontend/index.html",
-          "frontend/src/main.tsx",
-          "frontend/src/components/BirdDetailsPage.tsx",
-          "frontend/src/components/EagleOwlPage.tsx",
-          "frontend/src/components/StatisticsPage.tsx",
-          "frontend/src/components/ImageViewPage.tsx",
-          "frontend/src/components/PermissionManagement.tsx",
-          "frontend/src/pages/BirdDataPage.tsx",
-          "frontend/src/components/MapView.tsx",
-          "frontend/src/index.css",
-          "frontend/tailwind.config.js"
+          "frontend/src/components/BirdDataTable.tsx"
         ],
-        "matchedFiles": []
+        "matchedFiles": [
+          "frontend/src/components/BirdDataTable.tsx"
+        ]
+      },
+      {
+        "id": "REQ-145",
+        "summary": "Restore all admin-only action buttons in frontend/src/components/BirdGallery.tsx so they are present, visible, and fully functional for authenticated admin users after the v598 deployment. The buttons must be: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state; (5) 'إضافة الصوت' (Add Audio) on each gallery card — opens a file picker for audio files and uploads the selected audio as a blob associated with the bird record. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/BirdGallery.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/BirdGallery.tsx"
+        ]
+      },
+      {
+        "id": "REQ-146",
+        "summary": "Restore all bird data records displayed in frontend/src/components/BirdDataTable.tsx. The table must correctly fetch and display all bird records returned by the backend via the existing React Query / useActor data-fetching pattern. If data is not loading due to a query or actor initialization issue introduced in v598, identify and fix only the data-fetching logic within BirdDataTable.tsx. Do NOT change any column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, admin guard logic, or action buttons. Do NOT modify any other file, component, page, route, or backend file.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/BirdDataTable.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/BirdDataTable.tsx"
+        ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
+    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/components/BirdDataTable.tsx",
+    "frontend/src/components/BirdGallery.tsx",
+    "frontend/src/hooks/useQueries.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

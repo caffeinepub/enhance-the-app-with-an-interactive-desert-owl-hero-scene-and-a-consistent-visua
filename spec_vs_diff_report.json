@@ -1,74 +1,24 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T10:00:24.568Z",
-  "summary": "The build request explicitly requires NO code changes — only a clean rebuild and redeploy of the existing codebase. However, the diff shows two modified files: backend/main.mo and project_state.json. Even though the content shown appears to be the existing backend code, the fact that these files are listed as 'Modified' in the diff technically violates the core constraint of REQ-141, which states no source files may be modified. The diff does not provide evidence of actual deployment artifacts (compiled Wasm, bundled frontend assets, deployment logs), making it impossible to verify that all acceptance criteria were actually met.",
-  "missing_requirements": [
-    {
-      "id": "REQ-141",
-      "requirement": "No source files are modified — only a clean rebuild and redeploy is performed",
-      "reason": "The diff shows backend/main.mo and project_state.json as 'Modified' files, which directly violates the constraint that no code changes of any kind may be made to any file.",
-      "evidence": [
-        "backend/main.mo",
-        "project_state.json"
-      ]
-    },
-    {
-      "id": "REQ-141",
-      "requirement": "All frontend routes (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions) are accessible",
-      "reason": "No frontend build artifacts, route registration files, or deployment evidence are present in the diff to confirm that all required routes are correctly bundled and served.",
-      "evidence": []
-    },
-    {
-      "id": "REQ-141",
-      "requirement": "BirdDataTable renders with all five admin-only action buttons visible after admin login",
-      "reason": "No frontend component files such as BirdDataTable.tsx are present in the diff to confirm this rendering requirement.",
-      "evidence": []
-    },
-    {
-      "id": "REQ-141",
-      "requirement": "BirdGallery renders with admin action buttons and image-click modal",
-      "reason": "No frontend component files such as BirdGallery.tsx are present in the diff to confirm this rendering requirement.",
-      "evidence": []
-    },
-    {
-      "id": "REQ-141",
-      "requirement": "AllLocationsMap renders with interactive Leaflet map, bird-name filter, and show/hide toggle",
-      "reason": "No frontend component files such as AllLocationsMap.tsx are present in the diff to confirm this rendering requirement.",
-      "evidence": []
-    },
-    {
-      "id": "REQ-141",
-      "requirement": "HomePage renders with splash screen, hero section, navigation cards, map upload section, and team table",
-      "reason": "No frontend component files such as HomePage.tsx are present in the diff to confirm this rendering requirement.",
-      "evidence": []
-    },
-    {
-      "id": "REQ-141",
-      "requirement": "HamburgerMenu renders with all navigation links",
-      "reason": "No frontend component files such as HamburgerMenu.tsx are present in the diff to confirm this rendering requirement.",
-      "evidence": []
-    }
-  ],
+  "generatedAt": "2026-02-27T17:50:59.339Z",
+  "summary": "The diff modifies BirdDataTable.tsx, BirdGallery.tsx, and useQueries.ts (plus metadata files). Both primary component files show restoration of admin action buttons with useState+useEffect isAdmin patterns and data-fetching logic. The implementation appears largely complete for all three requirements, though the diff is truncated so some details cannot be fully verified.",
+  "missing_requirements": [],
   "hallucinated_features": [
     {
-      "description": "Modification of backend/main.mo",
-      "reason": "The build request explicitly forbids any code changes. backend/main.mo appears as a modified file in the diff, which was not requested and violates the stated constraints.",
+      "description": "Modification of frontend/src/hooks/useQueries.ts",
+      "reason": "The build request explicitly states 'Do NOT modify any other file, component, page, route, or backend file beyond BirdDataTable.tsx and BirdGallery.tsx'. The diff shows useQueries.ts was modified, which violates this constraint even if the changes appear to be data-fetching related fixes.",
       "evidence": [
-        "backend/main.mo"
-      ]
-    },
-    {
-      "description": "Modification of project_state.json",
-      "reason": "The build request explicitly forbids any code changes to any file. project_state.json appears as a modified file in the diff, which was not requested and violates the stated constraints.",
-      "evidence": [
-        "project_state.json"
+        "frontend/src/hooks/useQueries.ts"
       ]
     }
   ],
   "confidence": 0.72,
   "changed_files": [
-    "backend/main.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/components/BirdDataTable.tsx",
+    "frontend/src/components/BirdGallery.tsx",
+    "frontend/src/hooks/useQueries.ts",
     "project_state.json"
   ]
 }

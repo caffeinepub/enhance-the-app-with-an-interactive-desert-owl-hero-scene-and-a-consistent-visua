@@ -1,4 +1,71 @@
 {
   "kind": "feature_evidence_report",
-  "features": []
+  "features": [
+    {
+      "featureId": "feature-restore-all-five-admin-only-action-buttons-in-frontend-src-components-birddatatable-tsx-so-they-are-present-visible-and-fully-functional-for-authenticated-admin-users-after-the-v598-deployment-the-five-buttons-must-be-1-add-in-the-table-toolbar-header-area-inserts-a-new-empty-editable-row-at-the-top-of-the-table-2-edit-on-each-data-row-switches-that-row-into-inline-edit-mode-3-save-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-changes-to-the-backend-4-delete-on-each-row-removes-the-record-from-the-backend-5-update-edit-on-each-row-alternative-update-action-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-correctly-triggers-a-re-render-after-the-actor-identity-resolves-ensuring-buttons-appear-once-admin-identity-is-confirmed-all-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-and-data-fetching-logic-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "featureTitle": "Restore all five admin-only action buttons in frontend/src/components/BirdDataTable.tsx so they are present, visible, and fully functional for authenticated admin users after the v598 deployment. The five buttons must be: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row at the top of the table; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "files": [
+        "frontend/src/components/BirdDataTable.tsx"
+      ],
+      "components": [
+        "authorization@1.0.1",
+        "blob-storage@1.1.2",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-144"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-restore-all-admin-only-action-buttons-in-frontend-src-components-birdgallery-tsx-so-they-are-present-visible-and-fully-functional-for-authenticated-admin-users-after-the-v598-deployment-the-buttons-must-be-1-add-in-the-gallery-toolbar-header-area-opens-a-form-modal-for-uploading-a-new-bird-record-with-a-main-image-and-sub-images-2-save-on-each-gallery-card-commits-pending-edits-to-the-backend-3-delete-on-each-gallery-card-removes-the-record-from-the-backend-4-update-edit-on-each-gallery-card-switches-the-entry-into-an-editable-state-5-add-audio-on-each-gallery-card-opens-a-file-picker-for-audio-files-and-uploads-the-selected-audio-as-a-blob-associated-with-the-bird-record-the-isadmin-check-must-use-a-usestate-useeffect-pattern-so-buttons-appear-once-admin-identity-is-confirmed-after-the-actor-resolves-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-and-image-click-modal-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "featureTitle": "Restore all admin-only action buttons in frontend/src/components/BirdGallery.tsx so they are present, visible, and fully functional for authenticated admin users after the v598 deployment. The buttons must be: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state; (5) 'إضافة الصوت' (Add Audio) on each gallery card — opens a file picker for audio files and uploads the selected audio as a blob associated with the bird record. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "files": [
+        "frontend/src/components/BirdGallery.tsx"
+      ],
+      "components": [
+        "authorization@1.0.1",
+        "blob-storage@1.1.2",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-145"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-restore-all-bird-data-records-displayed-in-frontend-src-components-birddatatable-tsx-the-table-must-correctly-fetch-and-display-all-bird-records-returned-by-the-backend-via-the-existing-react-query-useactor-data-fetching-pattern-if-data-is-not-loading-due-to-a-query-or-actor-initialization-issue-introduced-in-v598-identify-and-fix-only-the-data-fetching-logic-within-birddatatable-tsx-do-not-change-any-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-admin-guard-logic-or-action-buttons-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "featureTitle": "Restore all bird data records displayed in frontend/src/components/BirdDataTable.tsx. The table must correctly fetch and display all bird records returned by the backend via the existing React Query / useActor data-fetching pattern. If data is not loading due to a query or actor initialization issue introduced in v598, identify and fix only the data-fetching logic within BirdDataTable.tsx. Do NOT change any column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, admin guard logic, or action buttons. Do NOT modify any other file, component, page, route, or backend file.",
+      "files": [
+        "frontend/src/components/BirdDataTable.tsx"
+      ],
+      "components": [
+        "authorization@1.0.1",
+        "blob-storage@1.1.2",
+        "qr-code@1.0.0",
+        "camera@1.0.0",
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-146"
+      ],
+      "confidence": "high"
+    }
+  ]
 }
