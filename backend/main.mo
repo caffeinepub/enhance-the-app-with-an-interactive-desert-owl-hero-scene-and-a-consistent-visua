@@ -11,6 +11,8 @@ import AccessControl "authorization/access-control";
 import Principal "mo:base/Principal";
 import Debug "mo:base/Debug";
 
+
+
 actor {
     type Coordinate = {
         latitude : Float;
@@ -931,4 +933,3 @@ actor {
         isBackupInProgress;
     };
 };
-

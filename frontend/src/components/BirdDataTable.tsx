@@ -9,6 +9,30 @@ interface EditableRow extends BirdData {
   isEditing?: boolean;
 }
 
+// Derive Northern Hemisphere from latitude
+function getNorthernHemisphere(bird: BirdData): string {
+  if (!bird.locations || bird.locations.length === 0) return '—';
+  const lat = bird.locations[0].latitude;
+  return lat >= 0 ? 'نعم' : 'لا';
+}
+
+// Derive Latitude from first location
+function getLatitude(bird: BirdData): string {
+  if (!bird.locations || bird.locations.length === 0) return '—';
+  return bird.locations[0].latitude.toFixed(4);
+}
+
+// Derive Zone from latitude
+function getZone(bird: BirdData): string {
+  if (!bird.locations || bird.locations.length === 0) return '—';
+  const lat = Math.abs(bird.locations[0].latitude);
+  if (lat >= 0 && lat < 23.5) return 'استوائية';
+  if (lat >= 23.5 && lat < 35) return 'مدارية';
+  if (lat >= 35 && lat < 50) return 'معتدلة';
+  if (lat >= 50 && lat < 66.5) return 'شبه قطبية';
+  return 'قطبية';
+}
+
 export default function BirdDataTable() {
   const { actor, isFetching: actorFetching } = useActor();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -65,6 +89,20 @@ export default function BirdDataTable() {
     setEditingRows(updated);
   };
 
+  const handleLocationFieldChange = (id: bigint, subField: 'latitude' | 'longitude', value: string) => {
+    const updated = new Map(editingRows);
+    const row = updated.get(id);
+    if (!row) return;
+    const numVal = parseFloat(value) || 0;
+    const existingLocations = row.locations && row.locations.length > 0
+      ? [...row.locations]
+      : [{ latitude: 0, longitude: 0 }];
+    existingLocations[0] = { ...existingLocations[0], [subField]: numVal };
+    (row as any).locations = existingLocations;
+    updated.set(id, { ...row });
+    setEditingRows(updated);
+  };
+
   const handleSave = async (id: bigint) => {
     const row = editingRows.get(id);
     if (!row) return;
@@ -114,6 +152,18 @@ export default function BirdDataTable() {
     setNewRow(prev => prev ? { ...prev, [field]: value } : null);
   };
 
+  const handleNewRowLatitudeChange = (value: string) => {
+    const numVal = parseFloat(value) || 0;
+    setNewRow(prev => {
+      if (!prev) return null;
+      const existingLocations = prev.locations && prev.locations.length > 0
+        ? [...prev.locations]
+        : [{ latitude: 0, longitude: 0 }];
+      existingLocations[0] = { ...existingLocations[0], latitude: numVal };
+      return { ...prev, locations: existingLocations };
+    });
+  };
+
   const handleSaveNew = async () => {
     if (!newRow || !newRow.arabicName?.trim()) {
       alert('الاسم العربي مطلوب');
@@ -132,7 +182,7 @@ export default function BirdDataTable() {
         localName: newRow.localName || '',
         mountainName: newRow.mountainName || '',
         valleyName: newRow.valleyName || '',
-        locations: [],
+        locations: newRow.locations || [],
         subImages: [],
         audioFile: undefined,
       };
@@ -182,6 +232,11 @@ export default function BirdDataTable() {
       </div>
     );
   }
+
+  // Compute new latitude for add form
+  const newRowLatitude = newRow?.locations && newRow.locations.length > 0
+    ? newRow.locations[0].latitude
+    : 0;
 
   return (
     <div dir="rtl" className="min-h-screen bg-amber-50">
@@ -251,6 +306,49 @@ export default function BirdDataTable() {
                 />
               </div>
             ))}
+
+            {/* Latitude (°) field */}
+            <div>
+              <label className="block text-green-700 text-xs font-medium mb-1">خط العرض °</label>
+              <input
+                type="number"
+                step="0.0001"
+                value={newRowLatitude}
+                onChange={e => handleNewRowLatitudeChange(e.target.value)}
+                className="w-full border border-green-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+                placeholder="مثال: 23.5"
+              />
+            </div>
+
+            {/* Northern Hemisphere (computed display) */}
+            <div>
+              <label className="block text-green-700 text-xs font-medium mb-1">النصف الشمالي</label>
+              <input
+                type="text"
+                value={newRowLatitude >= 0 ? 'نعم' : 'لا'}
+                readOnly
+                className="w-full border border-green-200 rounded-lg px-3 py-1.5 text-sm bg-green-50 text-green-700 cursor-default"
+              />
+            </div>
+
+            {/* Zone (computed display) */}
+            <div>
+              <label className="block text-green-700 text-xs font-medium mb-1">المنطقة</label>
+              <input
+                type="text"
+                value={(() => {
+                  const lat = Math.abs(newRowLatitude);
+                  if (lat >= 0 && lat < 23.5) return 'استوائية';
+                  if (lat >= 23.5 && lat < 35) return 'مدارية';
+                  if (lat >= 35 && lat < 50) return 'معتدلة';
+                  if (lat >= 50 && lat < 66.5) return 'شبه قطبية';
+                  return 'قطبية';
+                })()}
+                readOnly
+                className="w-full border border-green-200 rounded-lg px-3 py-1.5 text-sm bg-green-50 text-green-700 cursor-default"
+              />
+            </div>
+
             <div className="sm:col-span-2 lg:col-span-3">
               <label className="block text-green-700 text-xs font-medium mb-1">الوصف</label>
               <textarea
@@ -299,6 +397,9 @@ export default function BirdDataTable() {
               <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الاسم الإنجليزي</th>
               <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الموقع</th>
               <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الولاية</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">النصف الشمالي</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">خط العرض °</th>
+              <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">المنطقة</th>
               <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">عدد المواقع</th>
               <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">الوصف</th>
               <th className="px-3 py-3 text-right font-semibold whitespace-nowrap">ملاحظات</th>
@@ -310,7 +411,7 @@ export default function BirdDataTable() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 10 : 9} className="px-4 py-8 text-center text-amber-600">
+                <td colSpan={isAdmin ? 13 : 12} className="px-4 py-8 text-center text-amber-600">
                   <div className="text-3xl mb-2">📭</div>
                   <p>لا توجد بيانات</p>
                 </td>
@@ -319,6 +420,9 @@ export default function BirdDataTable() {
               filtered.map((bird: BirdData, idx: number) => {
                 const editing = editingRows.get(bird.id);
                 const isEditing = !!editing;
+                const editingLat = editing?.locations && editing.locations.length > 0
+                  ? editing.locations[0].latitude
+                  : 0;
 
                 return (
                   <tr
@@ -329,7 +433,7 @@ export default function BirdDataTable() {
                   >
                     <td className="px-3 py-2 text-amber-600 font-mono text-xs">{idx + 1}</td>
 
-                    {/* Editable fields */}
+                    {/* Editable text fields */}
                     {(['arabicName', 'scientificName', 'englishName', 'location', 'governorate'] as (keyof BirdData)[]).map(field => (
                       <td key={field} className="px-3 py-2">
                         {isEditing ? (
@@ -344,6 +448,58 @@ export default function BirdDataTable() {
                         )}
                       </td>
                     ))}
+
+                    {/* Northern Hemisphere */}
+                    <td className="px-3 py-2 text-center">
+                      {isEditing ? (
+                        <span className="text-amber-800 text-xs">
+                          {editingLat >= 0 ? 'نعم' : 'لا'}
+                        </span>
+                      ) : (
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                          getNorthernHemisphere(bird) === 'نعم'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {getNorthernHemisphere(bird)}
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Latitude (°) */}
+                    <td className="px-3 py-2">
+                      {isEditing ? (
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={editingLat}
+                          onChange={e => handleLocationFieldChange(bird.id, 'latitude', e.target.value)}
+                          className="w-full border border-yellow-300 rounded px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-yellow-400 min-w-20"
+                        />
+                      ) : (
+                        <span className="text-amber-900 text-xs font-mono">{getLatitude(bird)}</span>
+                      )}
+                    </td>
+
+                    {/* Zone */}
+                    <td className="px-3 py-2">
+                      {isEditing ? (
+                        <span className="text-amber-800 text-xs">
+                          {(() => {
+                            const lat = Math.abs(editingLat);
+                            if (lat >= 0 && lat < 23.5) return 'استوائية';
+                            if (lat >= 23.5 && lat < 35) return 'مدارية';
+                            if (lat >= 35 && lat < 50) return 'معتدلة';
+                            if (lat >= 50 && lat < 66.5) return 'شبه قطبية';
+                            return 'قطبية';
+                          })()}
+                        </span>
+                      ) : (
+                        <span className="bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded-full font-medium">
+                          {getZone(bird)}
+                        </span>
+                      )}
+                    </td>
 
                     {/* Location count */}
                     <td className="px-3 py-2 text-center">

@@ -2,30 +2,8 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-restore-frontend-src-components-alllocationsmap-tsx-to-its-previously-working-interactive-state-an-interactive-leaflet-openstreetmap-map-that-displays-bird-location-markers-fetched-from-the-backend-supports-filtering-by-individual-bird-name-via-a-dropdown-has-an-all-option-to-show-all-markers-simultaneously-a-show-hide-map-toggle-auto-centers-and-auto-zooms-to-fit-the-currently-visible-markers-and-includes-a-return-to-home-button-the-component-must-use-the-usestate-useeffect-pattern-for-data-fetching-and-must-be-fully-synchronized-with-the-bird-records-returned-by-the-backend-do-not-change-any-other-file-component-page-route-or-backend-file",
-      "featureTitle": "Restore frontend/src/components/AllLocationsMap.tsx to its previously working interactive state: an interactive Leaflet/OpenStreetMap map that displays bird location markers fetched from the backend, supports filtering by individual bird name via a dropdown, has an 'All' option to show all markers simultaneously, a show/hide map toggle, auto-centers and auto-zooms to fit the currently visible markers, and includes a 'Return to Home' button. The component must use the useState + useEffect pattern for data fetching and must be fully synchronized with the bird records returned by the backend. Do NOT change any other file, component, page, route, or backend file.",
-      "files": [
-        "frontend/src/components/AllLocationsMap.tsx"
-      ],
-      "components": [
-        "authorization@1.0.1",
-        "blob-storage@1.1.2",
-        "qr-code@1.0.0",
-        "camera@1.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-107"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-restore-all-five-admin-only-action-buttons-in-frontend-src-components-birddatatable-tsx-so-they-are-visible-and-fully-functional-for-authenticated-admin-users-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-triggers-a-re-render-after-the-actor-identity-resolves-the-five-buttons-are-1-add-in-the-table-toolbar-header-area-inserts-a-new-empty-editable-row-2-edit-on-each-data-row-switches-that-row-into-inline-edit-mode-3-save-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-changes-to-the-backend-4-delete-on-each-row-removes-the-record-from-the-backend-5-update-edit-on-each-row-alternative-update-action-all-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-and-data-fetching-logic-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
-      "featureTitle": "Restore all five admin-only action buttons in frontend/src/components/BirdDataTable.tsx so they are visible and fully functional for authenticated admin users. The isAdmin check must use a useState + useEffect pattern that triggers a re-render after the actor/identity resolves. The five buttons are: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "featureId": "feature-in-frontend-src-components-birddatatable-tsx-only-restore-the-missing-northern-hemisphere-latitude-and-zone-column-headers-and-their-corresponding-data-cells-to-the-bird-data-table-these-columns-must-appear-in-the-correct-position-within-the-existing-table-structure-display-the-corresponding-field-values-from-each-bird-record-and-be-included-as-editable-input-fields-in-both-the-add-new-row-form-and-the-inline-edit-mode-for-each-existing-row-do-not-change-any-other-column-definitions-layout-rtl-orientation-horizontal-scrolling-behavior-color-scheme-admin-access-control-logic-data-fetching-logic-font-sizes-action-buttons-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "featureTitle": "In frontend/src/components/BirdDataTable.tsx only, restore the missing 'Northern Hemisphere' (النصف الشمالي), 'Latitude (°)' (خط العرض °), and 'Zone' (المنطقة) column headers and their corresponding data cells to the bird data table. These columns must appear in the correct position within the existing table structure, display the corresponding field values from each bird record, and be included as editable input fields in both the Add new row form and the inline Edit mode for each existing row. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
       "files": [
         "frontend/src/components/BirdDataTable.tsx"
       ],
@@ -41,13 +19,13 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-108"
+        "REQ-112"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-restore-all-four-admin-only-action-buttons-in-frontend-src-components-birdgallery-tsx-so-they-are-visible-and-fully-functional-for-authenticated-admin-users-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-triggers-a-re-render-after-the-actor-identity-resolves-the-four-buttons-are-1-add-in-the-gallery-toolbar-header-area-opens-a-form-modal-for-uploading-a-new-bird-record-with-a-main-image-and-sub-images-2-save-on-each-gallery-card-commits-pending-edits-to-the-backend-3-delete-on-each-gallery-card-removes-the-record-from-the-backend-4-update-edit-on-each-gallery-card-switches-the-entry-into-an-editable-state-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-image-click-modal-and-add-audio-button-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
-      "featureTitle": "Restore all four admin-only action buttons in frontend/src/components/BirdGallery.tsx so they are visible and fully functional for authenticated admin users. The isAdmin check must use a useState + useEffect pattern that triggers a re-render after the actor/identity resolves. The four buttons are: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, image-click modal, and Add Audio button must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "featureId": "feature-in-frontend-src-components-birdgallery-tsx-only-restore-the-main-image-upload-sub-image-upload-and-audio-upload-functionality-so-that-images-and-audio-uploaded-through-the-gallery-admin-controls-are-immediately-reflected-in-the-photo-gallery-cards-without-requiring-a-separate-navigation-step-specifically-1-the-add-button-s-form-modal-must-correctly-upload-the-main-image-and-sub-images-as-blobs-to-the-backend-store-the-resulting-blob-ids-in-the-bird-record-s-images-array-and-refresh-the-gallery-so-the-new-card-with-its-images-is-immediately-visible-2-the-update-edit-button-s-editable-state-must-correctly-upload-replacement-images-and-persist-them-to-the-bird-record-3-the-add-audio-button-must-upload-the-audio-file-as-a-blob-associate-the-blob-id-with-the-bird-record-s-audio-field-and-the-audio-must-be-immediately-accessible-from-the-gallery-card-do-not-change-any-other-aspect-of-birdgallery-tsx-existing-search-card-layout-rtl-orientation-data-fetching-logic-image-click-modal-admin-guard-logic-or-any-other-admin-buttons-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "featureTitle": "In frontend/src/components/BirdGallery.tsx only, restore the main image upload, sub-image upload, and audio upload functionality so that images and audio uploaded through the gallery admin controls are immediately reflected in the photo gallery cards without requiring a separate navigation step. Specifically: (1) The 'إضافة' (Add) button's form/modal must correctly upload the main image and sub-images as blobs to the backend, store the resulting blob IDs in the bird record's images array, and refresh the gallery so the new card with its images is immediately visible. (2) The 'تحرير' (Update/Edit) button's editable state must correctly upload replacement images and persist them to the bird record. (3) The 'إضافة الصوت' (Add Audio) button must upload the audio file as a blob, associate the blob ID with the bird record's audio field, and the audio must be immediately accessible from the gallery card. Do NOT change any other aspect of BirdGallery.tsx — existing search, card layout, RTL orientation, data-fetching logic, image-click modal, admin guard logic, or any other admin buttons must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
       "files": [
         "frontend/src/components/BirdGallery.tsx"
       ],
@@ -63,7 +41,7 @@
         "github-export-icp-cli@1.0.0"
       ],
       "testIds": [
-        "REQ-109"
+        "REQ-113"
       ],
       "confidence": "high"
     }

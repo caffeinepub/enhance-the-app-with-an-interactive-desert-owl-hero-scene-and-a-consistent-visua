@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 117,
+  "projectStateVersion": 121,
   "summary": "Bird distribution tracker app for Al Buraimi Governorate. After multiple failed revert/restore attempts (versions 521-528), user is requesting restoration to version 510, which was an earlier stable version. The app title should be 'مواقع انتشار البوم بمحافظة البريمي'.",
   "architectural_notes": [
     "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)",
@@ -703,6 +703,22 @@
         "REQ-109"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birddatatable-tsx-only-restore-the-missing-northern-hemisphere-latitude-and-zone-column-headers-and-their-corresponding-data-cells-to-the-bird-data-table-these-columns-must-appear-in-the-correct-position-within-the-existing-table-structure-display-the-corresponding-field-values-from-each-bird-record-and-be-included-as-editable-input-fields-in-both-the-add-new-row-form-and-the-inline-edit-mode-for-each-existing-row-do-not-change-any-other-column-definitions-layout-rtl-orientation-horizontal-scrolling-behavior-color-scheme-admin-access-control-logic-data-fetching-logic-font-sizes-action-buttons-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdDataTable.tsx only, restore the missing 'Northern Hemisphere' (النصف الشمالي), 'Latitude (°)' (خط العرض °), and 'Zone' (المنطقة) column headers and their corresponding data cells to the bird data table. These columns must appear in the correct position within the existing table structure, display the corresponding field values from each bird record, and be included as editable input fields in both the Add new row form and the inline Edit mode for each existing row. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-112"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birdgallery-tsx-only-restore-the-main-image-upload-sub-image-upload-and-audio-upload-functionality-so-that-images-and-audio-uploaded-through-the-gallery-admin-controls-are-immediately-reflected-in-the-photo-gallery-cards-without-requiring-a-separate-navigation-step-specifically-1-the-add-button-s-form-modal-must-correctly-upload-the-main-image-and-sub-images-as-blobs-to-the-backend-store-the-resulting-blob-ids-in-the-bird-record-s-images-array-and-refresh-the-gallery-so-the-new-card-with-its-images-is-immediately-visible-2-the-update-edit-button-s-editable-state-must-correctly-upload-replacement-images-and-persist-them-to-the-bird-record-3-the-add-audio-button-must-upload-the-audio-file-as-a-blob-associate-the-blob-id-with-the-bird-record-s-audio-field-and-the-audio-must-be-immediately-accessible-from-the-gallery-card-do-not-change-any-other-aspect-of-birdgallery-tsx-existing-search-card-layout-rtl-orientation-data-fetching-logic-image-click-modal-admin-guard-logic-or-any-other-admin-buttons-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdGallery.tsx only, restore the main image upload, sub-image upload, and audio upload functionality so that images and audio uploaded through the gallery admin controls are immediately reflected in the photo gallery cards without requiring a separate navigation step. Specifically: (1) The 'إضافة' (Add) button's form/modal must correctly upload the main image and sub-images as blobs to the backend, store the resulting blob IDs in the bird record's images array, and refresh the gallery so the new card with its images is immediately visible. (2) The 'تحرير' (Update/Edit) button's editable state must correctly upload replacement images and persist them to the bird record. (3) The 'إضافة الصوت' (Add Audio) button must upload the audio file as a blob, associate the blob ID with the bird record's audio field, and the audio must be immediately accessible from the gallery card. Do NOT change any other aspect of BirdGallery.tsx — existing search, card layout, RTL orientation, data-fetching logic, image-click modal, admin guard logic, or any other admin buttons must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-113"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -1031,6 +1047,34 @@
     {
       "id": "AR-59",
       "summary": "Restore the interactive map (synchronized with the bird data table) and all admin control buttons that disappeared — without changing anything else in the app. The interactive map must be restored to its previous state with data synchronization, and all admin action buttons (إضافة, تعديل, حفظ, حذف, تحرير) must reappear in both BirdDataTable and BirdGallery pages.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-60",
+      "summary": "Restore all bird data and images that disappeared from the app — without changing anything else in the application.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-61",
+      "summary": "Investigate and fix the backend stable memory migration so that all previously stored bird records (the 30 owl sighting records added by the user, including scientific names, locations, mountain names, valley names, governorates, and notes) are fully preserved and returned by getBirdData() after the latest deployment. If the migration.mo file is missing or incomplete, implement correct state transfer for all stable variables: birdData, nextId, users, teams, blobStorage, mapReferenceId, and access control settings. Do NOT change any frontend files, component logic, routes, or any other backend behavior beyond fixing the data migration.",
+      "reqIds": [
+        "REQ-110"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-62",
+      "summary": "Seed the backend with the 30 owl sighting records provided by the user if they are not already present after migration. The records to seed are listed below with their scientific name, location, mountain name, valley name, governorate, and notes fields. Insert them using the existing addBirdData() or equivalent backend function, preserving all field values exactly as provided:\n1. Bubo bubo | السميني | السميني | السميني | محضة | -\n2. Athene noctua | السميني | السميني | السميني | محضة | -\n3. Athene noctua | محمية واحة البريمي | الفياض | الفياص | البريمي | محمية واحة البريمي ( الرسة )\n4. Otus brucei | الروضة | - | - | محضة | -\n5. Tyto alba | منطقة الصرف الصحي | القطار | القطار | محضة | -\n6. Bubo bubo | مغيشيق | - | صفوان | محضة | المناطق الصحراوية\n7. Athene noctua | صفوان | - | - | محضة | المناطق الصحراوية\n8. Asio flammeus | الموفيه | - | الموفيه | البريمي | تعد هذه البومة زائر شتوي ( مهاجرة )\n9. Asio flammeus | الوضة | - | شعاب الروضة | محضة | -\n10. Athene noctua | محمية واحة البريمي | جبال محمية واحة البريمي | قصيد | البريمي | تم توثيق هذه البومة بواسطة الكاميلرا الفخية بوقت سابق\n11. Bubo bubo | مدل | مدل | شعاب مدل | محضة | -\n12. Bubo bubo | اليفار ( منطقة صحراوية ) | - | صفوان | محضة | -\n13. Asio flammeus | اليفار ( منطقة صحراوية ) | - | صفوان | محضة | -\n14. Otus brucei | الواديين | الواديين | الواديين | محضة | -\n15. Tyto alba | جري الحوية | جبال جري الحوية | القطار | محضة | -\n16. Bubo bubo | الجري | جبال جري الحوية | - | البريمي | -\n17. Athene noctua | مدل | منطقة سهلية | شعاب مدل | محضة | -\n18. Athene noctua | وادي الميح | جبال وادي الميح | وادي الميح | محضة | -\n19. Athene noctua | الجزيرة | الجزيرة | الجزيرة | محضة | -\n20. Athene noctua | العلعال | العلعال | العلعال | محضة | -\n21. Athene noctua | الزروب | سلسلة جبال شيك | شيك | محضة | -\n22. Athene noctua | الواديين | الواديين | الواديين | محضة | -\n23. Athene noctua | جري الحوية | جبال جري الحوية | القطار | محضة | -\n24. Otus scops | المناطق الصحراوية | - | صفوان | محضة | -\n25. Athene noctua | السميني | السميني | السميني | محضة | -\n26. Bubo bubo | صفوان | مناطق صحراوية | صفوان | محضة | -\n27. Athene noctua | صفوان | المناطق الصحراوية | صفوان | محضة | -\n28. Athene noctua | صفوان | المناطق الصحراوية | صفوان | محضة | موسم تكاثر البومة الصغيرة\n29. Athene noctua | حفيت | حفيت | حفيت | البريمي | -\n30. Athene noctua | الدميث | - | الدميث | السنينة | -\nDo NOT change any frontend files, routes, components, or any other backend behavior.",
+      "reqIds": [
+        "REQ-111"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-63",
+      "summary": "Restore the missing 'Northern Hemisphere', 'Latitude (°)', and 'Zone' columns/fields to the bird data table (BirdDataTable.tsx) so that data can sync with the interactive map and gallery. Also restore the main image upload, sub-image upload, and audio upload functionality so that uploaded content appears directly in the photo gallery. Do not change anything else in the app.",
       "reqIds": [],
       "status": "pending"
     }

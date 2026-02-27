@@ -1,69 +1,42 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Restore Interactive Map with Data Sync and Admin Control Buttons",
+  "title": "Restore missing columns and upload functionality in BirdDataTable",
   "requirements": [
     {
-      "id": "REQ-107",
-      "summary": "Restore AllLocationsMap.tsx to its interactive state with bird location markers, filtering, auto-zoom, and show/hide toggle",
+      "id": "REQ-112",
+      "summary": "Restore missing 'Northern Hemisphere' (النصف الشمالي), 'Latitude (°)' (خط العرض °), and 'Zone' (المنطقة) columns to BirdDataTable with full Add/Edit support",
       "acceptanceCriteria": [
-        "Navigating to /map renders the AllLocationsMap page with the interactive Leaflet map visible after toggling show/hide",
-        "Bird location markers appear on the map for every backend bird record that has valid latitude/longitude coordinates",
-        "A bird-name filter dropdown is present; selecting a bird name shows only that bird's marker(s)",
-        "An 'All' option in the dropdown shows all bird markers simultaneously",
-        "The map auto-centers and zooms to fit visible markers when the filter changes or on initial load",
-        "A 'Return to Home' button is present and navigates back to the home page",
-        "RTL orientation and desert/amber theme styling are preserved",
-        "No other component, page, route, or backend file is modified"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/AllLocationsMap.tsx",
-          "operation": "modify",
-          "description": "Restore the component to its fully interactive state: implement useState + useEffect pattern to fetch getAllLocationsWithNames() from the backend actor; add a show/hide map toggle button; add a bird-name dropdown filter with 'All' option that filters visible markers; render an interactive Leaflet map (loading Leaflet dynamically via CDN if needed) that displays bird location markers with popups showing bird names; implement auto-center and auto-zoom logic using Leaflet's fitBounds when markers change or filter is applied; add a 'Return to Home' button that navigates to /; preserve RTL orientation and desert/amber theme styling; validate coordinates (skip markers with invalid lat/lng); ensure the component is synchronized with backend bird records"
-        }
-      ]
-    },
-    {
-      "id": "REQ-108",
-      "summary": "Restore all five admin-only action buttons in BirdDataTable.tsx using useState + useEffect for isAdmin check",
-      "acceptanceCriteria": [
-        "Authenticated admin user sees all five action buttons: إضافة, تعديل, حفظ, حذف, تحرير",
-        "The إضافة (Add) button appears in the table toolbar and creates a new empty editable row",
-        "The تعديل (Edit) button on each row switches that row to inline edit mode",
-        "The حفظ (Save) button replaces Edit when a row is in edit mode and commits changes to the backend",
-        "The حذف (Delete) button removes the record from the backend",
-        "The تحرير (Update/Edit) button provides an alternative update action per row",
-        "Buttons are not visible to unauthenticated or non-admin users",
-        "All nine columns, RTL orientation, horizontal scrolling, desert/amber theme, and data-fetching logic remain unchanged",
+        "The bird data table displays 'Northern Hemisphere' (النصف الشمالي), 'Latitude (°)' (خط العرض °), and 'Zone' (المنطقة) column headers",
+        "Each data row renders the corresponding field values for these three columns",
+        "The Add new row form includes input fields for Northern Hemisphere, Latitude (°), and Zone",
+        "The inline Edit mode for each row includes editable input fields for Northern Hemisphere, Latitude (°), and Zone",
+        "All existing columns, buttons, layout, RTL orientation, and functionality are unchanged",
         "No other file is modified"
       ],
       "file_operations": [
         {
           "path": "frontend/src/components/BirdDataTable.tsx",
           "operation": "modify",
-          "description": "Restore all five admin-only action buttons using a useState + useEffect pattern for the isAdmin check: (1) Add an 'إضافة' button in the table toolbar that inserts a new empty editable row when clicked; (2) Add a 'تعديل' (Edit) button on each data row that switches that row into inline edit mode; (3) Add a 'حفظ' (Save) button that replaces Edit when a row is in edit mode and commits changes to the backend via saveBirdData or appropriate mutation; (4) Add a 'حذف' (Delete) button on each row that removes the record via deleteBirdById; (5) Add a 'تحرير' (Update/Edit) button on each row as an alternative update action. Implement the admin guard using useState to store isAdmin state and useEffect to call actor.isCallerAdmin() after the actor resolves, triggering a re-render when the result arrives. Ensure buttons are only visible when isAdmin is true. Preserve all existing column definitions, RTL orientation, horizontal scrolling, desert/amber color scheme, font sizes, and data-fetching logic. Do not modify any other aspect of the component"
+          "description": "Add the three missing column definitions ('Northern Hemisphere', 'Latitude (°)', 'Zone') to the table header in the correct position within the existing column structure. Add corresponding data cells that display the field values from each bird record. Add input fields for these three columns in both the Add new row form state and JSX, and in the inline Edit mode for existing rows. Ensure all input fields are properly wired to state management and included in save/update operations. Preserve all existing column definitions, RTL layout, horizontal scrolling, color scheme, admin access control, data-fetching logic, font sizes, action buttons, and all other functionality exactly as they are."
         }
       ]
     },
     {
-      "id": "REQ-109",
-      "summary": "Restore all four admin-only action buttons in BirdGallery.tsx using useState + useEffect for isAdmin check",
+      "id": "REQ-113",
+      "summary": "Restore image and audio upload functionality in BirdGallery so uploads are immediately visible",
       "acceptanceCriteria": [
-        "Authenticated admin user sees all four action buttons in BirdGallery: إضافة, حفظ, حذف, تحرير",
-        "The إضافة (Add) button opens an upload form/modal for a new bird record with main and sub-images",
-        "The حفظ (Save) button on each card commits pending edits to the backend",
-        "The حذف (Delete) button on each card removes the record from the backend",
-        "The تحرير (Update/Edit) button on each card switches the entry into an editable state",
-        "Buttons are not visible to unauthenticated or non-admin users",
-        "Gallery search, card layout, image display, RTL orientation, image-click modal, and Add Audio button remain unchanged",
+        "Uploading a main image and sub-images via the Add form causes the new bird card with those images to appear immediately in the gallery after save",
+        "Uploading replacement images via the Update/Edit (تحرير) action persists the new images to the bird record and they are visible on the card",
+        "Uploading an audio file via the Add Audio (إضافة الصوت) button associates the audio blob ID with the bird record and the audio is playable from the gallery card",
+        "All existing gallery functionality (search, card layout, image-click modal, admin buttons) is unchanged",
         "No other file is modified"
       ],
       "file_operations": [
         {
           "path": "frontend/src/components/BirdGallery.tsx",
           "operation": "modify",
-          "description": "Restore all four admin-only action buttons using a useState + useEffect pattern for the isAdmin check: (1) Add an 'إضافة' button in the gallery toolbar/header area that opens a form or modal for uploading a new bird record with a main image and sub-images (using the blob-storage component's useFileUpload hook for file uploads, then calling addBirdWithDetails or addOrUpdateBird backend method); (2) Add a 'حفظ' (Save) button on each gallery card that commits pending edits to the backend via saveBirdData or appropriate mutation; (3) Add a 'حذف' (Delete) button on each card that removes the record via deleteBirdById; (4) Add a 'تحرير' (Update/Edit) button on each card that switches the entry into an editable state. Implement the admin guard using useState to store isAdmin state and useEffect to call actor.isCallerAdmin() after the actor resolves, triggering a re-render when the result arrives. Ensure buttons are only visible when isAdmin is true. Preserve the existing search functionality, card layout, image display logic, RTL orientation, image-click modal, and Add Audio button. Do not modify any other aspect of the component. Verify the blob-storage component's usage instructions before implementing file uploads"
+          "description": "Use the blob-storage component to restore file upload functionality. For the Add form: import useFileUpload from '../blob-storage/FileStorage', convert uploaded image files to blobs via uploadFile, store the returned path values in the bird record's images array field, and ensure the backend save operation includes these paths so the new card appears immediately in the gallery. For the Update/Edit (تحرير) action: enable image replacement by uploading new images as blobs, updating the bird record with the new paths, and ensuring the persisted changes are reflected on the card. For the Add Audio (إضافة الصوت) button: upload the audio file as a blob, store the returned path in the bird record's audio field, and ensure the audio is immediately accessible from the gallery card. Verify the blob-storage component's usage instructions before implementing. Preserve all existing gallery functionality including search, card layout, RTL orientation, image-click modal, data-fetching logic, and all other admin buttons exactly as they are."
         }
       ]
     }

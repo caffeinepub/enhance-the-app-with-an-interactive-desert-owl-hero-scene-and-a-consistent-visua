@@ -1,11 +1,10 @@
 # Specification
 
 ## Summary
-**Goal:** Restore the interactive map and admin control buttons in three frontend components that were previously working but are now broken or missing.
+**Goal:** Restore missing columns in BirdDataTable and fix upload functionality in BirdGallery so that data syncs correctly with the interactive map and photo gallery.
 
 **Planned changes:**
-- Restore `AllLocationsMap.tsx` to a fully interactive Leaflet/OpenStreetMap map that fetches bird location markers from the backend, supports filtering by bird name via a dropdown (with an "All" option), auto-centers/zooms to fit visible markers, includes a show/hide toggle, and a "Return to Home" button
-- Restore the five admin-only action buttons in `BirdDataTable.tsx` (إضافة, تعديل, حفظ, حذف, تحرير) using a `useState + useEffect` pattern for the admin identity check, while preserving all columns, RTL layout, and data-fetching logic
-- Restore the four admin-only action buttons in `BirdGallery.tsx` (إضافة, حفظ, حذف, تحرير) using a `useState + useEffect` pattern for the admin identity check, while preserving gallery search, card layout, image display, and existing functionality
+- In `BirdDataTable.tsx`: Restore the "Northern Hemisphere" (النصف الشمالي), "Latitude (°)" (خط العرض °), and "Zone" (المنطقة) column headers and their data cells in the correct positions; include these fields as editable inputs in both the Add new row form and inline Edit mode.
+- In `BirdGallery.tsx`: Fix the Add (إضافة) form to correctly upload main images and sub-images as blobs, store blob IDs in the bird record's images array, and immediately refresh the gallery with the new card; fix the Edit (تحرير) action to persist replacement images to the bird record; fix the Add Audio (إضافة الصوت) button to upload audio as a blob, associate the blob ID with the bird record, and make it immediately playable from the gallery card.
 
-**User-visible outcome:** Admin users can see and use all action buttons in the data table and gallery, and the interactive map at /map displays synchronized bird location markers with filtering, all consistent with the previous working state.
+**User-visible outcome:** The bird data table displays and allows editing of the three previously missing columns, and images/audio uploaded through gallery admin controls appear immediately on gallery cards without requiring additional navigation.
