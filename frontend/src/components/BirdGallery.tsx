@@ -1,264 +1,217 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useActor } from '../hooks/useActor';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useGetAllBirdData } from '../hooks/useQueries';
-import { useFileUpload, useFileUrl } from '../blob-storage/FileStorage';
 import { BirdData } from '../backend';
-import { useQueryClient } from '@tanstack/react-query';
+import { useGetAllBirdData, useDeleteBirdById, useSaveBirdData } from '../hooks/useQueries';
+import { useFileUpload, useFileUrl } from '../blob-storage/FileStorage';
 
-// Sub-component: display a single image from blob storage
-function BirdImage({ path, alt, className }: { path: string; alt: string; className?: string }) {
-  const { data: url } = useFileUrl(path);
-  if (!url) return <div className={`bg-amber-100 animate-pulse ${className}`} />;
-  return <img src={url} alt={alt} className={className} />;
+// ---- AddAudioModal ----
+interface AddAudioModalProps {
+  bird: BirdData;
+  onClose: () => void;
+  onSuccess: () => void;
 }
 
-// Modal for viewing full image
-function ImageModal({ src, alt, onClose }: { src: string; alt: string; onClose: () => void }) {
+function AddAudioModal({ bird, onClose, onSuccess }: AddAudioModalProps) {
+  const { actor } = useActor();
+  const { uploadFile, isUploading } = useFileUpload();
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUpload = async () => {
+    if (!audioFile || !actor) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const path = `audio/${bird.arabicName}/${audioFile.name}`;
+      await uploadFile(path, audioFile);
+      await actor.addAudioFile(bird.arabicName, path);
+      onSuccess();
+      onClose();
+    } catch (err) {
+      setError('فشل رفع الملف الصوتي');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-      onClick={onClose}
-    >
-      <div className="relative max-w-4xl max-h-[90vh] p-2" onClick={e => e.stopPropagation()}>
-        <button
-          onClick={onClose}
-          className="absolute top-2 left-2 z-10 bg-black/60 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-black/80 text-lg"
-        >
-          ×
-        </button>
-        <img src={src} alt={alt} className="max-w-full max-h-[85vh] object-contain rounded-lg" />
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" dir="rtl">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <h3 className="text-amber-800 font-bold text-lg mb-4">🎵 إضافة ملف صوتي — {bird.arabicName}</h3>
+        <input
+          type="file"
+          accept="audio/*"
+          onChange={e => setAudioFile(e.target.files?.[0] || null)}
+          className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm mb-4"
+        />
+        {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
+        <div className="flex gap-2">
+          <button
+            onClick={handleUpload}
+            disabled={!audioFile || uploading || isUploading}
+            className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            {uploading ? '⏳ جاري الرفع...' : '📤 رفع'}
+          </button>
+          <button
+            onClick={onClose}
+            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+          >
+            إلغاء
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// Modal for adding a new bird
-function AddBirdModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+// ---- AddBirdModal ----
+interface AddBirdModalProps {
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function AddBirdModal({ onClose, onSuccess }: AddBirdModalProps) {
   const { actor } = useActor();
   const { uploadFile, isUploading } = useFileUpload();
-  const [arabicName, setArabicName] = useState('');
-  const [scientificName, setScientificName] = useState('');
-  const [englishName, setEnglishName] = useState('');
-  const [description, setDescription] = useState('');
-  const [notes, setNotes] = useState('');
+  const saveMutation = useSaveBirdData();
+  const [form, setForm] = useState({
+    arabicName: '',
+    scientificName: '',
+    englishName: '',
+    description: '',
+    notes: '',
+    location: '',
+    governorate: '',
+  });
   const [mainImageFile, setMainImageFile] = useState<File | null>(null);
   const [subImageFiles, setSubImageFiles] = useState<File[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSave = async () => {
-    if (!arabicName.trim()) { setError('الاسم العربي مطلوب'); return; }
+  const handleSubmit = async () => {
+    if (!form.arabicName.trim()) {
+      setError('الاسم العربي مطلوب');
+      return;
+    }
     if (!actor) return;
-    setSaving(true);
-    setError('');
+    setUploading(true);
+    setError(null);
     try {
-      let mainImagePath: string | null = null;
+      const subImages: string[] = [];
+
       if (mainImageFile) {
-        const path = `birds/main/${Date.now()}_${mainImageFile.name}`;
-        const result = await uploadFile(path, mainImageFile);
-        mainImagePath = result.path;
+        const path = `birds/${form.arabicName}/main/${mainImageFile.name}`;
+        await uploadFile(path, mainImageFile);
+        subImages.push(path);
       }
-      const subImagePaths: string[] = [];
+
       for (const file of subImageFiles) {
-        const path = `birds/sub/${Date.now()}_${file.name}`;
-        const result = await uploadFile(path, file);
-        subImagePaths.push(result.path);
+        const path = `birds/${form.arabicName}/sub/${file.name}`;
+        await uploadFile(path, file);
+        subImages.push(path);
       }
-      await actor.addBirdWithDetails(
-        arabicName.trim(),
-        scientificName.trim(),
-        englishName.trim(),
-        description.trim(),
-        notes.trim(),
-        0, 0,
-        mainImagePath,
-        subImagePaths
-      );
-      onSaved();
-      onClose();
-    } catch (e: any) {
-      setError(e?.message || 'حدث خطأ أثناء الحفظ');
-    } finally {
-      setSaving(false);
-    }
-  };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" dir="rtl">
-      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <h2 className="text-amber-800 font-bold text-lg mb-4">إضافة طائر جديد</h2>
-        {error && <div className="mb-3 p-2 bg-red-50 text-red-700 rounded text-sm">{error}</div>}
-        <div className="space-y-3">
-          <input
-            type="text" placeholder="الاسم العربي *" value={arabicName}
-            onChange={e => setArabicName(e.target.value)}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <input
-            type="text" placeholder="الاسم العلمي" value={scientificName}
-            onChange={e => setScientificName(e.target.value)}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <input
-            type="text" placeholder="الاسم الإنجليزي" value={englishName}
-            onChange={e => setEnglishName(e.target.value)}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <textarea
-            placeholder="الوصف" value={description}
-            onChange={e => setDescription(e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <textarea
-            placeholder="الملاحظات" value={notes}
-            onChange={e => setNotes(e.target.value)}
-            rows={2}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <div>
-            <label className="block text-xs text-amber-700 mb-1">الصورة الرئيسية</label>
-            <input
-              type="file" accept="image/*"
-              onChange={e => setMainImageFile(e.target.files?.[0] || null)}
-              className="w-full text-sm text-amber-700"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-amber-700 mb-1">صور إضافية</label>
-            <input
-              type="file" accept="image/*" multiple
-              onChange={e => setSubImageFiles(Array.from(e.target.files || []))}
-              className="w-full text-sm text-amber-700"
-            />
-          </div>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={handleSave}
-            disabled={saving || isUploading}
-            className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-md text-sm hover:bg-amber-700 disabled:opacity-50 transition-colors font-bold"
-          >
-            {saving || isUploading ? 'جاري الحفظ...' : 'حفظ'}
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-400 transition-colors"
-          >
-            إلغاء
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Modal for editing a bird card
-function EditBirdModal({
-  bird,
-  onClose,
-  onSaved,
-}: {
-  bird: BirdData;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const { actor } = useActor();
-  const { uploadFile, isUploading } = useFileUpload();
-  const [arabicName, setArabicName] = useState(bird.arabicName);
-  const [scientificName, setScientificName] = useState(bird.scientificName);
-  const [englishName, setEnglishName] = useState(bird.englishName);
-  const [description, setDescription] = useState(bird.description);
-  const [notes, setNotes] = useState(bird.notes);
-  const [newSubImageFiles, setNewSubImageFiles] = useState<File[]>([]);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleSave = async () => {
-    if (!arabicName.trim()) { setError('الاسم العربي مطلوب'); return; }
-    if (!actor) return;
-    setSaving(true);
-    setError('');
-    try {
-      const newSubImagePaths: string[] = [];
-      for (const file of newSubImageFiles) {
-        const path = `birds/sub/${Date.now()}_${file.name}`;
-        const result = await uploadFile(path, file);
-        newSubImagePaths.push(result.path);
-      }
-      const updatedBird: BirdData = {
-        ...bird,
-        arabicName: arabicName.trim(),
-        scientificName: scientificName.trim(),
-        englishName: englishName.trim(),
-        description: description.trim(),
-        notes: notes.trim(),
-        subImages: [...bird.subImages, ...newSubImagePaths],
+      const birdData: BirdData = {
+        id: BigInt(0),
+        arabicName: form.arabicName,
+        scientificName: form.scientificName,
+        englishName: form.englishName,
+        description: form.description,
+        notes: form.notes,
+        location: form.location,
+        governorate: form.governorate,
+        localName: '',
+        mountainName: '',
+        valleyName: '',
+        locations: [],
+        subImages,
+        audioFile: undefined,
       };
-      await actor.saveBirdData(updatedBird);
-      onSaved();
+
+      await saveMutation.mutateAsync(birdData);
+      onSuccess();
       onClose();
-    } catch (e: any) {
-      setError(e?.message || 'حدث خطأ أثناء الحفظ');
+    } catch (err) {
+      setError('فشل إضافة الطائر');
     } finally {
-      setSaving(false);
+      setUploading(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" dir="rtl">
-      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <h2 className="text-amber-800 font-bold text-lg mb-4">تحرير بيانات الطائر</h2>
-        {error && <div className="mb-3 p-2 bg-red-50 text-red-700 rounded text-sm">{error}</div>}
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 overflow-y-auto" dir="rtl">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 my-4">
+        <h3 className="text-amber-800 font-bold text-lg mb-4">➕ إضافة طائر جديد</h3>
         <div className="space-y-3">
-          <input
-            type="text" placeholder="الاسم العربي *" value={arabicName}
-            onChange={e => setArabicName(e.target.value)}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <input
-            type="text" placeholder="الاسم العلمي" value={scientificName}
-            onChange={e => setScientificName(e.target.value)}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <input
-            type="text" placeholder="الاسم الإنجليزي" value={englishName}
-            onChange={e => setEnglishName(e.target.value)}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <textarea
-            placeholder="الوصف" value={description}
-            onChange={e => setDescription(e.target.value)}
-            rows={3}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          <textarea
-            placeholder="الملاحظات" value={notes}
-            onChange={e => setNotes(e.target.value)}
-            rows={2}
-            className="w-full px-3 py-2 border border-amber-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
+          {[
+            { field: 'arabicName', label: 'الاسم العربي *' },
+            { field: 'scientificName', label: 'الاسم العلمي' },
+            { field: 'englishName', label: 'الاسم الإنجليزي' },
+            { field: 'location', label: 'الموقع' },
+            { field: 'governorate', label: 'الولاية' },
+          ].map(({ field, label }) => (
+            <div key={field}>
+              <label className="block text-amber-700 text-xs font-medium mb-1">{label}</label>
+              <input
+                type="text"
+                value={(form as any)[field]}
+                onChange={e => setForm(prev => ({ ...prev, [field]: e.target.value }))}
+                className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+              />
+            </div>
+          ))}
           <div>
-            <label className="block text-xs text-amber-700 mb-1">إضافة صور جديدة</label>
+            <label className="block text-amber-700 text-xs font-medium mb-1">الوصف</label>
+            <textarea
+              value={form.description}
+              onChange={e => setForm(prev => ({ ...prev, description: e.target.value }))}
+              rows={2}
+              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+          <div>
+            <label className="block text-amber-700 text-xs font-medium mb-1">ملاحظات</label>
+            <textarea
+              value={form.notes}
+              onChange={e => setForm(prev => ({ ...prev, notes: e.target.value }))}
+              rows={2}
+              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+            />
+          </div>
+          <div>
+            <label className="block text-amber-700 text-xs font-medium mb-1">الصورة الرئيسية</label>
             <input
-              type="file" accept="image/*" multiple
-              onChange={e => setNewSubImageFiles(Array.from(e.target.files || []))}
-              className="w-full text-sm text-amber-700"
+              type="file"
+              accept="image/*"
+              onChange={e => setMainImageFile(e.target.files?.[0] || null)}
+              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-amber-700 text-xs font-medium mb-1">صور إضافية</label>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={e => setSubImageFiles(Array.from(e.target.files || []))}
+              className="w-full border border-amber-300 rounded-lg px-3 py-1.5 text-sm"
             />
           </div>
         </div>
+        {error && <p className="text-red-600 text-sm mt-3">{error}</p>}
         <div className="flex gap-2 mt-4">
           <button
-            onClick={handleSave}
-            disabled={saving || isUploading}
-            className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-md text-sm hover:bg-amber-700 disabled:opacity-50 transition-colors font-bold"
+            onClick={handleSubmit}
+            disabled={!form.arabicName.trim() || uploading || isUploading || saveMutation.isPending}
+            className="bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
           >
-            {saving || isUploading ? 'جاري الحفظ...' : 'حفظ'}
+            {uploading || saveMutation.isPending ? '⏳ جاري الحفظ...' : '💾 حفظ'}
           </button>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-400 transition-colors"
+            className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             إلغاء
           </button>
@@ -268,271 +221,430 @@ function EditBirdModal({
   );
 }
 
-// Bird card component
-function BirdCard({
-  bird,
-  isAdmin,
-  onDeleted,
-  onEdited,
-}: {
+// ---- BirdCard ----
+interface BirdCardProps {
   bird: BirdData;
   isAdmin: boolean;
-  onDeleted: () => void;
-  onEdited: () => void;
-}) {
+  onImageClick: (images: string[], index: number, birdName: string) => void;
+  onRefetch: () => void;
+}
+
+function BirdImageDisplay({ path }: { path: string }) {
+  const { data: url } = useFileUrl(path);
+  if (!url) return (
+    <div className="w-full h-48 bg-amber-100 flex items-center justify-center rounded-t-xl">
+      <span className="text-amber-400 text-4xl">🦅</span>
+    </div>
+  );
+  return (
+    <img
+      src={url}
+      alt="bird"
+      className="w-full h-48 object-cover rounded-t-xl"
+    />
+  );
+}
+
+function BirdCard({ bird, isAdmin, onImageClick, onRefetch }: BirdCardProps) {
   const { actor } = useActor();
-  const [modalImageSrc, setModalImageSrc] = useState<string | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const saveMutation = useSaveBirdData();
+  const deleteMutation = useDeleteBirdById();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editData, setEditData] = useState<BirdData>(bird);
+  const [showAudioModal, setShowAudioModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const mainImagePath = bird.subImages?.[0] || null;
+  const mainImage = bird.subImages?.[0];
+  const hasAudio = !!bird.audioFile;
 
-  const handleDelete = async () => {
-    if (!actor) return;
-    if (!window.confirm(`هل أنت متأكد من حذف "${bird.arabicName}"؟`)) return;
-    setDeleting(true);
+  const handleEdit = () => {
+    setEditData({ ...bird });
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
     try {
-      await actor.deleteBirdById(bird.id);
-      onDeleted();
-    } catch (e: any) {
-      alert(e?.message || 'حدث خطأ أثناء الحذف');
+      await saveMutation.mutateAsync(editData);
+      setIsEditing(false);
+      onRefetch();
+    } catch {
+      setError('فشل الحفظ');
     } finally {
-      setDeleting(false);
+      setSaving(false);
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm(`هل أنت متأكد من حذف "${bird.arabicName}"؟`)) return;
+    try {
+      await deleteMutation.mutateAsync(bird.id);
+      onRefetch();
+    } catch {
+      alert('فشل الحذف');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditData(bird);
+    setError(null);
+  };
+
   return (
-    <div className="bg-white rounded-xl border border-amber-200 shadow-sm overflow-hidden flex flex-col">
-      {/* Image area */}
+    <div className={`bg-white rounded-xl shadow-md border overflow-hidden transition-all ${
+      isEditing ? 'border-yellow-400 ring-2 ring-yellow-200' : 'border-amber-200 hover:shadow-lg'
+    }`}>
+      {/* Image */}
       <div
-        className="relative h-48 bg-amber-50 cursor-pointer overflow-hidden"
+        className="cursor-pointer relative"
         onClick={() => {
-          if (mainImagePath) setModalImageSrc(mainImagePath);
+          if (!isEditing && bird.subImages?.length > 0) {
+            onImageClick(bird.subImages, 0, bird.arabicName);
+          }
         }}
       >
-        {mainImagePath ? (
-          <BirdImageWithUrl
-            path={mainImagePath}
-            alt={bird.arabicName}
-            onUrlReady={() => {}}
-          />
+        {mainImage ? (
+          <BirdImageDisplay path={mainImage} />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-amber-300 text-4xl">🦅</div>
+          <div className="w-full h-48 bg-amber-100 flex items-center justify-center">
+            <span className="text-amber-400 text-5xl">🦅</span>
+          </div>
+        )}
+        {hasAudio && (
+          <span className="absolute top-2 left-2 bg-amber-600 text-white text-xs px-2 py-0.5 rounded-full">
+            🎵 صوت
+          </span>
         )}
         {bird.subImages?.length > 1 && (
-          <div className="absolute bottom-1 left-1 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
-            +{bird.subImages.length - 1}
+          <span className="absolute top-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
+            📷 {bird.subImages.length}
+          </span>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="p-4" dir="rtl">
+        {isEditing ? (
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={editData.arabicName}
+              onChange={e => setEditData(prev => ({ ...prev, arabicName: e.target.value }))}
+              placeholder="الاسم العربي"
+              className="w-full border border-yellow-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <input
+              type="text"
+              value={editData.scientificName}
+              onChange={e => setEditData(prev => ({ ...prev, scientificName: e.target.value }))}
+              placeholder="الاسم العلمي"
+              className="w-full border border-yellow-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <input
+              type="text"
+              value={editData.englishName}
+              onChange={e => setEditData(prev => ({ ...prev, englishName: e.target.value }))}
+              placeholder="الاسم الإنجليزي"
+              className="w-full border border-yellow-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <textarea
+              value={editData.description}
+              onChange={e => setEditData(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="الوصف"
+              rows={2}
+              className="w-full border border-yellow-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <textarea
+              value={editData.notes}
+              onChange={e => setEditData(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="ملاحظات"
+              rows={2}
+              className="w-full border border-yellow-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            {error && <p className="text-red-600 text-xs">{error}</p>}
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={handleSave}
+                disabled={saving || saveMutation.isPending}
+                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              >
+                {saving ? '⏳' : '💾 حفظ'}
+              </button>
+              <button
+                onClick={handleCancelEdit}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h3 className="text-amber-900 font-bold text-base mb-1">{bird.arabicName}</h3>
+            {bird.scientificName && (
+              <p className="text-amber-600 text-xs italic mb-1">{bird.scientificName}</p>
+            )}
+            {bird.englishName && (
+              <p className="text-amber-700 text-xs mb-2">{bird.englishName}</p>
+            )}
+            {bird.description && (
+              <p className="text-amber-800 text-xs line-clamp-2 mb-2">{bird.description}</p>
+            )}
+            {bird.location && (
+              <p className="text-amber-600 text-xs">📍 {bird.location}</p>
+            )}
+          </>
+        )}
+
+        {/* Admin Buttons */}
+        {isAdmin && !isEditing && (
+          <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-amber-100">
+            <button
+              onClick={handleEdit}
+              className="bg-amber-500 hover:bg-amber-600 text-white px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+            >
+              ✏️ تحرير
+            </button>
+            <button
+              onClick={() => setShowAudioModal(true)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+            >
+              🎵 إضافة الصوت
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white px-2.5 py-1 rounded-lg text-xs font-medium transition-colors"
+            >
+              🗑️ حذف
+            </button>
           </div>
         )}
       </div>
 
-      {/* Info */}
-      <div className="p-3 flex-1 flex flex-col gap-1" dir="rtl">
-        <h3 className="font-bold text-amber-900 text-base truncate">{bird.arabicName || '—'}</h3>
-        {bird.scientificName && (
-          <p className="text-xs text-amber-600 italic truncate">{bird.scientificName}</p>
-        )}
-        {bird.englishName && (
-          <p className="text-xs text-amber-700 truncate">{bird.englishName}</p>
-        )}
-        {bird.description && (
-          <p className="text-xs text-gray-600 line-clamp-2 mt-1">{bird.description}</p>
-        )}
-        {bird.notes && (
-          <p className="text-xs text-gray-500 line-clamp-1 mt-0.5">{bird.notes}</p>
-        )}
-      </div>
-
-      {/* Admin actions */}
-      {isAdmin && (
-        <div className="px-3 pb-3 flex gap-2" dir="rtl">
-          <button
-            onClick={() => setShowEditModal(true)}
-            className="flex-1 px-3 py-1.5 bg-amber-500 text-white rounded-md text-xs hover:bg-amber-600 transition-colors font-bold"
-          >
-            تحرير
-          </button>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="flex-1 px-3 py-1.5 bg-red-500 text-white rounded-md text-xs hover:bg-red-600 disabled:opacity-50 transition-colors font-bold"
-          >
-            {deleting ? '...' : 'حذف'}
-          </button>
-        </div>
-      )}
-
-      {/* Image modal */}
-      {modalImageSrc && (
-        <BirdImageModalWrapper
-          path={modalImageSrc}
-          alt={bird.arabicName}
-          onClose={() => setModalImageSrc(null)}
-        />
-      )}
-
-      {/* Edit modal */}
-      {showEditModal && (
-        <EditBirdModal
+      {showAudioModal && (
+        <AddAudioModal
           bird={bird}
-          onClose={() => setShowEditModal(false)}
-          onSaved={() => {
-            setShowEditModal(false);
-            onEdited();
-          }}
+          onClose={() => setShowAudioModal(false)}
+          onSuccess={onRefetch}
         />
       )}
     </div>
   );
 }
 
-// Helper: BirdImage that also exposes the resolved URL
-function BirdImageWithUrl({
-  path,
-  alt,
-  onUrlReady,
-}: {
-  path: string;
-  alt: string;
-  onUrlReady?: (url: string) => void;
-}) {
-  const { data: url } = useFileUrl(path);
-  useEffect(() => {
-    if (url && onUrlReady) onUrlReady(url);
-  }, [url, onUrlReady]);
-  if (!url) return <div className="w-full h-full bg-amber-100 animate-pulse" />;
-  return <img src={url} alt={alt} className="w-full h-full object-cover" />;
-}
-
-// Helper: modal that resolves blob URL from path
-function BirdImageModalWrapper({
-  path,
-  alt,
-  onClose,
-}: {
-  path: string;
-  alt: string;
+// ---- Image Viewer Modal ----
+interface ImageViewerProps {
+  images: string[];
+  currentIndex: number;
+  birdName: string;
   onClose: () => void;
-}) {
-  const { data: url } = useFileUrl(path);
-  if (!url) return null;
-  return <ImageModal src={url} alt={alt} onClose={onClose} />;
+  onNavigate: (index: number) => void;
 }
 
+function ImageViewer({ images, currentIndex, birdName, onClose, onNavigate }: ImageViewerProps) {
+  const { data: url } = useFileUrl(images[currentIndex]);
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+      dir="rtl"
+    >
+      <div className="relative max-w-4xl w-full" onClick={e => e.stopPropagation()}>
+        <button
+          onClick={onClose}
+          className="absolute -top-10 left-0 text-white text-2xl hover:text-amber-300 transition-colors"
+        >
+          ✕
+        </button>
+        <p className="text-amber-300 text-center mb-2 text-sm">{birdName} — {currentIndex + 1} / {images.length}</p>
+        {url ? (
+          <img src={url} alt={birdName} className="w-full max-h-[80vh] object-contain rounded-xl" />
+        ) : (
+          <div className="w-full h-64 bg-amber-900/30 flex items-center justify-center rounded-xl">
+            <span className="text-amber-400 text-4xl animate-pulse">🦅</span>
+          </div>
+        )}
+        {images.length > 1 && (
+          <div className="flex justify-center gap-3 mt-4">
+            <button
+              onClick={() => onNavigate(Math.max(0, currentIndex - 1))}
+              disabled={currentIndex === 0}
+              className="bg-amber-600 hover:bg-amber-700 disabled:opacity-30 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              ◀ السابق
+            </button>
+            <button
+              onClick={() => onNavigate(Math.min(images.length - 1, currentIndex + 1))}
+              disabled={currentIndex === images.length - 1}
+              className="bg-amber-600 hover:bg-amber-700 disabled:opacity-30 text-white px-4 py-2 rounded-lg text-sm"
+            >
+              التالي ▶
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---- Main BirdGallery ----
 export default function BirdGallery() {
   const { actor, isFetching: actorFetching } = useActor();
-  const { identity } = useInternetIdentity();
-  const queryClient = useQueryClient();
-  const { data: birdDataRaw, isLoading } = useGetAllBirdData();
-
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isAdminLoading, setIsAdminLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [viewerState, setViewerState] = useState<{
+    images: string[];
+    index: number;
+    birdName: string;
+  } | null>(null);
 
-  // Async admin check — depends only on actor (identity is already embedded in actor)
+  const { data: allBirdData, isLoading, error, refetch } = useGetAllBirdData();
+
+  // Check admin status
   useEffect(() => {
-    let cancelled = false;
-    setIsAdminLoading(true);
+    if (!actor || actorFetching) return;
+    actor.isCallerAdmin().then((result: boolean) => {
+      setIsAdmin(result);
+    }).catch(() => setIsAdmin(false));
+  }, [actor, actorFetching]);
 
-    if (actor && !actorFetching) {
-      actor.isCallerAdmin()
-        .then(result => {
-          if (!cancelled) {
-            setIsAdmin(result);
-            setIsAdminLoading(false);
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setIsAdmin(false);
-            setIsAdminLoading(false);
-          }
-        });
-    } else if (!actorFetching) {
-      setIsAdmin(false);
-      setIsAdminLoading(false);
-    }
+  const birds: BirdData[] = allBirdData
+    ? allBirdData.map(([, bd]: [string, BirdData]) => bd)
+    : [];
 
-    return () => { cancelled = true; };
-  }, [actor, actorFetching, identity]);
-
-  const birdData: [string, BirdData][] = birdDataRaw || [];
-
-  const filteredBirds = birdData.filter(([, bird]) => {
+  const filtered = birds.filter((b: BirdData) => {
     const term = searchTerm.toLowerCase();
     return (
-      bird.arabicName?.toLowerCase().includes(term) ||
-      bird.scientificName?.toLowerCase().includes(term) ||
-      bird.englishName?.toLowerCase().includes(term) ||
-      bird.notes?.toLowerCase().includes(term)
+      b.arabicName?.toLowerCase().includes(term) ||
+      b.scientificName?.toLowerCase().includes(term) ||
+      b.englishName?.toLowerCase().includes(term)
     );
   });
 
-  const handleDataChanged = () => {
-    queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
-    queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
-    queryClient.invalidateQueries({ queryKey: ['birdNames'] });
-    queryClient.invalidateQueries({ queryKey: ['totalBirdCount'] });
-  };
-
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center p-12" dir="rtl">
-        <div className="text-amber-700 text-lg">جاري تحميل المعرض...</div>
+      <div dir="rtl" className="min-h-screen bg-amber-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-5xl mb-4 animate-spin inline-block">⏳</div>
+          <p className="text-amber-700 font-medium text-lg">جاري تحميل معرض الطيور...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div dir="rtl" className="min-h-screen bg-amber-50 flex items-center justify-center">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center max-w-md">
+          <div className="text-4xl mb-3">❌</div>
+          <p className="text-red-700 font-medium mb-4">فشل تحميل البيانات</p>
+          <button
+            onClick={() => refetch()}
+            className="bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-lg text-sm"
+          >
+            إعادة المحاولة
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div dir="rtl" className="w-full">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 mb-6 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-        <input
-          type="text"
-          placeholder="بحث في المعرض..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="flex-1 min-w-[180px] px-3 py-2 border border-amber-300 rounded-md text-sm bg-white focus:outline-none focus:ring-2 focus:ring-amber-400"
-        />
-        <span className="text-xs text-amber-600">
-          {filteredBirds.length} طائر
-          {searchTerm && ` (من أصل ${birdData.length})`}
-        </span>
-        {!isAdminLoading && isAdmin && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-md text-sm hover:bg-green-700 transition-colors font-bold"
-          >
-            + إضافة طائر
-          </button>
+    <div dir="rtl" className="min-h-screen bg-amber-50">
+      {/* Header */}
+      <header className="bg-amber-800 text-amber-50 py-4 px-6 shadow-lg">
+        <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-xl font-bold">🦅 معرض صور الطيور</h1>
+            <p className="text-amber-200 text-sm mt-1">مشروع المسح الميداني لطائر البوم بمحافظة البريمي</p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {isAdmin && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                ➕ إضافة طائر
+              </button>
+            )}
+            <a
+              href="/"
+              className="bg-amber-100 hover:bg-amber-200 text-amber-900 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              🏠 العودة للرئيسية
+            </a>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto px-4 py-6">
+        {/* Search Bar */}
+        <div className="bg-white rounded-xl shadow-md p-4 mb-6 border border-amber-200 flex items-center gap-3">
+          <span className="text-amber-600 text-lg">🔍</span>
+          <input
+            type="text"
+            placeholder="بحث في معرض الطيور..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="flex-1 border border-amber-300 rounded-lg px-3 py-1.5 text-sm bg-amber-50 text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          />
+          <span className="text-amber-700 text-sm whitespace-nowrap">
+            {filtered.length} / {birds.length} طائر
+          </span>
+        </div>
+
+        {/* Grid */}
+        {filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="text-6xl mb-4">📭</div>
+            <p className="text-amber-700 text-lg font-medium">لا توجد طيور مسجلة</p>
+            {isAdmin && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="mt-4 bg-amber-600 hover:bg-amber-700 text-white px-6 py-2 rounded-xl text-sm font-medium transition-colors"
+              >
+                ➕ إضافة أول طائر
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filtered.map((bird: BirdData) => (
+              <BirdCard
+                key={String(bird.id)}
+                bird={bird}
+                isAdmin={isAdmin}
+                onImageClick={(images, index, birdName) =>
+                  setViewerState({ images, index, birdName })
+                }
+                onRefetch={refetch}
+              />
+            ))}
+          </div>
         )}
-      </div>
+      </main>
 
-      {/* Gallery grid */}
-      {filteredBirds.length === 0 ? (
-        <div className="text-center py-12 text-amber-600">
-          {searchTerm ? 'لا توجد نتائج للبحث' : 'لا توجد بيانات في المعرض'}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredBirds.map(([, bird]) => (
-            <BirdCard
-              key={bird.id.toString()}
-              bird={bird}
-              isAdmin={!isAdminLoading && isAdmin}
-              onDeleted={handleDataChanged}
-              onEdited={handleDataChanged}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Add bird modal */}
+      {/* Modals */}
       {showAddModal && (
         <AddBirdModal
           onClose={() => setShowAddModal(false)}
-          onSaved={handleDataChanged}
+          onSuccess={refetch}
+        />
+      )}
+
+      {viewerState && (
+        <ImageViewer
+          images={viewerState.images}
+          currentIndex={viewerState.index}
+          birdName={viewerState.birdName}
+          onClose={() => setViewerState(null)}
+          onNavigate={index => setViewerState(prev => prev ? { ...prev, index } : null)}
         />
       )}
     </div>

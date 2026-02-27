@@ -1,24 +1,46 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-26T12:41:54.251Z",
+  "generatedAt": "2026-02-27T02:13:55.797Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 1,
-    "implemented": 1,
+    "total": 3,
+    "implemented": 3,
     "items": [
       {
-        "id": "REQ-104",
-        "summary": "In frontend/src/pages/HomePage.tsx only, change the main page title text from 'طيور محافظة البريمي' to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'. Do NOT change any other text, layout, styling, logic, component structure, or any other aspect of the page. Do NOT modify any other file, component, page, route, or backend file.",
+        "id": "REQ-107",
+        "summary": "Restore frontend/src/components/AllLocationsMap.tsx to its previously working interactive state: an interactive Leaflet/OpenStreetMap map that displays bird location markers fetched from the backend, supports filtering by individual bird name via a dropdown, has an 'All' option to show all markers simultaneously, a show/hide map toggle, auto-centers and auto-zooms to fit the currently visible markers, and includes a 'Return to Home' button. The component must use the useState + useEffect pattern for data fetching and must be fully synchronized with the bird records returned by the backend. Do NOT change any other file, component, page, route, or backend file.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/HomePage.tsx"
+          "frontend/src/components/AllLocationsMap.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/HomePage.tsx"
+          "frontend/src/components/AllLocationsMap.tsx"
+        ]
+      },
+      {
+        "id": "REQ-108",
+        "summary": "Restore all five admin-only action buttons in frontend/src/components/BirdDataTable.tsx so they are visible and fully functional for authenticated admin users. The isAdmin check must use a useState + useEffect pattern that triggers a re-render after the actor/identity resolves. The five buttons are: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/BirdDataTable.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/BirdDataTable.tsx"
+        ]
+      },
+      {
+        "id": "REQ-109",
+        "summary": "Restore all four admin-only action buttons in frontend/src/components/BirdGallery.tsx so they are visible and fully functional for authenticated admin users. The isAdmin check must use a useState + useEffect pattern that triggers a re-render after the actor/identity resolves. The four buttons are: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, image-click modal, and Add Audio button must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/BirdGallery.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/BirdGallery.tsx"
         ]
       }
     ]
@@ -28,7 +50,9 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/pages/HomePage.tsx",
+    "frontend/src/components/AllLocationsMap.tsx",
+    "frontend/src/components/BirdDataTable.tsx",
+    "frontend/src/components/BirdGallery.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

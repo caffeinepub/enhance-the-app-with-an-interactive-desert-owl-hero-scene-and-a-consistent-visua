@@ -1,379 +1,346 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate } from '@tanstack/react-router';
-import { useGetAllLocationsWithNames } from '../hooks/useQueries';
+import { useState, useEffect, useRef } from 'react';
+import { useActor } from '../hooks/useActor';
 import { LocationData } from '../backend';
 
-// Leaflet types (loaded via CDN)
 declare global {
   interface Window {
     L: any;
   }
 }
 
-function isValidCoordinate(lat: number, lng: number): boolean {
-  return (
-    typeof lat === 'number' &&
-    typeof lng === 'number' &&
-    isFinite(lat) &&
-    isFinite(lng) &&
-    lat >= -90 &&
-    lat <= 90 &&
-    lng >= -180 &&
-    lng <= 180 &&
-    !(lat === 0 && lng === 0)
-  );
-}
+export default function AllLocationsMap() {
+  const { actor, isFetching: actorFetching } = useActor();
+  const [locations, setLocations] = useState<LocationData[]>([]);
+  const [birdNames, setBirdNames] = useState<string[]>([]);
+  const [selectedBird, setSelectedBird] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(true);
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const mapRef = useRef<any>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const markersLayerRef = useRef<any>(null);
 
-function loadLeaflet(): Promise<void> {
-  return new Promise((resolve, reject) => {
+  // Load Leaflet from CDN
+  useEffect(() => {
     if (window.L) {
-      resolve();
+      setLeafletLoaded(true);
       return;
     }
 
-    // Load CSS
-    const existingCss = document.getElementById('leaflet-css');
-    if (!existingCss) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-
-    // Load JS
-    const existingScript = document.getElementById('leaflet-js');
-    if (existingScript) {
-      existingScript.addEventListener('load', () => resolve());
-      return;
-    }
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+    document.head.appendChild(link);
 
     const script = document.createElement('script');
-    script.id = 'leaflet-js';
     script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error('Failed to load Leaflet'));
+    script.onload = () => setLeafletLoaded(true);
+    script.onerror = () => setError('فشل تحميل مكتبة الخريطة');
     document.head.appendChild(script);
-  });
-}
 
-// Inner map component that manages the Leaflet map instance
-function LeafletMap({
-  locations,
-  selectedBird,
-}: {
-  locations: LocationData[];
-  selectedBird: string;
-}) {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersLayerRef = useRef<any>(null);
-  const [leafletReady, setLeafletReady] = useState(false);
-  const [leafletError, setLeafletError] = useState<string | null>(null);
-
-  // Load Leaflet on mount
-  useEffect(() => {
-    loadLeaflet()
-      .then(() => setLeafletReady(true))
-      .catch((err: Error) => setLeafletError(err.message));
+    return () => {
+      // cleanup not needed for CDN scripts
+    };
   }, []);
 
-  // Initialize map once Leaflet is ready
+  // Fetch all locations from backend
   useEffect(() => {
-    if (!leafletReady || !mapContainerRef.current || mapInstanceRef.current) return;
+    if (!actor || actorFetching) return;
+
+    const fetchLocations = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await actor.getAllLocationsWithNames();
+        setLocations(data);
+        const names = Array.from(new Set(data.map((loc: LocationData) => loc.birdName)));
+        setBirdNames(names);
+      } catch (err) {
+        setError('فشل تحميل بيانات المواقع');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchLocations();
+  }, [actor, actorFetching]);
+
+  // Initialize map
+  useEffect(() => {
+    if (!leafletLoaded || !showMap || !mapContainerRef.current) return;
+    if (mapRef.current) return; // already initialized
 
     const L = window.L;
-
-    // Fix default icon paths for Leaflet
-    delete L.Icon.Default.prototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-    });
-
     const map = L.map(mapContainerRef.current, {
-      center: [24.25, 55.79],
-      zoom: 10,
+      center: [23.5, 56.5],
+      zoom: 8,
       zoomControl: true,
     });
 
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:
-        '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(map);
 
     markersLayerRef.current = L.layerGroup().addTo(map);
-    mapInstanceRef.current = map;
-
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-        markersLayerRef.current = null;
-      }
-    };
-  }, [leafletReady]);
+    mapRef.current = map;
+  }, [leafletLoaded, showMap]);
 
   // Update markers when locations or filter changes
   useEffect(() => {
-    if (!leafletReady || !mapInstanceRef.current || !markersLayerRef.current) return;
+    if (!mapRef.current || !markersLayerRef.current || !window.L) return;
 
     const L = window.L;
-    const map = mapInstanceRef.current;
-    const markersLayer = markersLayerRef.current;
+    markersLayerRef.current.clearLayers();
 
-    // Clear existing markers
-    markersLayer.clearLayers();
+    const filtered: LocationData[] = selectedBird === 'all'
+      ? locations
+      : locations.filter((loc: LocationData) => loc.birdName === selectedBird);
 
-    // Filter locations
-    const filtered = locations.filter((loc: LocationData) => {
-      if (selectedBird !== 'all' && loc.birdName !== selectedBird) return false;
-      return isValidCoordinate(loc.coordinate.latitude, loc.coordinate.longitude);
-    });
-
-    if (filtered.length === 0) {
-      // Default center: Al Buraimi
-      map.setView([24.25, 55.79], 10);
-      return;
-    }
+    if (filtered.length === 0) return;
 
     const bounds: [number, number][] = [];
 
     filtered.forEach((loc: LocationData) => {
       const { latitude, longitude } = loc.coordinate;
-      const marker = L.marker([latitude, longitude]);
+      if (
+        typeof latitude !== 'number' || typeof longitude !== 'number' ||
+        isNaN(latitude) || isNaN(longitude) ||
+        latitude === 0 || longitude === 0
+      ) return;
+
+      const marker = L.marker([latitude, longitude], {
+        icon: L.divIcon({
+          className: '',
+          html: `<div style="
+            background: #d97706;
+            border: 2px solid #92400e;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+          "></div>`,
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
+        }),
+      });
 
       marker.bindPopup(`
-        <div style="text-align:right; direction:rtl; font-family: sans-serif; min-width:120px;">
-          <strong style="font-size:14px;">${loc.birdName}</strong><br/>
-          <span style="font-size:11px; color:#666;">
-            خط العرض: ${latitude.toFixed(5)}<br/>
-            خط الطول: ${longitude.toFixed(5)}
-          </span>
+        <div dir="rtl" style="font-family: 'Segoe UI', sans-serif; min-width: 120px;">
+          <strong style="color: #92400e;">${loc.birdName}</strong><br/>
+          <small style="color: #666;">
+            خط العرض: ${latitude.toFixed(4)}<br/>
+            خط الطول: ${longitude.toFixed(4)}
+          </small>
         </div>
       `);
 
-      markersLayer.addLayer(marker);
+      markersLayerRef.current.addLayer(marker);
       bounds.push([latitude, longitude]);
     });
 
-    // Fit map to markers
-    if (bounds.length === 1) {
-      map.setView(bounds[0], 15);
-    } else if (bounds.length > 1) {
-      map.fitBounds(bounds, { padding: [40, 40] });
+    if (bounds.length > 0) {
+      try {
+        mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+      } catch {
+        // ignore fitBounds errors
+      }
     }
-  }, [leafletReady, locations, selectedBird]);
+  }, [locations, selectedBird, leafletLoaded]);
 
-  if (leafletError) {
-    return (
-      <div className="flex items-center justify-center h-full bg-amber-50 rounded-xl border border-amber-200">
-        <div className="text-center p-6">
-          <p className="text-amber-800 font-semibold text-lg mb-2">تعذّر تحميل الخريطة</p>
-          <p className="text-amber-600 text-sm">{leafletError}</p>
-        </div>
-      </div>
-    );
-  }
+  // Reinitialize map when showMap toggles on
+  useEffect(() => {
+    if (!showMap) {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markersLayerRef.current = null;
+      }
+    }
+  }, [showMap]);
 
-  if (!leafletReady) {
+  const filteredLocations: LocationData[] = selectedBird === 'all'
+    ? locations
+    : locations.filter((loc: LocationData) => loc.birdName === selectedBird);
+
+  const validLocations = filteredLocations.filter((loc: LocationData) => {
+    const { latitude, longitude } = loc.coordinate;
     return (
-      <div className="flex items-center justify-center h-full bg-amber-50 rounded-xl border border-amber-200">
-        <div className="text-center p-6">
-          <div className="animate-spin rounded-full h-10 w-10 border-4 border-amber-400 border-t-transparent mx-auto mb-3" />
-          <p className="text-amber-700 font-medium">جارٍ تحميل الخريطة…</p>
-        </div>
-      </div>
+      typeof latitude === 'number' && typeof longitude === 'number' &&
+      !isNaN(latitude) && !isNaN(longitude) &&
+      latitude !== 0 && longitude !== 0
     );
-  }
+  });
 
   return (
-    <div
-      ref={mapContainerRef}
-      style={{ width: '100%', height: '100%', borderRadius: '0.75rem', zIndex: 0 }}
-    />
-  );
-}
-
-export default function AllLocationsMap() {
-  const navigate = useNavigate();
-  const { data: rawLocations, isLoading, error, refetch } = useGetAllLocationsWithNames();
-
-  const allLocations: LocationData[] = (rawLocations as LocationData[] | undefined) ?? [];
-
-  const [selectedBird, setSelectedBird] = useState<string>('all');
-  const [showMap, setShowMap] = useState<boolean>(true);
-
-  // Derive unique bird names for the filter dropdown
-  const birdNames: string[] = Array.from(
-    new Set(allLocations.map((loc: LocationData) => loc.birdName))
-  ).sort() as string[];
-
-  // Filtered coordinates for the list view
-  const filteredLocations: LocationData[] =
-    selectedBird === 'all'
-      ? allLocations
-      : allLocations.filter((loc: LocationData) => loc.birdName === selectedBird);
-
-  const validFilteredLocations: LocationData[] = filteredLocations.filter((loc: LocationData) =>
-    isValidCoordinate(loc.coordinate.latitude, loc.coordinate.longitude)
-  );
-
-  const handleRefresh = useCallback(() => {
-    refetch();
-  }, [refetch]);
-
-  return (
-    <div className="min-h-screen bg-sand-50" dir="rtl">
+    <div dir="rtl" className="min-h-screen bg-amber-50">
       {/* Header */}
-      <header className="bg-amber-800 text-amber-50 shadow-lg">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-wide">🗺️ خريطة مواقع الطيور</h1>
-          <button
-            onClick={() => navigate({ to: '/' })}
-            className="flex items-center gap-2 bg-amber-700 hover:bg-amber-600 text-amber-50 px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-          >
-            <span>العودة للرئيسية</span>
-            <span>🏠</span>
-          </button>
+      <header className="bg-amber-800 text-amber-50 py-4 px-6 shadow-lg">
+        <div className="max-w-6xl mx-auto flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h1 className="text-xl font-bold">🗺️ خريطة مواقع الطيور</h1>
+            <p className="text-amber-200 text-sm mt-1">مشروع المسح الميداني لطائر البوم بمحافظة البريمي</p>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setShowMap(prev => !prev)}
+              className="bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              {showMap ? '🙈 إخفاء الخريطة' : '🗺️ إظهار الخريطة'}
+            </button>
+            <a
+              href="/"
+              className="bg-amber-100 hover:bg-amber-200 text-amber-900 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              🏠 العودة للرئيسية
+            </a>
+          </div>
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-4 py-6 space-y-6">
-        {/* Controls */}
-        <div className="bg-white rounded-xl shadow-md border border-amber-100 p-4">
-          <div className="flex flex-wrap items-center gap-4">
-            {/* Bird filter */}
-            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-              <label className="text-amber-800 font-semibold text-sm whitespace-nowrap">
-                تصفية حسب الطائر:
-              </label>
-              <select
-                value={selectedBird}
-                onChange={(e) => setSelectedBird(e.target.value)}
-                className="flex-1 border border-amber-300 rounded-lg px-3 py-2 text-sm bg-amber-50 text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              >
-                <option value="all">جميع الطيور</option>
-                {birdNames.map((name: string) => (
+        {/* Filter & Stats Bar */}
+        <div className="bg-white rounded-xl shadow-md p-4 flex flex-wrap items-center gap-4 border border-amber-200">
+          <div className="flex items-center gap-2">
+            <label className="text-amber-800 font-medium text-sm">تصفية حسب الطائر:</label>
+            <select
+              value={selectedBird}
+              onChange={e => setSelectedBird(e.target.value)}
+              className="border border-amber-300 rounded-lg px-3 py-1.5 text-sm bg-amber-50 text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            >
+              <option value="all">الكل ({locations.length} موقع)</option>
+              {birdNames.map((name: string) => {
+                const count = locations.filter((l: LocationData) => l.birdName === name).length;
+                return (
                   <option key={name} value={name}>
-                    {name}
+                    {name} ({count})
                   </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Toggle map visibility */}
-            <button
-              onClick={() => setShowMap((v) => !v)}
-              className="flex items-center gap-2 bg-amber-100 hover:bg-amber-200 text-amber-800 px-4 py-2 rounded-lg transition-colors text-sm font-medium border border-amber-300"
-            >
-              <span>{showMap ? '🙈' : '👁️'}</span>
-              <span>{showMap ? 'إخفاء الخريطة' : 'إظهار الخريطة'}</span>
-            </button>
-
-            {/* Refresh */}
-            <button
-              onClick={handleRefresh}
-              disabled={isLoading}
-              className="flex items-center gap-2 bg-amber-600 hover:bg-amber-700 disabled:opacity-50 text-white px-4 py-2 rounded-lg transition-colors text-sm font-medium"
-            >
-              <span className={isLoading ? 'animate-spin inline-block' : 'inline-block'}>🔄</span>
-              <span>تحديث</span>
-            </button>
+                );
+              })}
+            </select>
           </div>
 
-          {/* Stats */}
-          <div className="mt-3 flex flex-wrap gap-3 text-xs text-amber-700">
-            <span className="bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
-              إجمالي المواقع: <strong>{allLocations.length}</strong>
-            </span>
-            <span className="bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
-              المواقع المعروضة: <strong>{validFilteredLocations.length}</strong>
-            </span>
-            <span className="bg-amber-50 border border-amber-200 rounded-full px-3 py-1">
-              عدد الطيور: <strong>{birdNames.length}</strong>
-            </span>
+          <div className="flex gap-4 text-sm text-amber-700 mr-auto">
+            <span>📍 إجمالي المواقع: <strong>{locations.length}</strong></span>
+            <span>🦅 عدد الطيور: <strong>{birdNames.length}</strong></span>
+            {selectedBird !== 'all' && (
+              <span>🔍 المواقع المعروضة: <strong>{validLocations.length}</strong></span>
+            )}
           </div>
         </div>
 
-        {/* Error state */}
+        {/* Loading / Error */}
+        {isLoading && (
+          <div className="bg-white rounded-xl shadow-md p-8 text-center border border-amber-200">
+            <div className="text-amber-600 text-4xl mb-3 animate-spin inline-block">⏳</div>
+            <p className="text-amber-700 font-medium">جاري تحميل بيانات المواقع...</p>
+          </div>
+        )}
+
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
-            <p className="text-red-700 font-semibold">حدث خطأ أثناء تحميل البيانات</p>
+            <p className="text-red-700 font-medium">{error}</p>
             <button
-              onClick={handleRefresh}
-              className="mt-2 text-red-600 underline text-sm hover:text-red-800"
+              onClick={() => {
+                if (actor) {
+                  setIsLoading(true);
+                  actor.getAllLocationsWithNames()
+                    .then((data: LocationData[]) => {
+                      setLocations(data);
+                      setBirdNames(Array.from(new Set(data.map((l: LocationData) => l.birdName))));
+                      setError(null);
+                    })
+                    .catch(() => setError('فشل تحميل بيانات المواقع'))
+                    .finally(() => setIsLoading(false));
+                }
+              }}
+              className="mt-2 bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-lg text-sm"
             >
               إعادة المحاولة
             </button>
           </div>
         )}
 
-        {/* Loading state */}
-        {isLoading && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-4 border-amber-400 border-t-transparent mx-auto mb-2" />
-            <p className="text-amber-700">جارٍ تحميل بيانات المواقع…</p>
-          </div>
-        )}
-
-        {/* Interactive Map */}
-        {showMap && !isLoading && (
-          <div
-            className="bg-white rounded-xl shadow-md border border-amber-100 overflow-hidden"
-            style={{ height: '500px' }}
-          >
-            <LeafletMap locations={allLocations} selectedBird={selectedBird} />
-          </div>
-        )}
-
-        {/* Locations list */}
-        {validFilteredLocations.length > 0 && (
-          <div className="bg-white rounded-xl shadow-md border border-amber-100 p-4">
-            <h2 className="text-amber-800 font-bold text-lg mb-4 border-b border-amber-100 pb-2">
-              قائمة المواقع ({validFilteredLocations.length})
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-80 overflow-y-auto">
-              {validFilteredLocations.map((loc: LocationData, idx: number) => (
-                <div
-                  key={idx}
-                  className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm"
-                >
-                  <p className="font-semibold text-amber-900 mb-1">{loc.birdName}</p>
-                  <p className="text-amber-700 text-xs">
-                    خط العرض: {loc.coordinate.latitude.toFixed(5)}
-                  </p>
-                  <p className="text-amber-700 text-xs">
-                    خط الطول: {loc.coordinate.longitude.toFixed(5)}
-                  </p>
-                </div>
-              ))}
+        {/* Map */}
+        {showMap && !isLoading && !error && (
+          <div className="bg-white rounded-xl shadow-md border border-amber-200 overflow-hidden">
+            <div className="bg-amber-100 px-4 py-2 border-b border-amber-200 flex items-center gap-2">
+              <span className="text-amber-800 font-medium text-sm">🗺️ الخريطة التفاعلية</span>
+              {!leafletLoaded && (
+                <span className="text-amber-600 text-xs">جاري تحميل الخريطة...</span>
+              )}
             </div>
+            {!leafletLoaded ? (
+              <div className="h-96 flex items-center justify-center bg-amber-50">
+                <div className="text-center">
+                  <div className="text-4xl mb-3 animate-pulse">🗺️</div>
+                  <p className="text-amber-700">جاري تحميل مكتبة الخريطة...</p>
+                </div>
+              </div>
+            ) : (
+              <div
+                ref={mapContainerRef}
+                style={{ height: '480px', width: '100%' }}
+              />
+            )}
           </div>
         )}
 
-        {/* Empty state */}
-        {!isLoading && !error && validFilteredLocations.length === 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
-            <p className="text-amber-700 text-lg font-medium">
-              {selectedBird === 'all'
-                ? 'لا توجد مواقع مسجّلة حتى الآن'
-                : `لا توجد مواقع مسجّلة للطائر: ${selectedBird}`}
-            </p>
+        {/* Locations List */}
+        {!isLoading && !error && (
+          <div className="bg-white rounded-xl shadow-md border border-amber-200 overflow-hidden">
+            <div className="bg-amber-100 px-4 py-3 border-b border-amber-200">
+              <h2 className="text-amber-800 font-bold text-sm">
+                📋 قائمة المواقع
+                {selectedBird !== 'all' && ` — ${selectedBird}`}
+                <span className="mr-2 text-amber-600 font-normal">({validLocations.length} موقع)</span>
+              </h2>
+            </div>
+
+            {validLocations.length === 0 ? (
+              <div className="p-8 text-center text-amber-600">
+                <div className="text-4xl mb-3">📭</div>
+                <p>لا توجد مواقع مسجلة {selectedBird !== 'all' ? `لـ ${selectedBird}` : ''}</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-amber-50 text-amber-800">
+                    <tr>
+                      <th className="px-4 py-2 text-right font-semibold border-b border-amber-200">#</th>
+                      <th className="px-4 py-2 text-right font-semibold border-b border-amber-200">اسم الطائر</th>
+                      <th className="px-4 py-2 text-right font-semibold border-b border-amber-200">خط العرض</th>
+                      <th className="px-4 py-2 text-right font-semibold border-b border-amber-200">خط الطول</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {validLocations.map((loc: LocationData, idx: number) => (
+                      <tr
+                        key={idx}
+                        className="border-b border-amber-100 hover:bg-amber-50 transition-colors"
+                      >
+                        <td className="px-4 py-2 text-amber-600 font-mono">{idx + 1}</td>
+                        <td className="px-4 py-2 text-amber-900 font-medium">{loc.birdName}</td>
+                        <td className="px-4 py-2 text-amber-700 font-mono">{loc.coordinate.latitude.toFixed(6)}</td>
+                        <td className="px-4 py-2 text-amber-700 font-mono">{loc.coordinate.longitude.toFixed(6)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
-        {/* Return to home button (bottom) */}
+        {/* Return to Home (bottom) */}
         <div className="text-center pb-4">
-          <button
-            onClick={() => navigate({ to: '/' })}
-            className="inline-flex items-center gap-2 bg-amber-700 hover:bg-amber-600 text-white px-6 py-3 rounded-xl transition-colors font-medium shadow"
+          <a
+            href="/"
+            className="inline-flex items-center gap-2 bg-amber-700 hover:bg-amber-600 text-white px-6 py-3 rounded-xl font-medium transition-colors shadow-md"
           >
-            <span>🏠</span>
-            <span>العودة للرئيسية</span>
-          </button>
+            🏠 العودة للرئيسية
+          </a>
         </div>
       </main>
     </div>

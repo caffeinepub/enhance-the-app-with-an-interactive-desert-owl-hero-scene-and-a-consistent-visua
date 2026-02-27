@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 113,
+  "projectStateVersion": 117,
   "summary": "Bird distribution tracker app for Al Buraimi Governorate. After multiple failed revert/restore attempts (versions 521-528), user is requesting restoration to version 510, which was an earlier stable version. The app title should be 'مواقع انتشار البوم بمحافظة البريمي'.",
   "architectural_notes": [
     "Correct app title is 'مواقع انتشار البوم بمحافظة البريمي' (Owl Distribution Sites in Al Buraimi Governorate)",
@@ -18,7 +18,7 @@
     "Version 543 deployment: Action buttons did not appear and table/font size were not changed — user requesting revert to version 541 state",
     "Version 565 deployment: Admin action buttons (إضافة, حفظ, حذف, تعديل, تحرير) disappeared from bird data table and gallery pages"
   ],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
       "id": "feature-investigate-why-uploaded-images-are-not-displaying-after-deployment-check-if-blob-storage-paths-file-references-or-asset-serving-mechanisms-have-changed-verify-that-image-blob-ids-stored-in-bird-records-still-resolve-to-accessible-image-data",
@@ -663,6 +663,46 @@
         "REQ-104"
       ],
       "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birdgallery-tsx-only-add-an-add-audio-button-to-the-gallery-page-that-allows-authenticated-admin-users-to-upload-or-associate-an-audio-file-with-a-bird-record-the-button-must-appear-on-each-gallery-card-alongside-the-existing-admin-action-buttons-save-delete-update-edit-when-clicked-it-must-open-a-file-picker-restricted-to-audio-file-types-and-upload-the-selected-audio-file-as-a-blob-to-the-backend-then-associate-the-resulting-blob-id-with-the-corresponding-bird-record-s-audio-field-the-button-must-be-styled-consistently-with-the-existing-desert-amber-rtl-arabic-tailwind-theme-already-used-in-birdgallery-tsx-the-button-must-be-restricted-to-authenticated-admin-users-only-using-the-same-usestate-useeffect-isadmin-pattern-already-present-in-the-component-do-not-change-any-other-aspect-of-birdgallery-tsx-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-image-click-modal-and-the-other-four-admin-action-buttons-add-save-delete-update-edit-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdGallery.tsx only, add an 'إضافة الصوت' (Add Audio) button to the gallery page that allows authenticated admin users to upload or associate an audio file with a bird record. The button must appear on each gallery card alongside the existing admin action buttons (Save, Delete, Update/Edit). When clicked, it must open a file picker restricted to audio file types and upload the selected audio file as a blob to the backend, then associate the resulting blob ID with the corresponding bird record's audio field. The button must be styled consistently with the existing desert/amber RTL Arabic Tailwind theme already used in BirdGallery.tsx. The button must be restricted to authenticated admin users only using the same useState + useEffect isAdmin pattern already present in the component. Do NOT change any other aspect of BirdGallery.tsx — existing search, card layout, image display, RTL orientation, data-fetching logic, image-click modal, and the other four admin action buttons (Add, Save, Delete, Update/Edit) must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-105"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-in-frontend-src-components-birdgallery-tsx-only-fix-the-issue-where-after-uploading-main-and-sub-images-for-a-bird-record-the-gallery-page-displays-all-existing-images-currently-stored-in-the-system-rather-than-showing-only-the-images-belonging-to-each-specific-bird-card-ensure-that-each-gallery-card-renders-only-the-images-main-image-and-sub-images-associated-with-its-own-bird-record-not-images-from-other-records-the-image-display-logic-must-correctly-scope-blob-url-resolution-to-each-individual-bird-record-s-images-array-do-not-change-any-other-aspect-of-birdgallery-tsx-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "In frontend/src/components/BirdGallery.tsx only, fix the issue where after uploading main and sub-images for a bird record, the gallery page displays all existing images currently stored in the system rather than showing only the images belonging to each specific bird card. Ensure that each gallery card renders only the images (main image and sub-images) associated with its own bird record, not images from other records. The image display logic must correctly scope blob URL resolution to each individual bird record's images array. Do NOT change any other aspect of BirdGallery.tsx. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-106"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-frontend-src-components-alllocationsmap-tsx-to-its-previously-working-interactive-state-an-interactive-leaflet-openstreetmap-map-that-displays-bird-location-markers-fetched-from-the-backend-supports-filtering-by-individual-bird-name-via-a-dropdown-has-an-all-option-to-show-all-markers-simultaneously-a-show-hide-map-toggle-auto-centers-and-auto-zooms-to-fit-the-currently-visible-markers-and-includes-a-return-to-home-button-the-component-must-use-the-usestate-useeffect-pattern-for-data-fetching-and-must-be-fully-synchronized-with-the-bird-records-returned-by-the-backend-do-not-change-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore frontend/src/components/AllLocationsMap.tsx to its previously working interactive state: an interactive Leaflet/OpenStreetMap map that displays bird location markers fetched from the backend, supports filtering by individual bird name via a dropdown, has an 'All' option to show all markers simultaneously, a show/hide map toggle, auto-centers and auto-zooms to fit the currently visible markers, and includes a 'Return to Home' button. The component must use the useState + useEffect pattern for data fetching and must be fully synchronized with the bird records returned by the backend. Do NOT change any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-107"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-all-five-admin-only-action-buttons-in-frontend-src-components-birddatatable-tsx-so-they-are-visible-and-fully-functional-for-authenticated-admin-users-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-triggers-a-re-render-after-the-actor-identity-resolves-the-five-buttons-are-1-add-in-the-table-toolbar-header-area-inserts-a-new-empty-editable-row-2-edit-on-each-data-row-switches-that-row-into-inline-edit-mode-3-save-that-replaces-the-edit-button-when-a-row-is-in-edit-mode-and-commits-changes-to-the-backend-4-delete-on-each-row-removes-the-record-from-the-backend-5-update-edit-on-each-row-alternative-update-action-all-column-definitions-layout-rtl-orientation-horizontal-scrolling-color-scheme-font-sizes-and-data-fetching-logic-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore all five admin-only action buttons in frontend/src/components/BirdDataTable.tsx so they are visible and fully functional for authenticated admin users. The isAdmin check must use a useState + useEffect pattern that triggers a re-render after the actor/identity resolves. The five buttons are: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-108"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-restore-all-four-admin-only-action-buttons-in-frontend-src-components-birdgallery-tsx-so-they-are-visible-and-fully-functional-for-authenticated-admin-users-the-isadmin-check-must-use-a-usestate-useeffect-pattern-that-triggers-a-re-render-after-the-actor-identity-resolves-the-four-buttons-are-1-add-in-the-gallery-toolbar-header-area-opens-a-form-modal-for-uploading-a-new-bird-record-with-a-main-image-and-sub-images-2-save-on-each-gallery-card-commits-pending-edits-to-the-backend-3-delete-on-each-gallery-card-removes-the-record-from-the-backend-4-update-edit-on-each-gallery-card-switches-the-entry-into-an-editable-state-the-gallery-s-existing-search-card-layout-image-display-rtl-orientation-data-fetching-logic-image-click-modal-and-add-audio-button-must-remain-exactly-as-they-are-do-not-modify-any-other-file-component-page-route-or-backend-file",
+      "title": "Restore all four admin-only action buttons in frontend/src/components/BirdGallery.tsx so they are visible and fully functional for authenticated admin users. The isAdmin check must use a useState + useEffect pattern that triggers a re-render after the actor/identity resolves. The four buttons are: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, image-click modal, and Add Audio button must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "reqIds": [
+        "REQ-109"
+      ],
+      "version": 1
     }
   ],
   "new_feature_requests": [
@@ -979,6 +1019,18 @@
     {
       "id": "AR-57",
       "summary": "Change the main page title from 'طيور محافظة البريمي' to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي' without making any other changes to the app.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-58",
+      "summary": "Add an 'إضافة الصوت' (Add Audio) button to the photo gallery page (BirdGallery.tsx) that allows admin users to upload or associate an audio file with a bird record. The button must be styled consistently with the existing desert/amber RTL Arabic theme and restricted to authenticated admin users only.",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-59",
+      "summary": "Restore the interactive map (synchronized with the bird data table) and all admin control buttons that disappeared — without changing anything else in the app. The interactive map must be restored to its previous state with data synchronization, and all admin action buttons (إضافة, تعديل, حفظ, حذف, تحرير) must reappear in both BirdDataTable and BirdGallery pages.",
       "reqIds": [],
       "status": "pending"
     }

@@ -1,36 +1,92 @@
 {
   "kind": "build_request",
-  "title": "Change homepage title to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'",
+  "title": "Restore Interactive Map with Data Sync and Admin Control Buttons",
   "projectName": "Al Buraimi Owl Survey",
-  "priority": "normal",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-104",
-      "text": "In frontend/src/pages/HomePage.tsx only, change the main page title text from 'طيور محافظة البريمي' to 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'. Do NOT change any other text, layout, styling, logic, component structure, or any other aspect of the page. Do NOT modify any other file, component, page, route, or backend file.",
+      "id": "REQ-107",
+      "text": "Restore frontend/src/components/AllLocationsMap.tsx to its previously working interactive state: an interactive Leaflet/OpenStreetMap map that displays bird location markers fetched from the backend, supports filtering by individual bird name via a dropdown, has an 'All' option to show all markers simultaneously, a show/hide map toggle, auto-centers and auto-zooms to fit the currently visible markers, and includes a 'Return to Home' button. The component must use the useState + useEffect pattern for data fetching and must be fully synchronized with the bird records returned by the backend. Do NOT change any other file, component, page, route, or backend file.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-5"
+          "msg-latest"
         ],
         "quotes": [
-          "تغير العنوان في الصفحة الرئيسية من طيور محافظة البريمي الى مشروع المسح الميداني لطائر البوم بمحافظة البريمي بدون اي تغير في التطبيق"
+          "اين الخريطة التفاعلية التي كانت مزامنة لجدول البيانات غير موجودة"
         ]
       },
       "acceptanceCriteria": [
-        "The main heading/title on the home page reads 'مشروع المسح الميداني لطائر البوم بمحافظة البريمي'.",
-        "No other text, layout, styling, or functionality on the home page is changed.",
-        "No other file, component, page, route, or backend file is modified."
+        "Navigating to /map renders the AllLocationsMap page with the interactive Leaflet map visible after toggling show/hide",
+        "Bird location markers appear on the map for every backend bird record that has valid latitude/longitude coordinates",
+        "A bird-name filter dropdown is present; selecting a bird name shows only that bird's marker(s)",
+        "An 'All' option in the dropdown shows all bird markers simultaneously",
+        "The map auto-centers and zooms to fit visible markers when the filter changes or on initial load",
+        "A 'Return to Home' button is present and navigates back to the home page",
+        "RTL orientation and desert/amber theme styling are preserved",
+        "No other component, page, route, or backend file is modified"
+      ]
+    },
+    {
+      "id": "REQ-108",
+      "text": "Restore all five admin-only action buttons in frontend/src/components/BirdDataTable.tsx so they are visible and fully functional for authenticated admin users. The isAdmin check must use a useState + useEffect pattern that triggers a re-render after the actor/identity resolves. The five buttons are: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "لا حتى ازرار التحكم للمالك الرجاء اعادتها بنفس التنسيق السايق"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Authenticated admin user sees all five action buttons: إضافة, تعديل, حفظ, حذف, تحرير",
+        "The إضافة (Add) button appears in the table toolbar and creates a new empty editable row",
+        "The تعديل (Edit) button on each row switches that row to inline edit mode",
+        "The حفظ (Save) button replaces Edit when a row is in edit mode and commits changes to the backend",
+        "The حذف (Delete) button removes the record from the backend",
+        "The تحرير (Update/Edit) button provides an alternative update action per row",
+        "Buttons are not visible to unauthenticated or non-admin users",
+        "All nine columns, RTL orientation, horizontal scrolling, desert/amber theme, and data-fetching logic remain unchanged",
+        "No other file is modified"
+      ]
+    },
+    {
+      "id": "REQ-109",
+      "text": "Restore all four admin-only action buttons in frontend/src/components/BirdGallery.tsx so they are visible and fully functional for authenticated admin users. The isAdmin check must use a useState + useEffect pattern that triggers a re-render after the actor/identity resolves. The four buttons are: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, image-click modal, and Add Audio button must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-latest"
+        ],
+        "quotes": [
+          "لا حتى ازرار التحكم للمالك الرجاء اعادتها بنفس التنسيق السايق"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Authenticated admin user sees all four action buttons in BirdGallery: إضافة, حفظ, حذف, تحرير",
+        "The إضافة (Add) button opens an upload form/modal for a new bird record with main and sub-images",
+        "The حفظ (Save) button on each card commits pending edits to the backend",
+        "The حذف (Delete) button on each card removes the record from the backend",
+        "The تحرير (Update/Edit) button on each card switches the entry into an editable state",
+        "Buttons are not visible to unauthenticated or non-admin users",
+        "Gallery search, card layout, image display, RTL orientation, image-click modal, and Add Audio button remain unchanged",
+        "No other file is modified"
       ]
     }
   ],
   "constraints": [
-    "Only the title text in frontend/src/pages/HomePage.tsx may be changed — no other modifications to any file are permitted."
+    "Do not change any file, component, page, route, or backend file beyond AllLocationsMap.tsx, BirdDataTable.tsx, and BirdGallery.tsx",
+    "Do not change the existing page structure, RTL orientation, desert/amber theme, or any non-button functionality in the affected components",
+    "Admin guard must use useState + useEffect pattern — no synchronous principal checks that may fail before actor resolves",
+    "No backend changes required"
   ],
   "nonGoals": [
-    "Changing the HTML <title> tag in index.html.",
-    "Changing the SplashScreen title.",
-    "Modifying any backend file.",
-    "Modifying any other frontend component, page, or route."
+    "Adding new features or columns to BirdDataTable",
+    "Changing gallery card layout or image display logic",
+    "Modifying the HomePage, App.tsx routes, or any other page component",
+    "Changing the backend schema or API",
+    "Changing authentication or permission management logic"
   ],
   "imageRequirements": {
     "required": [],
