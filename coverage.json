@@ -1,34 +1,50 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T04:01:55.293Z",
+  "generatedAt": "2026-02-27T10:00:24.577Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
     "total": 1,
-    "implemented": 1,
+    "implemented": 0,
     "items": [
       {
-        "id": "REQ-119",
-        "summary": "In frontend/src/components/BirdDataTable.tsx only, update the 'Zone' (المنطقة) column so that any cell displaying the value 'Tropical' renders '40' instead. This change must apply to both the read-only display cells and the editable input fields in inline-edit mode. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
-        "status": "implemented",
+        "id": "REQ-141",
+        "summary": "Rebuild and redeploy the current project state without making any code changes to any file. Ensure the backend (backend/main.mo) compiles and deploys correctly, and all frontend source files are bundled and served without errors. The deployment must restore the app to its last intended state including: the BirdDataTable with all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) visible and functional for authenticated admin users; the interactive AllLocationsMap with bird filtering and show/hide toggle; the BirdGallery with admin action buttons and image click modal; the HomePage with splash screen, hero section, navigation cards, map upload section, and team table; the HamburgerMenu with all navigation links; and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions).",
+        "status": "missing",
         "plannedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
+          "frontend/src/App.tsx",
+          "frontend/src/components/BirdDataTable.tsx",
+          "frontend/src/components/BirdGallery.tsx",
+          "frontend/src/components/AllLocationsMap.tsx",
+          "frontend/src/pages/HomePage.tsx",
+          "frontend/src/components/HamburgerMenu.tsx",
+          "frontend/src/components/MainHeader.tsx",
+          "frontend/src/hooks/useActor.ts",
+          "frontend/src/hooks/useInternetIdentity.ts",
+          "frontend/index.html",
+          "frontend/src/main.tsx",
+          "frontend/src/components/BirdDetailsPage.tsx",
+          "frontend/src/components/EagleOwlPage.tsx",
+          "frontend/src/components/StatisticsPage.tsx",
+          "frontend/src/components/ImageViewPage.tsx",
+          "frontend/src/components/PermissionManagement.tsx",
+          "frontend/src/pages/BirdDataPage.tsx",
+          "frontend/src/components/MapView.tsx",
+          "frontend/src/index.css",
+          "frontend/tailwind.config.js"
         ],
-        "matchedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
-        ]
+        "matchedFiles": []
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
     "build-request.json",
     "feature_evidence.json",
-    "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/BirdDataTable.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

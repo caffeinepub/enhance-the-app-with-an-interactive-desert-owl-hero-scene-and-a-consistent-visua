@@ -1,821 +1,534 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { useActor } from '../hooks/useActor';
+import {
+  useGetAllBirdData,
+  useAddBirdWithDetails,
+  useDeleteBirdData,
+  useSaveChanges,
+} from '../hooks/useQueries';
 import { BirdData, LocationEntry } from '../backend';
-import { useGetAllBirdData, useSaveBirdData, useDeleteBirdById } from '../hooks/useQueries';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { Loader2, Plus, Pencil, Save, Trash2, FileText, Download } from 'lucide-react';
 import { exportBirdDataToCSV } from '../lib/csvExport';
+import { exportBirdsToExcel } from '../lib/excelExport';
+import { exportBirdsToPDF } from '../lib/pdfExport';
 
-// A flattened row: one per LocationEntry, carrying bird-level fields
-interface FlatRow {
-  // Bird-level fields
-  birdId: bigint;
-  arabicName: string;
-  scientificName: string;
-  englishName: string;
-  description: string;
-  notes: string;
-  localName: string;
-  audioFile?: string;
-  subImages: string[];
-  allLocations: LocationEntry[]; // full locations array for saving
-  // Location-level fields
-  locationIndex: number;
-  location: string;
-  governorate: string;
-  mountainName: string;
-  valleyName: string;
-  latitude: number;
-  longitude: number;
-  locationNotes: string;
-}
-
-// Derive Northern Hemisphere from latitude
-function getNorthernHemisphere(lat: number): string {
-  return lat >= 0 ? 'نعم' : 'لا';
-}
-
-// Derive Zone from latitude
-function getZone(lat: number): string {
-  const absLat = Math.abs(lat);
-  if (absLat >= 0 && absLat < 23.5) return '40';
-  if (absLat >= 23.5 && absLat < 35) return '40';
-  if (absLat >= 35 && absLat < 50) return 'معتدلة';
-  if (absLat >= 50 && absLat < 66.5) return 'شبه قطبية';
-  return 'قطبية';
-}
-
-// Flatten BirdData[] into FlatRow[] — one row per LocationEntry
-function flattenBirds(birds: BirdData[]): FlatRow[] {
-  const rows: FlatRow[] = [];
-  for (const bird of birds) {
-    if (!bird.locations || bird.locations.length === 0) {
-      // Bird with no locations — show one row with empty location fields
-      rows.push({
-        birdId: bird.id,
-        arabicName: bird.arabicName,
-        scientificName: bird.scientificName,
-        englishName: bird.englishName,
-        description: bird.description,
-        notes: bird.notes,
-        localName: bird.localName,
-        audioFile: bird.audioFile,
-        subImages: bird.subImages,
-        allLocations: [],
-        locationIndex: 0,
-        location: '',
-        governorate: '',
-        mountainName: '',
-        valleyName: '',
-        latitude: 0,
-        longitude: 0,
-        locationNotes: '',
-      });
-    } else {
-      for (let i = 0; i < bird.locations.length; i++) {
-        const loc = bird.locations[i];
-        rows.push({
-          birdId: bird.id,
-          arabicName: bird.arabicName,
-          scientificName: bird.scientificName,
-          englishName: bird.englishName,
-          description: bird.description,
-          notes: bird.notes,
-          localName: bird.localName,
-          audioFile: bird.audioFile,
-          subImages: bird.subImages,
-          allLocations: bird.locations,
-          locationIndex: i,
-          location: loc.location,
-          governorate: loc.governorate,
-          mountainName: loc.mountainName,
-          valleyName: loc.valleyName,
-          latitude: loc.coordinate.latitude,
-          longitude: loc.coordinate.longitude,
-          locationNotes: loc.notes,
-        });
-      }
-    }
-  }
-  return rows;
-}
-
-// Unique key for a flat row
-function rowKey(row: FlatRow): string {
-  return `${String(row.birdId)}-${row.locationIndex}`;
-}
-
-interface EditingState {
-  arabicName: string;
-  scientificName: string;
-  englishName: string;
-  description: string;
-  notes: string;
-  localName: string;
-  location: string;
-  governorate: string;
-  mountainName: string;
-  valleyName: string;
-  latitude: number;
-  longitude: number;
-  locationNotes: string;
+interface EditingRow {
+  birdName: string;
+  data: BirdData;
 }
 
 export default function BirdDataTable() {
+  const { identity } = useInternetIdentity();
   const { actor, isFetching: actorFetching } = useActor();
+
   const [isAdmin, setIsAdmin] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [editingMap, setEditingMap] = useState<Map<string, EditingState>>(new Map());
-  const [newRow, setNewRow] = useState<Partial<{
-    arabicName: string;
-    scientificName: string;
-    englishName: string;
-    description: string;
-    notes: string;
-    localName: string;
-    location: string;
-    governorate: string;
-    mountainName: string;
-    valleyName: string;
-    latitude: number;
-    longitude: number;
-    locationNotes: string;
-  }> | null>(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const saveMutation = useSaveBirdData();
-  const deleteMutation = useDeleteBirdById();
-  const { data: allBirdData, isLoading, error, refetch } = useGetAllBirdData();
-  const addFormRef = useRef<HTMLDivElement>(null);
+  const [isCheckingAdmin, setIsCheckingAdmin] = useState(false);
 
-  // Check admin status
+  const principalStr = identity?.getPrincipal().toString() ?? null;
+
   useEffect(() => {
-    if (!actor || actorFetching) return;
-    actor.isCallerAdmin().then((result: boolean) => {
-      setIsAdmin(result);
-    }).catch(() => setIsAdmin(false));
-  }, [actor, actorFetching]);
+    let cancelled = false;
 
-  const birds: BirdData[] = allBirdData
-    ? allBirdData.map(([, bd]: [string, BirdData]) => bd)
-    : [];
+    const checkAdmin = async () => {
+      if (!actor || actorFetching || !principalStr) {
+        setIsAdmin(false);
+        return;
+      }
+      setIsCheckingAdmin(true);
+      try {
+        const result = await actor.isCallerAdmin();
+        if (!cancelled) {
+          setIsAdmin(result);
+        }
+      } catch {
+        if (!cancelled) setIsAdmin(false);
+      } finally {
+        if (!cancelled) setIsCheckingAdmin(false);
+      }
+    };
 
-  const flatRows = flattenBirds(birds);
+    checkAdmin();
+    return () => { cancelled = true; };
+  }, [actor, actorFetching, principalStr]);
 
-  const filtered = flatRows.filter((row: FlatRow) => {
+  const { data: allBirdData, isLoading } = useGetAllBirdData();
+  const addBirdWithDetails = useAddBirdWithDetails();
+  const deleteBirdData = useDeleteBirdData();
+  const saveChanges = useSaveChanges();
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<string | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [editingRow, setEditingRow] = useState<EditingRow | null>(null);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
+
+  const [newBird, setNewBird] = useState({
+    arabicName: '',
+    scientificName: '',
+    englishName: '',
+    localName: '',
+    description: '',
+    notes: '',
+    latitude: '',
+    longitude: '',
+    mountainName: '',
+    valleyName: '',
+    governorate: '',
+    location: '',
+  });
+
+  const birdList: [string, BirdData][] = allBirdData ?? [];
+
+  const filtered = birdList.filter(([, bird]) => {
     const term = searchTerm.toLowerCase();
     return (
-      row.arabicName?.toLowerCase().includes(term) ||
-      row.scientificName?.toLowerCase().includes(term) ||
-      row.englishName?.toLowerCase().includes(term) ||
-      row.location?.toLowerCase().includes(term) ||
-      row.governorate?.toLowerCase().includes(term)
+      bird.arabicName.toLowerCase().includes(term) ||
+      bird.scientificName.toLowerCase().includes(term) ||
+      bird.englishName.toLowerCase().includes(term) ||
+      bird.localName.toLowerCase().includes(term) ||
+      bird.locations.some(
+        (loc) =>
+          loc.governorate.toLowerCase().includes(term) ||
+          loc.mountainName.toLowerCase().includes(term) ||
+          loc.valleyName.toLowerCase().includes(term) ||
+          loc.location.toLowerCase().includes(term)
+      )
     );
   });
 
-  const handleEdit = (row: FlatRow) => {
-    const key = rowKey(row);
-    const updated = new Map(editingMap);
-    updated.set(key, {
-      arabicName: row.arabicName,
-      scientificName: row.scientificName,
-      englishName: row.englishName,
-      description: row.description,
-      notes: row.notes,
-      localName: row.localName,
-      location: row.location,
-      governorate: row.governorate,
-      mountainName: row.mountainName,
-      valleyName: row.valleyName,
-      latitude: row.latitude,
-      longitude: row.longitude,
-      locationNotes: row.locationNotes,
-    });
-    setEditingMap(updated);
-  };
+  const sorted = [...filtered].sort(([, birdA], [, birdB]) => {
+    if (!sortField) return 0;
+    let valA = '';
+    let valB = '';
+    if (sortField === 'arabicName') { valA = birdA.arabicName; valB = birdB.arabicName; }
+    else if (sortField === 'scientificName') { valA = birdA.scientificName; valB = birdB.scientificName; }
+    else if (sortField === 'englishName') { valA = birdA.englishName; valB = birdB.englishName; }
+    else if (sortField === 'localName') { valA = birdA.localName; valB = birdB.localName; }
+    else if (sortField === 'governorate') {
+      valA = birdA.locations[0]?.governorate ?? '';
+      valB = birdB.locations[0]?.governorate ?? '';
+    }
+    else if (sortField === 'hemisphere') {
+      valA = (birdA.locations[0]?.coordinate?.latitude ?? 0) >= 0 ? 'Northern' : 'Southern';
+      valB = (birdB.locations[0]?.coordinate?.latitude ?? 0) >= 0 ? 'Northern' : 'Southern';
+    }
+    const cmp = valA.localeCompare(valB, 'ar');
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
 
-  const handleCancelEdit = (key: string) => {
-    const updated = new Map(editingMap);
-    updated.delete(key);
-    setEditingMap(updated);
-  };
-
-  const handleEditFieldChange = (key: string, field: keyof EditingState, value: string | number) => {
-    const updated = new Map(editingMap);
-    const state = updated.get(key);
-    if (!state) return;
-    (state as any)[field] = value;
-    updated.set(key, { ...state });
-    setEditingMap(updated);
-  };
-
-  const handleSave = async (row: FlatRow) => {
-    const key = rowKey(row);
-    const editState = editingMap.get(key);
-    if (!editState) return;
-
-    // Rebuild the full BirdData with the updated location entry
-    const updatedLocations: LocationEntry[] = row.allLocations.map((loc, i) => {
-      if (i === row.locationIndex) {
-        return {
-          coordinate: {
-            latitude: editState.latitude,
-            longitude: editState.longitude,
-          },
-          location: editState.location,
-          governorate: editState.governorate,
-          mountainName: editState.mountainName,
-          valleyName: editState.valleyName,
-          notes: editState.locationNotes,
-        };
-      }
-      return loc;
-    });
-
-    // If no locations existed, create one
-    const finalLocations = row.allLocations.length === 0
-      ? [{
-          coordinate: { latitude: editState.latitude, longitude: editState.longitude },
-          location: editState.location,
-          governorate: editState.governorate,
-          mountainName: editState.mountainName,
-          valleyName: editState.valleyName,
-          notes: editState.locationNotes,
-        }]
-      : updatedLocations;
-
-    const birdToSave: BirdData = {
-      id: row.birdId,
-      arabicName: editState.arabicName,
-      scientificName: editState.scientificName,
-      englishName: editState.englishName,
-      description: editState.description,
-      notes: editState.notes,
-      localName: editState.localName,
-      locations: finalLocations,
-      subImages: row.subImages,
-      audioFile: row.audioFile,
-    };
-
-    try {
-      await saveMutation.mutateAsync(birdToSave);
-      const updated = new Map(editingMap);
-      updated.delete(key);
-      setEditingMap(updated);
-      refetch();
-    } catch {
-      alert('فشل حفظ البيانات');
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDir('asc');
     }
   };
 
-  const handleDelete = async (row: FlatRow) => {
-    if (!confirm(`هل أنت متأكد من حذف "${row.arabicName}"؟`)) return;
-    try {
-      await deleteMutation.mutateAsync(row.birdId);
-      refetch();
-    } catch {
-      alert('فشل حذف السجل');
-    }
-  };
-
-  const handleAddNew = () => {
-    setNewRow({
-      arabicName: '',
-      scientificName: '',
-      englishName: '',
-      description: '',
-      notes: '',
-      localName: '',
-      location: '',
-      governorate: '',
-      mountainName: '',
-      valleyName: '',
-      latitude: 0,
-      longitude: 0,
-      locationNotes: '',
-    });
-    setShowAddForm(true);
-    setTimeout(() => addFormRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-  };
-
-  const handleNewRowFieldChange = (field: string, value: string | number) => {
-    setNewRow(prev => prev ? { ...prev, [field]: value } : null);
-  };
-
-  const handleSaveNew = async () => {
-    if (!newRow || !newRow.arabicName?.trim()) {
-      alert('الاسم العربي مطلوب');
+  const handleAddBird = async () => {
+    if (!newBird.arabicName.trim()) {
+      toast.error('الاسم العربي مطلوب');
       return;
     }
+    setIsSaving(true);
     try {
-      const locationEntry: LocationEntry = {
-        coordinate: {
-          latitude: newRow.latitude ?? 0,
-          longitude: newRow.longitude ?? 0,
-        },
-        location: newRow.location || '',
-        governorate: newRow.governorate || '',
-        mountainName: newRow.mountainName || '',
-        valleyName: newRow.valleyName || '',
-        notes: newRow.locationNotes || '',
-      };
-
-      const birdToSave: BirdData = {
-        id: BigInt(0),
-        arabicName: newRow.arabicName || '',
-        scientificName: newRow.scientificName || '',
-        englishName: newRow.englishName || '',
-        description: newRow.description || '',
-        notes: newRow.notes || '',
-        localName: newRow.localName || '',
-        locations: [locationEntry],
+      await addBirdWithDetails.mutateAsync({
+        arabicName: newBird.arabicName,
+        scientificName: newBird.scientificName,
+        englishName: newBird.englishName,
+        description: newBird.description,
+        notes: newBird.notes,
+        latitude: parseFloat(newBird.latitude) || 0,
+        longitude: parseFloat(newBird.longitude) || 0,
+        mountainName: newBird.mountainName,
+        valleyName: newBird.valleyName,
+        governorate: newBird.governorate,
+        locationDesc: newBird.location,
+        audioFilePath: null,
         subImages: [],
-        audioFile: undefined,
-      };
-      await saveMutation.mutateAsync(birdToSave);
-      setNewRow(null);
-      setShowAddForm(false);
-      refetch();
-    } catch {
-      alert('فشل إضافة السجل');
+      });
+      toast.success('تم إضافة الطائر بنجاح');
+      setShowAddDialog(false);
+      setNewBird({
+        arabicName: '', scientificName: '', englishName: '', localName: '',
+        description: '', notes: '', latitude: '', longitude: '',
+        mountainName: '', valleyName: '', governorate: '', location: '',
+      });
+    } catch (e: any) {
+      toast.error('فشل في إضافة الطائر: ' + (e?.message ?? ''));
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleCancelNew = () => {
-    setNewRow(null);
-    setShowAddForm(false);
+  const handleEditSave = async () => {
+    if (!editingRow) return;
+    setIsSaving(true);
+    try {
+      await saveChanges.mutateAsync({
+        birdName: editingRow.birdName,
+        updatedData: editingRow.data,
+      });
+      toast.success('تم حفظ التعديلات بنجاح');
+      setShowEditDialog(false);
+      setEditingRow(null);
+    } catch (e: any) {
+      toast.error('فشل في حفظ التعديلات: ' + (e?.message ?? ''));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const handleExportCSV = () => {
-    if (birds.length === 0) return;
-    exportBirdDataToCSV(birds);
+  const handleDelete = async (birdName: string) => {
+    if (!window.confirm(`هل أنت متأكد من حذف "${birdName}"؟`)) return;
+    setIsDeleting(birdName);
+    try {
+      await deleteBirdData.mutateAsync(birdName);
+      toast.success('تم حذف الطائر بنجاح');
+    } catch (e: any) {
+      toast.error('فشل في الحذف: ' + (e?.message ?? ''));
+    } finally {
+      setIsDeleting(null);
+    }
   };
+
+  const openEdit = (birdName: string, bird: BirdData) => {
+    setEditingRow({ birdName, data: { ...bird } });
+    setShowEditDialog(true);
+  };
+
+  const SortIcon = ({ field }: { field: string }) => (
+    <span className="mr-1 text-xs opacity-60">
+      {sortField === field ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+    </span>
+  );
 
   if (isLoading) {
     return (
-      <div dir="rtl" className="min-h-screen bg-amber-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-5xl mb-4 animate-spin inline-block">⏳</div>
-          <p className="text-amber-700 font-medium text-lg">جاري تحميل بيانات الطيور...</p>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="animate-spin text-primary w-8 h-8" />
+        <span className="mr-2 text-muted-foreground">جاري تحميل البيانات...</span>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div dir="rtl" className="min-h-screen bg-amber-50 flex items-center justify-center">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center max-w-md">
-          <div className="text-4xl mb-3">❌</div>
-          <p className="text-red-700 font-medium mb-4">فشل تحميل البيانات</p>
-          <button
-            onClick={() => refetch()}
-            className="bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-lg text-sm"
-          >
-            إعادة المحاولة
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const newRowLatitude = newRow?.latitude ?? 0;
 
   return (
-    <div dir="rtl" className="min-h-screen bg-amber-50">
-      {/* Toolbar */}
-      <div className="bg-white border-b border-amber-200 px-4 py-3 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-full flex flex-wrap items-center gap-3">
-          {/* Search */}
-          <div className="flex items-center gap-2 flex-1 min-w-48">
-            <span className="text-amber-600">🔍</span>
-            <input
-              type="text"
-              placeholder="بحث في البيانات..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="border border-amber-300 rounded-lg px-3 py-1.5 text-sm bg-amber-50 text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400 w-full"
-            />
-          </div>
-
-          {/* Stats */}
-          <span className="text-amber-700 text-sm">
-            📊 {filtered.length} / {flatRows.length} سجل
-          </span>
-
-          {/* Admin Buttons */}
-          {isAdmin && (
-            <button
-              onClick={handleAddNew}
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1"
+    <div dir="rtl" className="w-full space-y-4">
+      {/* Controls */}
+      <div className="flex flex-wrap items-center gap-2 justify-between">
+        <Input
+          placeholder="بحث..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-xs text-sm"
+        />
+        <div className="flex flex-wrap gap-2">
+          {isAdmin && !isCheckingAdmin && (
+            <Button
+              size="sm"
+              onClick={() => setShowAddDialog(true)}
+              className="gap-1"
             >
-              ➕ إضافة
-            </button>
+              <Plus className="w-4 h-4" />
+              إضافة
+            </Button>
           )}
-
-          {/* Export */}
-          <button
-            onClick={handleExportCSV}
-            className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-1.5 rounded-lg text-sm font-medium transition-colors"
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => exportBirdDataToCSV(birdList.map(([, b]) => b))}
+            className="gap-1"
           >
-            📥 تصدير CSV
-          </button>
+            <Download className="w-4 h-4" />
+            CSV
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => exportBirdsToExcel(birdList.map(([, b]) => b))}
+            className="gap-1"
+          >
+            <FileText className="w-4 h-4" />
+            Excel
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => exportBirdsToPDF(birdList.map(([, b]) => b))}
+            className="gap-1"
+          >
+            <FileText className="w-4 h-4" />
+            PDF
+          </Button>
         </div>
       </div>
 
-      {/* Add New Form */}
-      {isAdmin && showAddForm && newRow && (
-        <div ref={addFormRef} className="bg-green-50 border border-green-200 rounded-xl m-4 p-4 shadow-md">
-          <h3 className="text-green-800 font-bold mb-4 text-base">➕ إضافة موقع جديد</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {[
-              { field: 'arabicName', label: 'الاسم العربي *', required: true },
-              { field: 'scientificName', label: 'الاسم العلمي' },
-              { field: 'englishName', label: 'الاسم الإنجليزي' },
-              { field: 'location', label: 'الموقع' },
-              { field: 'governorate', label: 'الولاية' },
-              { field: 'localName', label: 'الاسم المحلي' },
-              { field: 'mountainName', label: 'اسم الجبل' },
-              { field: 'valleyName', label: 'اسم الوادي' },
-            ].map(({ field, label, required }) => (
-              <div key={field}>
-                <label className="block text-green-700 text-xs font-medium mb-1">{label}</label>
-                <input
-                  type="text"
-                  value={(newRow as any)[field] || ''}
-                  onChange={e => handleNewRowFieldChange(field, e.target.value)}
-                  className="w-full border border-green-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
-                  required={required}
-                />
-              </div>
-            ))}
-
-            {/* Latitude (°) field */}
-            <div>
-              <label className="block text-green-700 text-xs font-medium mb-1">خط العرض °</label>
-              <input
-                type="number"
-                step="0.0001"
-                value={newRowLatitude}
-                onChange={e => handleNewRowFieldChange('latitude', parseFloat(e.target.value) || 0)}
-                className="w-full border border-green-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
-                placeholder="مثال: 23.5"
-              />
-            </div>
-
-            {/* Longitude field */}
-            <div>
-              <label className="block text-green-700 text-xs font-medium mb-1">خط الطول °</label>
-              <input
-                type="number"
-                step="0.0001"
-                value={newRow.longitude ?? 0}
-                onChange={e => handleNewRowFieldChange('longitude', parseFloat(e.target.value) || 0)}
-                className="w-full border border-green-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
-                placeholder="مثال: 56.5"
-              />
-            </div>
-
-            {/* Northern Hemisphere (computed display) */}
-            <div>
-              <label className="block text-green-700 text-xs font-medium mb-1">النصف الشمالي</label>
-              <input
-                type="text"
-                value={getNorthernHemisphere(newRowLatitude)}
-                readOnly
-                className="w-full border border-green-200 rounded-lg px-3 py-1.5 text-sm bg-green-50 text-green-700 cursor-default"
-              />
-            </div>
-
-            {/* Zone (computed display) */}
-            <div>
-              <label className="block text-green-700 text-xs font-medium mb-1">المنطقة</label>
-              <input
-                type="text"
-                value={getZone(newRowLatitude)}
-                readOnly
-                className="w-full border border-green-200 rounded-lg px-3 py-1.5 text-sm bg-green-50 text-green-700 cursor-default"
-              />
-            </div>
-
-            <div className="sm:col-span-2 lg:col-span-3">
-              <label className="block text-green-700 text-xs font-medium mb-1">الوصف</label>
-              <textarea
-                value={newRow.description || ''}
-                onChange={e => handleNewRowFieldChange('description', e.target.value)}
-                rows={2}
-                className="w-full border border-green-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
-              />
-            </div>
-            <div className="sm:col-span-2 lg:col-span-3">
-              <label className="block text-green-700 text-xs font-medium mb-1">ملاحظات</label>
-              <textarea
-                value={newRow.notes || ''}
-                onChange={e => handleNewRowFieldChange('notes', e.target.value)}
-                rows={2}
-                className="w-full border border-green-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
-              />
-            </div>
-          </div>
-          <div className="flex gap-2 mt-4">
-            <button
-              onClick={handleSaveNew}
-              disabled={!newRow.arabicName?.trim() || saveMutation.isPending}
-              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              {saveMutation.isPending ? '⏳ جاري الحفظ...' : '💾 حفظ'}
-            </button>
-            <button
-              onClick={handleCancelNew}
-              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-5 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              إلغاء
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Table */}
-      <div className="overflow-x-auto m-4">
-        <table className="w-full border-collapse bg-white rounded-xl shadow-md overflow-hidden text-sm">
-          <thead>
-            <tr className="bg-amber-700 text-white">
-              {[
-                'الاسم العربي',
-                'الاسم العلمي',
-                'الاسم الإنجليزي',
-                'الموقع',
-                'الولاية',
-                'الاسم المحلي',
-                'اسم الجبل',
-                'اسم الوادي',
-                'خط العرض °',
-                'خط الطول °',
-                'النصف الشمالي',
-                'المنطقة',
-                'ملاحظات الموقع',
-              ].map(header => (
-                <th key={header} className="px-3 py-2.5 text-right font-semibold whitespace-nowrap border-b border-amber-600">
-                  {header}
-                </th>
-              ))}
-              {isAdmin && (
-                <th className="px-3 py-2.5 text-right font-semibold whitespace-nowrap border-b border-amber-600">
-                  إجراءات
-                </th>
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <Table className="min-w-[900px] text-sm">
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('arabicName')}>
+                <SortIcon field="arabicName" />الاسم العربي
+              </TableHead>
+              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('localName')}>
+                <SortIcon field="localName" />الاسم المحلي
+              </TableHead>
+              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('scientificName')}>
+                <SortIcon field="scientificName" />الاسم العلمي
+              </TableHead>
+              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('englishName')}>
+                <SortIcon field="englishName" />الاسم الإنجليزي
+              </TableHead>
+              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('governorate')}>
+                <SortIcon field="governorate" />الولاية
+              </TableHead>
+              <TableHead className="text-right cursor-pointer whitespace-nowrap" onClick={() => handleSort('hemisphere')}>
+                <SortIcon field="hemisphere" />Northern Hemisphere
+              </TableHead>
+              <TableHead className="text-right whitespace-nowrap">الإحداثيات</TableHead>
+              <TableHead className="text-right whitespace-nowrap">المواقع</TableHead>
+              {isAdmin && !isCheckingAdmin && (
+                <TableHead className="text-right whitespace-nowrap">الإجراءات</TableHead>
               )}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={isAdmin ? 14 : 13} className="text-center py-12 text-amber-500">
-                  {searchTerm ? 'لا توجد نتائج مطابقة للبحث' : 'لا توجد بيانات'}
-                </td>
-              </tr>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={isAdmin && !isCheckingAdmin ? 9 : 8} className="text-center text-muted-foreground py-10">
+                  لا توجد بيانات
+                </TableCell>
+              </TableRow>
             ) : (
-              filtered.map((row, idx) => {
-                const key = rowKey(row);
-                const isEditing = editingMap.has(key);
-                const editState = editingMap.get(key);
-                const editLatitude = editState?.latitude ?? row.latitude;
-
+              sorted.map(([birdName, bird]) => {
+                const firstLoc: LocationEntry | undefined = bird.locations[0];
+                const lat = firstLoc?.coordinate?.latitude ?? 0;
+                const isNorthern = lat >= 0;
                 return (
-                  <tr
-                    key={key}
-                    className={`border-b border-amber-100 transition-colors ${
-                      isEditing
-                        ? 'bg-yellow-50'
-                        : idx % 2 === 0
-                        ? 'bg-white hover:bg-amber-50'
-                        : 'bg-amber-50/40 hover:bg-amber-100/60'
-                    }`}
-                  >
-                    {/* arabicName */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editState!.arabicName}
-                          onChange={e => handleEditFieldChange(key, 'arabicName', e.target.value)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span className="font-medium text-amber-900">{row.arabicName}</span>
-                      )}
-                    </td>
-
-                    {/* scientificName */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editState!.scientificName}
-                          onChange={e => handleEditFieldChange(key, 'scientificName', e.target.value)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span className="text-gray-600 italic">{row.scientificName}</span>
-                      )}
-                    </td>
-
-                    {/* englishName */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editState!.englishName}
-                          onChange={e => handleEditFieldChange(key, 'englishName', e.target.value)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span className="text-gray-600">{row.englishName}</span>
-                      )}
-                    </td>
-
-                    {/* location */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editState!.location}
-                          onChange={e => handleEditFieldChange(key, 'location', e.target.value)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span>{row.location}</span>
-                      )}
-                    </td>
-
-                    {/* governorate */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editState!.governorate}
-                          onChange={e => handleEditFieldChange(key, 'governorate', e.target.value)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span>{row.governorate}</span>
-                      )}
-                    </td>
-
-                    {/* localName */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editState!.localName}
-                          onChange={e => handleEditFieldChange(key, 'localName', e.target.value)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span>{row.localName}</span>
-                      )}
-                    </td>
-
-                    {/* mountainName */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editState!.mountainName}
-                          onChange={e => handleEditFieldChange(key, 'mountainName', e.target.value)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span>{row.mountainName}</span>
-                      )}
-                    </td>
-
-                    {/* valleyName */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editState!.valleyName}
-                          onChange={e => handleEditFieldChange(key, 'valleyName', e.target.value)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-28 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span>{row.valleyName}</span>
-                      )}
-                    </td>
-
-                    {/* latitude */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          step="0.0001"
-                          value={editState!.latitude}
-                          onChange={e => handleEditFieldChange(key, 'latitude', parseFloat(e.target.value) || 0)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-24 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span className="font-mono text-xs">{row.latitude !== 0 ? row.latitude.toFixed(4) : ''}</span>
-                      )}
-                    </td>
-
-                    {/* longitude */}
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      {isEditing ? (
-                        <input
-                          type="number"
-                          step="0.0001"
-                          value={editState!.longitude}
-                          onChange={e => handleEditFieldChange(key, 'longitude', parseFloat(e.target.value) || 0)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-24 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span className="font-mono text-xs">{row.longitude !== 0 ? row.longitude.toFixed(4) : ''}</span>
-                      )}
-                    </td>
-
-                    {/* Northern Hemisphere (computed, read-only) */}
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {isEditing ? (
-                        <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
-                          {getNorthernHemisphere(editLatitude)}
-                        </span>
-                      ) : (
-                        <span className="text-xs">{getNorthernHemisphere(row.latitude)}</span>
-                      )}
-                    </td>
-
-                    {/* Zone (computed, read-only) */}
-                    <td className="px-3 py-2 whitespace-nowrap text-center">
-                      {isEditing ? (
-                        <span className="text-xs text-amber-700 bg-amber-100 px-2 py-1 rounded">
-                          {getZone(editLatitude)}
-                        </span>
-                      ) : (
-                        <span className="text-xs">{getZone(row.latitude)}</span>
-                      )}
-                    </td>
-
-                    {/* locationNotes */}
-                    <td className="px-3 py-2 max-w-xs">
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          value={editState!.locationNotes}
-                          onChange={e => handleEditFieldChange(key, 'locationNotes', e.target.value)}
-                          className="border border-amber-300 rounded px-2 py-1 text-xs w-32 focus:outline-none focus:ring-1 focus:ring-amber-400"
-                        />
-                      ) : (
-                        <span className="text-xs text-gray-500 line-clamp-2">{row.locationNotes}</span>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    {isAdmin && (
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        {isEditing ? (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => handleSave(row)}
-                              disabled={saveMutation.isPending}
-                              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white px-2 py-1 rounded text-xs transition-colors"
-                            >
-                              {saveMutation.isPending ? '⏳' : '💾'}
-                            </button>
-                            <button
-                              onClick={() => handleCancelEdit(key)}
-                              className="bg-gray-400 hover:bg-gray-500 text-white px-2 py-1 rounded text-xs transition-colors"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex gap-1">
-                            <button
-                              onClick={() => handleEdit(row)}
-                              className="bg-amber-500 hover:bg-amber-600 text-white px-2 py-1 rounded text-xs transition-colors"
-                            >
-                              ✏️
-                            </button>
-                            <button
-                              onClick={() => handleDelete(row)}
-                              disabled={deleteMutation.isPending}
-                              className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white px-2 py-1 rounded text-xs transition-colors"
-                            >
-                              🗑️
-                            </button>
-                          </div>
-                        )}
-                      </td>
+                  <TableRow key={birdName} className="hover:bg-muted/30 transition-colors">
+                    <TableCell className="font-medium whitespace-nowrap">{bird.arabicName}</TableCell>
+                    <TableCell className="whitespace-nowrap">{bird.localName || '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap italic">{bird.scientificName || '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{bird.englishName || '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap">{firstLoc?.governorate || '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${isNorthern ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'}`}>
+                        {isNorthern ? 'Northern' : 'Southern'}
+                      </span>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
+                      {firstLoc ? `${firstLoc.coordinate.latitude.toFixed(4)}, ${firstLoc.coordinate.longitude.toFixed(4)}` : '—'}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-medium">
+                        {bird.locations.length}
+                      </span>
+                    </TableCell>
+                    {isAdmin && !isCheckingAdmin && (
+                      <TableCell className="whitespace-nowrap">
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEdit(birdName, bird)}
+                            className="h-7 px-2 text-xs gap-1"
+                          >
+                            <Pencil className="w-3 h-3" />
+                            تعديل
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openEdit(birdName, bird)}
+                            className="h-7 px-2 text-xs gap-1"
+                          >
+                            <FileText className="w-3 h-3" />
+                            تحرير
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handleDelete(birdName)}
+                            disabled={isDeleting === birdName}
+                            className="h-7 px-2 text-xs gap-1"
+                          >
+                            {isDeleting === birdName ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3 h-3" />
+                            )}
+                            حذف
+                          </Button>
+                        </div>
+                      </TableCell>
                     )}
-                  </tr>
+                  </TableRow>
                 );
               })
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
-      {/* Footer info */}
-      <div className="text-center text-amber-600 text-xs pb-6">
-        إجمالي السجلات: {flatRows.length} | النتائج المعروضة: {filtered.length}
-      </div>
+      {/* Add Bird Dialog */}
+      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>إضافة طائر جديد</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-sm font-medium">الاسم العربي *</label>
+                <Input value={newBird.arabicName} onChange={e => setNewBird(p => ({ ...p, arabicName: e.target.value }))} placeholder="الاسم العربي" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">الاسم المحلي</label>
+                <Input value={newBird.localName} onChange={e => setNewBird(p => ({ ...p, localName: e.target.value }))} placeholder="الاسم المحلي" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">الاسم العلمي</label>
+                <Input value={newBird.scientificName} onChange={e => setNewBird(p => ({ ...p, scientificName: e.target.value }))} placeholder="الاسم العلمي" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">الاسم الإنجليزي</label>
+                <Input value={newBird.englishName} onChange={e => setNewBird(p => ({ ...p, englishName: e.target.value }))} placeholder="الاسم الإنجليزي" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">خط العرض</label>
+                <Input type="number" value={newBird.latitude} onChange={e => setNewBird(p => ({ ...p, latitude: e.target.value }))} placeholder="23.5" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">خط الطول</label>
+                <Input type="number" value={newBird.longitude} onChange={e => setNewBird(p => ({ ...p, longitude: e.target.value }))} placeholder="56.2" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">الولاية</label>
+                <Input value={newBird.governorate} onChange={e => setNewBird(p => ({ ...p, governorate: e.target.value }))} placeholder="الولاية" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">الموقع</label>
+                <Input value={newBird.location} onChange={e => setNewBird(p => ({ ...p, location: e.target.value }))} placeholder="الموقع" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">اسم الجبل</label>
+                <Input value={newBird.mountainName} onChange={e => setNewBird(p => ({ ...p, mountainName: e.target.value }))} placeholder="اسم الجبل" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">اسم الوادي</label>
+                <Input value={newBird.valleyName} onChange={e => setNewBird(p => ({ ...p, valleyName: e.target.value }))} placeholder="اسم الوادي" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium">الوصف</label>
+              <Input value={newBird.description} onChange={e => setNewBird(p => ({ ...p, description: e.target.value }))} placeholder="الوصف" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">ملاحظات</label>
+              <Input value={newBird.notes} onChange={e => setNewBird(p => ({ ...p, notes: e.target.value }))} placeholder="ملاحظات" />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 mt-4">
+            <DialogClose asChild>
+              <Button variant="outline">إلغاء</Button>
+            </DialogClose>
+            <Button onClick={handleAddBird} disabled={isSaving} className="gap-1">
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              حفظ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Bird Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>تعديل بيانات الطائر</DialogTitle>
+          </DialogHeader>
+          {editingRow && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium">الاسم العربي</label>
+                  <Input
+                    value={editingRow.data.arabicName}
+                    onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, arabicName: e.target.value } } : null)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">الاسم المحلي</label>
+                  <Input
+                    value={editingRow.data.localName}
+                    onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, localName: e.target.value } } : null)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">الاسم العلمي</label>
+                  <Input
+                    value={editingRow.data.scientificName}
+                    onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, scientificName: e.target.value } } : null)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">الاسم الإنجليزي</label>
+                  <Input
+                    value={editingRow.data.englishName}
+                    onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, englishName: e.target.value } } : null)}
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium">الوصف</label>
+                <Input
+                  value={editingRow.data.description}
+                  onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, description: e.target.value } } : null)}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">ملاحظات</label>
+                <Input
+                  value={editingRow.data.notes}
+                  onChange={e => setEditingRow(r => r ? { ...r, data: { ...r.data, notes: e.target.value } } : null)}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2 mt-4">
+            <DialogClose asChild>
+              <Button variant="outline">إلغاء</Button>
+            </DialogClose>
+            <Button onClick={handleEditSave} disabled={isSaving} className="gap-1">
+              {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              حفظ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

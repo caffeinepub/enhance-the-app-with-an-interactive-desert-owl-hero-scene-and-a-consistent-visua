@@ -1,23 +1,121 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Replace 'Tropical' zone value with '40' in BirdDataTable",
+  "title": "Rebuild and Redeploy Al Buraimi Owl Atlas Without Code Changes",
   "requirements": [
     {
-      "id": "REQ-119",
-      "summary": "Update the Zone (المنطقة) column in BirdDataTable.tsx to display '40' instead of 'Tropical' in both read-only and editable modes",
+      "id": "REQ-141",
+      "summary": "Perform a clean rebuild and redeploy of the entire application without modifying any source files, ensuring all frontend routes, components, and features render correctly after deployment",
       "acceptanceCriteria": [
-        "Any cell in the 'Zone' (المنطقة) column that previously displayed 'Tropical' now displays '40'.",
-        "The substitution applies to read-only display cells in normal table view.",
-        "The substitution applies to the editable input fields when a row is in inline-edit mode.",
-        "No other column, row, styling, layout, or functionality of BirdDataTable.tsx is changed.",
-        "No other file, component, page, route, or backend file is modified."
+        "No source files are modified — only a clean rebuild and redeploy is performed",
+        "Backend compiles and deploys without errors",
+        "All frontend routes (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions) are accessible",
+        "BirdDataTable renders with all five admin-only action buttons visible after admin login",
+        "BirdGallery renders with admin action buttons and image-click modal",
+        "AllLocationsMap renders with interactive Leaflet map, bird-name filter, and show/hide toggle",
+        "HomePage renders with splash screen, hero section, navigation cards, map upload section, and team table",
+        "HamburgerMenu renders with all navigation links"
       ],
       "file_operations": [
         {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Verify TanStack Router configuration includes all required routes (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions) and lazy-loads page components correctly. Ensure QueryClientProvider, MainHeader, and MemoryRecoveryNotification are wired into the layout. No code changes—validation only."
+        },
+        {
           "path": "frontend/src/components/BirdDataTable.tsx",
           "operation": "modify",
-          "description": "Update the Zone (المنطقة) column rendering logic to replace the string 'Tropical' with '40' in both display and edit modes. This involves modifying the column definition for the Zone field to include a conditional display transformation: when the raw zone value equals 'Tropical', render '40' instead. Ensure this transformation applies to both the read-only table cells and the inline-edit input field values. Do not modify any other column definitions, table layout, RTL orientation, color scheme, admin guards, data-fetching logic, or any other aspect of the component."
+          "description": "Verify the table component renders all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) when the user is authenticated as admin via the backend actor. Confirm search, multi-column sorting, and CSV/Excel/PDF export functionality are intact. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/BirdGallery.tsx",
+          "operation": "modify",
+          "description": "Verify the gallery component displays admin action buttons (add, edit, delete) for authenticated admin users via the backend actor. Confirm image-click modal, main image upload, sub-image upload, and audio file upload are wired correctly. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/AllLocationsMap.tsx",
+          "operation": "modify",
+          "description": "Verify the interactive Leaflet map component fetches all bird location data, renders filterable circle markers with popups, and supports bird-name filtering and marker visibility toggling. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/pages/HomePage.tsx",
+          "operation": "modify",
+          "description": "Verify the home page renders the splash screen, hero section, navigation cards to major app sections (/data, /gallery, /map, /eagle-owl, /statistics), admin map upload functionality, and team data table. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/HamburgerMenu.tsx",
+          "operation": "modify",
+          "description": "Verify the hamburger menu renders a dropdown navigation list with Arabic labels and icons for all app routes, closing on outside click or Escape key. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/MainHeader.tsx",
+          "operation": "modify",
+          "description": "Verify the sticky app header displays logo, desktop navigation links, Internet Identity login/logout, data refresh button, and hamburger menu for mobile. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/hooks/useActor.ts",
+          "operation": "modify",
+          "description": "Verify the custom hook creates and caches an ICP backend actor using React Query, returning an authenticated or anonymous actor based on Internet Identity state and invalidating dependent queries when the actor changes. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/hooks/useInternetIdentity.ts",
+          "operation": "modify",
+          "description": "Verify the Internet Identity authentication context manages login/logout state via DFINITY AuthClient and exposes identity, login status, and control functions. Confirm the authorization component's usage instructions are followed for login/logout and profile setup. No code changes—validation only."
+        },
+        {
+          "path": "frontend/index.html",
+          "operation": "modify",
+          "description": "Verify the HTML entry point mounts the React app via /src/main.tsx with correct Arabic RTL page title, favicon, and theme color. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/main.tsx",
+          "operation": "modify",
+          "description": "Verify the React app entry point mounts the root component wrapped with QueryClientProvider and InternetIdentityProvider. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/BirdDetailsPage.tsx",
+          "operation": "modify",
+          "description": "Verify the /bird/:name route displays detailed bird view including main image, sub-images, audio player, and metadata, with navigation back to home. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/EagleOwlPage.tsx",
+          "operation": "modify",
+          "description": "Verify the /eagle-owl route displays the dedicated eagle owl page with filtered bird and location data, stats, hero section, and lists of matching birds and observation locations. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/StatisticsPage.tsx",
+          "operation": "modify",
+          "description": "Verify the /statistics route displays bird observation statistics including total counts, bar chart of top birds by location count, and data table. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/ImageViewPage.tsx",
+          "operation": "modify",
+          "description": "Verify the /image-view route displays a full-screen image viewer with zoom, rotation, and reset controls, reading image URL from history state. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/PermissionManagement.tsx",
+          "operation": "modify",
+          "description": "Verify the /permissions route renders an admin-only page that allows assigning user roles by principal ID with access control checks via the authorization component. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/pages/BirdDataPage.tsx",
+          "operation": "modify",
+          "description": "Verify the /data route renders the BirdDataTable with header and back-navigation buttons to the home route. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/components/MapView.tsx",
+          "operation": "modify",
+          "description": "Verify the /map route renders an interactive Leaflet map showing bird sighting locations with markers and image popups, dynamically loading Leaflet from CDN. No code changes—validation only."
+        },
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Verify global CSS sets up Tailwind, defines the desert-themed light/dark color palette, and includes styles for splash screen, RTL layout, and mobile responsiveness. No code changes—validation only."
+        },
+        {
+          "path": "frontend/tailwind.config.js",
+          "operation": "modify",
+          "description": "Verify Tailwind configuration defines custom OKLCH-based color tokens, border radii, box shadows, accordion keyframes, and enables typography, container-queries, and animate plugins. No code changes—validation only."
         }
       ]
     }

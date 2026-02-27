@@ -1,27 +1,4 @@
 {
   "kind": "feature_evidence_report",
-  "features": [
-    {
-      "featureId": "feature-in-frontend-src-components-birddatatable-tsx-only-update-the-zone-column-so-that-any-cell-displaying-the-value-tropical-renders-40-instead-this-change-must-apply-to-both-the-read-only-display-cells-and-the-editable-input-fields-in-inline-edit-mode-do-not-change-any-other-column-definitions-layout-rtl-orientation-horizontal-scrolling-behavior-color-scheme-admin-access-control-logic-data-fetching-logic-font-sizes-action-buttons-or-any-other-aspect-of-the-component-do-not-modify-any-other-file-component-page-route-or-backend-file",
-      "featureTitle": "In frontend/src/components/BirdDataTable.tsx only, update the 'Zone' (المنطقة) column so that any cell displaying the value 'Tropical' renders '40' instead. This change must apply to both the read-only display cells and the editable input fields in inline-edit mode. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
-      "files": [
-        "frontend/src/components/BirdDataTable.tsx"
-      ],
-      "components": [
-        "authorization@1.0.1",
-        "blob-storage@1.1.2",
-        "qr-code@1.0.0",
-        "camera@1.0.0",
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
-      ],
-      "testIds": [
-        "REQ-119"
-      ],
-      "confidence": "high"
-    }
-  ]
+  "features": []
 }

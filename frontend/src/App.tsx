@@ -8,7 +8,6 @@ import {
   Link,
 } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
-import ErrorBoundary from './components/ErrorBoundary';
 import MainHeader from './components/MainHeader';
 import MemoryRecoveryNotification from './components/MemoryRecoveryNotification';
 
@@ -16,17 +15,16 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 2,
-      staleTime: 30000,
+      staleTime: 1000 * 60 * 5,
     },
   },
 });
 
-// Lazy load pages
 const HomePage = lazy(() => import('./pages/HomePage'));
 const BirdDataPage = lazy(() => import('./pages/BirdDataPage'));
 const BirdGallery = lazy(() => import('./components/BirdGallery'));
-const BirdDetailsPage = lazy(() => import('./components/BirdDetailsPage'));
 const AllLocationsMap = lazy(() => import('./components/AllLocationsMap'));
+const BirdDetailsPage = lazy(() => import('./components/BirdDetailsPage'));
 const EagleOwlPage = lazy(() => import('./components/EagleOwlPage'));
 const StatisticsPage = lazy(() => import('./components/StatisticsPage'));
 const ImageViewPage = lazy(() => import('./components/ImageViewPage'));
@@ -35,49 +33,38 @@ const PermissionManagement = lazy(() => import('./components/PermissionManagemen
 const LoadingFallback = () => (
   <div className="flex items-center justify-center min-h-screen bg-background">
     <div className="text-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-      <p className="text-muted-foreground font-arabic">جاري التحميل...</p>
+      <div className="text-4xl mb-4">🦉</div>
+      <p className="text-muted-foreground text-lg">جاري التحميل...</p>
     </div>
   </div>
 );
 
-// Root layout component
 function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
-      <MemoryRecoveryNotification />
-      <MainHeader />
-      <Suspense fallback={<LoadingFallback />}>
-        <ErrorBoundary>
-          <Outlet />
-        </ErrorBoundary>
-      </Suspense>
+      <div className="min-h-screen bg-background text-foreground" dir="rtl">
+        <MainHeader />
+        <MemoryRecoveryNotification />
+        <main>
+          <Suspense fallback={<LoadingFallback />}>
+            <Outlet />
+          </Suspense>
+        </main>
+      </div>
     </QueryClientProvider>
   );
 }
 
-// Route definitions
 const rootRoute = createRootRoute({
   component: RootLayout,
-  notFoundComponent: () => (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-background text-foreground" dir="rtl">
-      <h1 className="text-4xl font-bold mb-4">٤٠٤</h1>
-      <p className="text-xl mb-6 text-muted-foreground">الصفحة غير موجودة</p>
-      <Link to="/" className="px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-        العودة للرئيسية
-      </Link>
-    </div>
-  ),
 });
 
-const homeRoute = createRoute({
+const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
-      <ErrorBoundary>
-        <HomePage />
-      </ErrorBoundary>
+      <HomePage />
     </Suspense>
   ),
 });
@@ -87,9 +74,7 @@ const dataRoute = createRoute({
   path: '/data',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
-      <ErrorBoundary>
-        <BirdDataPage />
-      </ErrorBoundary>
+      <BirdDataPage />
     </Suspense>
   ),
 });
@@ -99,21 +84,7 @@ const galleryRoute = createRoute({
   path: '/gallery',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
-      <ErrorBoundary>
-        <BirdGallery />
-      </ErrorBoundary>
-    </Suspense>
-  ),
-});
-
-const birdDetailsRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/bird/$name',
-  component: () => (
-    <Suspense fallback={<LoadingFallback />}>
-      <ErrorBoundary>
-        <BirdDetailsPage />
-      </ErrorBoundary>
+      <BirdGallery />
     </Suspense>
   ),
 });
@@ -123,9 +94,17 @@ const mapRoute = createRoute({
   path: '/map',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
-      <ErrorBoundary>
-        <AllLocationsMap />
-      </ErrorBoundary>
+      <AllLocationsMap />
+    </Suspense>
+  ),
+});
+
+const birdDetailsRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/bird/$name',
+  component: () => (
+    <Suspense fallback={<LoadingFallback />}>
+      <BirdDetailsPage />
     </Suspense>
   ),
 });
@@ -135,9 +114,7 @@ const eagleOwlRoute = createRoute({
   path: '/eagle-owl',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
-      <ErrorBoundary>
-        <EagleOwlPage />
-      </ErrorBoundary>
+      <EagleOwlPage />
     </Suspense>
   ),
 });
@@ -147,9 +124,7 @@ const statisticsRoute = createRoute({
   path: '/statistics',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
-      <ErrorBoundary>
-        <StatisticsPage />
-      </ErrorBoundary>
+      <StatisticsPage />
     </Suspense>
   ),
 });
@@ -159,9 +134,7 @@ const imageViewRoute = createRoute({
   path: '/image-view',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
-      <ErrorBoundary>
-        <ImageViewPage />
-      </ErrorBoundary>
+      <ImageViewPage />
     </Suspense>
   ),
 });
@@ -171,29 +144,24 @@ const permissionsRoute = createRoute({
   path: '/permissions',
   component: () => (
     <Suspense fallback={<LoadingFallback />}>
-      <ErrorBoundary>
-        <PermissionManagement />
-      </ErrorBoundary>
+      <PermissionManagement />
     </Suspense>
   ),
 });
 
 const routeTree = rootRoute.addChildren([
-  homeRoute,
+  indexRoute,
   dataRoute,
   galleryRoute,
-  birdDetailsRoute,
   mapRoute,
+  birdDetailsRoute,
   eagleOwlRoute,
   statisticsRoute,
   imageViewRoute,
   permissionsRoute,
 ]);
 
-const router = createRouter({
-  routeTree,
-  defaultPreload: 'intent',
-});
+const router = createRouter({ routeTree });
 
 declare module '@tanstack/react-router' {
   interface Register {

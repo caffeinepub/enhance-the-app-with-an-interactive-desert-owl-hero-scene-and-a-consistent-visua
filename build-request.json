@@ -1,39 +1,40 @@
 {
   "kind": "build_request",
-  "title": "Replace 'Tropical' zone value with '40' in BirdDataTable",
+  "title": "Rebuild and redeploy without any code changes",
   "projectName": "Al Buraimi Owl Atlas",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-119",
-      "text": "In frontend/src/components/BirdDataTable.tsx only, update the 'Zone' (المنطقة) column so that any cell displaying the value 'Tropical' renders '40' instead. This change must apply to both the read-only display cells and the editable input fields in inline-edit mode. Do NOT change any other column definitions, layout, RTL orientation, horizontal scrolling behavior, color scheme, admin access control logic, data-fetching logic, font sizes, action buttons, or any other aspect of the component. Do NOT modify any other file, component, page, route, or backend file.",
-      "target": "frontend",
+      "id": "REQ-141",
+      "text": "Rebuild and redeploy the current project state without making any code changes to any file. Ensure the backend (backend/main.mo) compiles and deploys correctly, and all frontend source files are bundled and served without errors. The deployment must restore the app to its last intended state including: the BirdDataTable with all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) visible and functional for authenticated admin users; the interactive AllLocationsMap with bird filtering and show/hide toggle; the BirdGallery with admin action buttons and image click modal; the HomePage with splash screen, hero section, navigation cards, map upload section, and team table; the HamburgerMenu with all navigation links; and all TanStack Router routes correctly registered (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions).",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-3"
         ],
         "quotes": [
-          "استبد في جدول البيانات المنطقة استوائية الى 40 بدون ان تغير اي شيء اخر في الجدول"
+          "لا حاول بدون ان تغير اي شيء في التطبيق"
         ]
       },
       "acceptanceCriteria": [
-        "Any cell in the 'Zone' (المنطقة) column that previously displayed 'Tropical' now displays '40'.",
-        "The substitution applies to read-only display cells in normal table view.",
-        "The substitution applies to the editable input fields when a row is in inline-edit mode.",
-        "No other column, row, styling, layout, or functionality of BirdDataTable.tsx is changed.",
-        "No other file, component, page, route, or backend file is modified."
+        "No source files are modified — only a clean rebuild and redeploy is performed",
+        "Backend compiles and deploys without errors",
+        "All frontend routes (/data, /gallery, /map, /bird/:name, /eagle-owl, /statistics, /image-view, /permissions) are accessible",
+        "BirdDataTable renders with all five admin-only action buttons visible after admin login",
+        "BirdGallery renders with admin action buttons and image-click modal",
+        "AllLocationsMap renders with interactive Leaflet map, bird-name filter, and show/hide toggle",
+        "HomePage renders with splash screen, hero section, navigation cards, map upload section, and team table",
+        "HamburgerMenu renders with all navigation links"
       ]
     }
   ],
   "constraints": [
-    "Only frontend/src/components/BirdDataTable.tsx may be modified.",
-    "No other file, component, page, route, or backend file may be changed.",
-    "All existing column definitions, layout, RTL orientation, horizontal scrolling, color scheme, admin access control logic, data-fetching logic, font sizes, and action buttons must remain exactly as they are."
+    "No code changes of any kind may be made to any file",
+    "Only a clean rebuild and redeploy of the existing codebase is permitted"
   ],
   "nonGoals": [
-    "Changing the backend data model or stored zone values.",
-    "Modifying any other column or field in the table.",
-    "Altering any other component, page, or route."
+    "Any code modifications, bug fixes, or feature additions",
+    "Any refactoring or restructuring of existing files"
   ],
   "imageRequirements": {
     "required": [],

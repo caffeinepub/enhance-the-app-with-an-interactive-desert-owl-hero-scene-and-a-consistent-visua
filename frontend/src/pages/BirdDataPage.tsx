@@ -1,36 +1,44 @@
-import { Link } from '@tanstack/react-router';
+import { useNavigate } from '@tanstack/react-router';
 import BirdDataTable from '../components/BirdDataTable';
+import { ArrowRight } from 'lucide-react';
 
 export default function BirdDataPage() {
+  const navigate = useNavigate();
+
   return (
-    <main dir="rtl" className="min-h-screen bg-background text-foreground">
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl md:text-3xl font-bold text-primary">بيانات الطيور</h1>
-          <Link
-            to="/"
-            className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors text-sm font-medium"
+    <div className="min-h-screen bg-background" dir="rtl">
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        {/* Page Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={() => navigate({ to: '/' })}
+            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
           >
-            <span>←</span>
-            <span>العودة للرئيسية</span>
-          </Link>
+            <ArrowRight className="h-4 w-4" />
+            العودة للرئيسية
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">بيانات الطيور</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              قاعدة بيانات الطيور المرصودة في محافظة البريمي
+            </p>
+          </div>
         </div>
 
-        {/* Data Table */}
+        {/* Table */}
         <BirdDataTable />
 
         {/* Bottom Return Button */}
         <div className="mt-8 text-center">
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors font-medium"
+          <button
+            onClick={() => navigate({ to: '/' })}
+            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors mx-auto"
           >
-            <span>←</span>
-            <span>العودة للرئيسية</span>
-          </Link>
+            <ArrowRight className="h-4 w-4" />
+            العودة للرئيسية
+          </button>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

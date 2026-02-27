@@ -1,10 +1,23 @@
 import React, { useState } from 'react';
 import { Play, Pause, Volume2, Loader2 } from 'lucide-react';
-import { useGetAudioFile } from '../hooks/useQueries';
+import { useActor } from '../hooks/useActor';
+import { useQuery } from '@tanstack/react-query';
 import { useFileUrl } from '../blob-storage/FileStorage';
 
 interface OwlGalleryProps {
   birdName: string;
+}
+
+function useGetAudioFile(birdName: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery<string | null>({
+    queryKey: ['audioFile', birdName],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getAudioFile(birdName);
+    },
+    enabled: !!actor && !isFetching && !!birdName,
+  });
 }
 
 export default function OwlGallery({ birdName }: OwlGalleryProps) {
@@ -49,9 +62,9 @@ export default function OwlGallery({ birdName }: OwlGalleryProps) {
 
   if (!audioUrl) {
     return (
-      <div className="bg-gray-100 rounded-lg p-8 text-center" dir="rtl">
-        <Volume2 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-        <p className="text-gray-500">لا يوجد ملف صوتي متاح</p>
+      <div className="bg-muted rounded-lg p-8 text-center" dir="rtl">
+        <Volume2 className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+        <p className="text-muted-foreground">لا يوجد ملف صوتي متاح</p>
       </div>
     );
   }

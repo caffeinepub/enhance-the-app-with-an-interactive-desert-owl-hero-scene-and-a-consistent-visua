@@ -1,311 +1,255 @@
-import { useEffect, useRef, useState } from 'react';
-import { Link } from '@tanstack/react-router';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from '@tanstack/react-router';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { useActor } from '../hooks/useActor';
+import { useUploadMapImage, useGetActiveMapReference } from '../hooks/useQueries';
+import { useFileUpload } from '../blob-storage/FileStorage';
 import SplashScreen from '../components/SplashScreen';
 import TeamDataTable from '../components/TeamDataTable';
-import { Upload, MapPin, X } from 'lucide-react';
+import {
+  Database,
+  Image,
+  Map,
+  BarChart2,
+  Bird,
+  Upload,
+  Shield,
+  Heart,
+} from 'lucide-react';
 
 const NAV_CARDS = [
   {
-    title: 'معرض الصور',
-    description: 'استعرض صور الطيور المرصودة في محافظة البريمي',
-    icon: '🖼️',
-    link: '/gallery',
-    color: 'from-amber-500 to-orange-600',
+    title: 'بيانات الطيور',
+    description: 'عرض وإدارة بيانات الطيور المرصودة',
+    icon: Database,
+    path: '/data',
+    color: 'bg-amber-50 border-amber-200 hover:bg-amber-100',
+    iconColor: 'text-amber-600',
   },
   {
-    title: 'بيانات الطيور',
-    description: 'جدول بيانات شامل لجميع الطيور المرصودة',
-    icon: '📊',
-    link: '/data',
-    color: 'from-green-500 to-emerald-600',
+    title: 'معرض الصور',
+    description: 'استعراض صور الطيور والمواقع',
+    icon: Image,
+    path: '/gallery',
+    color: 'bg-green-50 border-green-200 hover:bg-green-100',
+    iconColor: 'text-green-600',
   },
   {
     title: 'خريطة المواقع',
-    description: 'خريطة تفاعلية تعرض مواقع رصد الطيور',
-    icon: '🗺️',
-    link: '/map',
-    color: 'from-blue-500 to-cyan-600',
-  },
-  {
-    title: 'البومة العقاب',
-    description: 'معلومات تفصيلية عن البومة العقاب في البريمي',
-    icon: '🦉',
-    link: '/eagle-owl',
-    color: 'from-purple-500 to-violet-600',
+    description: 'خريطة تفاعلية لمواقع الرصد',
+    icon: Map,
+    path: '/map',
+    color: 'bg-blue-50 border-blue-200 hover:bg-blue-100',
+    iconColor: 'text-blue-600',
   },
   {
     title: 'الإحصائيات',
-    description: 'إحصائيات ومخططات بيانية لأعداد الطيور',
-    icon: '📈',
-    link: '/statistics',
-    color: 'from-rose-500 to-pink-600',
+    description: 'إحصائيات وتحليلات البيانات',
+    icon: BarChart2,
+    path: '/statistics',
+    color: 'bg-purple-50 border-purple-200 hover:bg-purple-100',
+    iconColor: 'text-purple-600',
   },
   {
-    title: 'إدارة الصلاحيات',
-    description: 'إدارة أدوار المستخدمين والصلاحيات',
-    icon: '🔐',
-    link: '/permissions',
-    color: 'from-slate-500 to-gray-600',
+    title: 'البومة العقاب',
+    description: 'صفحة مخصصة لطائر البومة العقاب',
+    icon: Bird,
+    path: '/eagle-owl',
+    color: 'bg-orange-50 border-orange-200 hover:bg-orange-100',
+    iconColor: 'text-orange-600',
+  },
+  {
+    title: 'الصلاحيات',
+    description: 'إدارة صلاحيات المستخدمين',
+    icon: Shield,
+    path: '/permissions',
+    color: 'bg-red-50 border-red-200 hover:bg-red-100',
+    iconColor: 'text-red-600',
   },
 ];
 
-const MAP_STORAGE_KEY = 'customMapImage';
-
 export default function HomePage() {
+  const navigate = useNavigate();
+  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const [showSplash, setShowSplash] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [customMapImage, setCustomMapImage] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [mapPreviewUrl, setMapPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { uploadFile, isUploading } = useFileUpload();
+  const uploadMapMutation = useUploadMapImage();
+  const { data: activeMapRef } = useGetActiveMapReference();
 
   useEffect(() => {
-    const hasSeenSplash = sessionStorage.getItem('hasSeenSplash');
-    if (!hasSeenSplash) {
+    const seen = sessionStorage.getItem('splashSeen');
+    if (!seen) {
       setShowSplash(true);
-    }
-    // Load saved map from localStorage
-    const savedMap = localStorage.getItem(MAP_STORAGE_KEY);
-    if (savedMap) {
-      setCustomMapImage(savedMap);
     }
   }, []);
 
-  const handleSplashEnter = () => {
-    sessionStorage.setItem('hasSeenSplash', 'true');
+  useEffect(() => {
+    if (actor && identity) {
+      actor.isCallerAdmin().then(setIsAdmin).catch(() => setIsAdmin(false));
+    } else {
+      setIsAdmin(false);
+    }
+  }, [actor, identity]);
+
+  // SplashScreen uses `onEnter` prop
+  const handleSplashDone = () => {
+    sessionStorage.setItem('splashSeen', 'true');
     setShowSplash(false);
   };
 
-  const handleOwlClick = () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio('/owl.mp3');
+  const handleMapUpload = async (file: File) => {
+    try {
+      const previewUrl = URL.createObjectURL(file);
+      setMapPreviewUrl(previewUrl);
+
+      const path = `maps/al-buraimi-map-${Date.now()}.jpg`;
+      const result = await uploadFile(path, file);
+      await uploadMapMutation.mutateAsync(result.path);
+    } catch (err) {
+      console.error('Map upload error:', err);
+      alert('حدث خطأ أثناء رفع الخريطة');
     }
-    audioRef.current.currentTime = 0;
-    audioRef.current.play().catch(() => {});
-  };
-
-  const handleMapFileChange = (file: File) => {
-    if (!file || !file.type.startsWith('image/')) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
-      if (dataUrl) {
-        localStorage.setItem(MAP_STORAGE_KEY, dataUrl);
-        setCustomMapImage(dataUrl);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleMapFileChange(file);
-    // Reset input so same file can be re-selected
-    e.target.value = '';
-  };
-
-  const handleRemoveMap = () => {
-    localStorage.removeItem(MAP_STORAGE_KEY);
-    setCustomMapImage(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  };
-
-  const handleDragLeave = () => {
-    setIsDragging(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) handleMapFileChange(file);
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      handleMapUpload(file);
+    }
   };
 
-  if (showSplash) {
-    return <SplashScreen onEnter={handleSplashEnter} />;
-  }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleMapUpload(file);
+    }
+  };
 
   return (
-    <main dir="rtl" className="min-h-screen bg-background text-foreground">
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/10 via-background to-secondary/10 py-16 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <div
-            className="inline-block cursor-pointer hover:scale-105 transition-transform duration-300 mb-6"
-            onClick={handleOwlClick}
-            title="انقر للاستماع"
-          >
+    <>
+      {showSplash && <SplashScreen onEnter={handleSplashDone} />}
+
+      <div className="min-h-screen bg-background" dir="rtl">
+        {/* Hero Section */}
+        <section className="relative bg-gradient-to-b from-amber-900/20 to-background py-16 px-4 text-center overflow-hidden">
+          <div className="absolute inset-0 opacity-10">
             <img
-              src="/assets/generated/new-realistic-owl-perfect-transparent.dim_400x400.png"
-              alt="بومة البريمي"
-              className="w-40 h-40 md:w-56 md:h-56 object-contain mx-auto drop-shadow-2xl"
+              src="/assets/generated/desert-owl-hero.dim_1600x900.png"
+              alt=""
+              className="w-full h-full object-cover"
             />
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold text-primary mb-4 leading-tight">
-            مشروع المسح الميداني لطائر البوم بمحافظة البريمي
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            دليل شامل لرصد وتوثيق الطيور في محافظة البريمي بسلطنة عُمان
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center">
-            <Link
-              to="/gallery"
-              className="px-8 py-3 bg-primary text-primary-foreground rounded-full font-semibold hover:bg-primary/90 transition-colors shadow-lg"
-            >
-              استعرض المعرض
-            </Link>
-            <Link
-              to="/data"
-              className="px-8 py-3 bg-secondary text-secondary-foreground rounded-full font-semibold hover:bg-secondary/80 transition-colors shadow-lg"
-            >
-              عرض البيانات
-            </Link>
+          <div className="relative max-w-4xl mx-auto">
+            <div className="flex justify-center mb-6">
+              <img
+                src="/assets/generated/new-realistic-owl-perfect-transparent.dim_400x400.png"
+                alt="بومة"
+                className="h-32 w-32 object-contain drop-shadow-2xl"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            </div>
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-4 leading-tight">
+              مشروع المسح الميداني لطائر البوم بمحافظة البريمي
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              توثيق وتتبع أنواع الطيور في محافظة البريمي بسلطنة عُمان
+            </p>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Navigation Cards */}
-      <section className="py-12 px-4 bg-muted/30">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground mb-8">
-            استكشف المحتوى
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {NAV_CARDS.map((card) => (
-              <Link
-                key={card.link}
-                to={card.link}
-                className="group block p-6 bg-card rounded-2xl border border-border hover:border-primary/50 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-              >
-                <div
-                  className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${card.color} text-white text-2xl mb-4 group-hover:scale-110 transition-transform`}
-                >
-                  {card.icon}
-                </div>
-                <h3 className="text-xl font-bold text-card-foreground mb-2">{card.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{card.description}</p>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Map Upload Section */}
-      <section className="py-12 px-4 bg-background">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold text-foreground flex items-center gap-2">
-              <MapPin className="w-7 h-7 text-primary" />
-              خريطة المحافظة
-            </h2>
-            <div className="flex gap-2">
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors shadow-md"
-              >
-                <Upload className="w-4 h-4" />
-                رفع الخريطة
-              </button>
-              {customMapImage && (
+        {/* Navigation Cards */}
+        <section className="max-w-6xl mx-auto px-4 py-12">
+          <h2 className="text-xl font-bold text-foreground mb-6 text-center">أقسام المشروع</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {NAV_CARDS.map((card) => {
+              const Icon = card.icon;
+              return (
                 <button
-                  onClick={handleRemoveMap}
-                  className="flex items-center gap-2 px-4 py-2 bg-destructive/10 text-destructive rounded-lg font-semibold text-sm hover:bg-destructive/20 transition-colors border border-destructive/30"
+                  key={card.path}
+                  onClick={() => navigate({ to: card.path })}
+                  className={`${card.color} border rounded-xl p-5 text-right transition-all hover:shadow-md hover:-translate-y-0.5 group`}
                 >
-                  <X className="w-4 h-4" />
-                  إزالة
+                  <div className={`${card.iconColor} mb-3`}>
+                    <Icon className="h-8 w-8" />
+                  </div>
+                  <h3 className="font-bold text-foreground text-base mb-1">{card.title}</h3>
+                  <p className="text-sm text-muted-foreground">{card.description}</p>
                 </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Map Upload Section - Admin only */}
+        {isAdmin && (
+          <section className="max-w-4xl mx-auto px-4 pb-12">
+            <div className="bg-card border border-border rounded-xl p-6">
+              <h2 className="text-lg font-bold text-foreground mb-4">رفع خريطة المحافظة</h2>
+
+              <div
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                  isDragging
+                    ? 'border-primary bg-primary/5'
+                    : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                }`}
+              >
+                <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground">
+                  {isUploading ? 'جاري الرفع...' : 'اسحب وأفلت الخريطة هنا أو انقر للاختيار'}
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+              </div>
+
+              {(mapPreviewUrl || activeMapRef) && (
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-foreground mb-2">الخريطة الحالية:</p>
+                  <img
+                    src={mapPreviewUrl || `/api/files/${activeMapRef}`}
+                    alt="خريطة البريمي"
+                    className="w-full max-h-64 object-contain rounded-lg border border-border"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
+                  />
+                </div>
               )}
             </div>
-          </div>
+          </section>
+        )}
 
-          {/* Hidden file input */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleFileInputChange}
-            className="hidden"
-          />
-
-          {/* Map display / upload area */}
-          {customMapImage ? (
-            <div className="relative rounded-2xl overflow-hidden border-2 border-primary/30 shadow-xl">
-              <img
-                src={customMapImage}
-                alt="خريطة محافظة البريمي"
-                className="w-full object-contain max-h-[600px] bg-amber-50"
-              />
-              <div className="absolute bottom-3 left-3">
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-black/60 text-white rounded-lg text-xs hover:bg-black/80 transition-colors backdrop-blur-sm"
-                >
-                  <Upload className="w-3 h-3" />
-                  تغيير الخريطة
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`
-                flex flex-col items-center justify-center gap-4 p-12 rounded-2xl border-2 border-dashed cursor-pointer transition-all duration-200
-                ${isDragging
-                  ? 'border-primary bg-primary/10 scale-[1.01]'
-                  : 'border-amber-300 bg-amber-50/50 hover:border-primary hover:bg-primary/5'
-                }
-              `}
-            >
-              <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
-                <MapPin className="w-8 h-8 text-amber-600" />
-              </div>
-              <div className="text-center">
-                <p className="text-lg font-semibold text-amber-800 mb-1">
-                  ارفع خريطة المحافظة
-                </p>
-                <p className="text-sm text-amber-600">
-                  اضغط هنا أو اسحب وأفلت صورة الخريطة
-                </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  يدعم: JPG, PNG, WebP, GIF
-                </p>
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-                className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-full font-semibold text-sm hover:bg-primary/90 transition-colors shadow-md"
-              >
-                <Upload className="w-4 h-4" />
-                اختر ملف الخريطة
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Team Section */}
-      <section className="py-12 px-4 bg-muted/30">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-center text-foreground mb-8">
-            فريق العمل
-          </h2>
+        {/* Team Section */}
+        <section className="max-w-6xl mx-auto px-4 pb-12">
+          <h2 className="text-xl font-bold text-foreground mb-6 text-center">فريق العمل</h2>
           <TeamDataTable />
-        </div>
-      </section>
+        </section>
 
-      {/* Footer */}
-      <footer className="py-8 px-4 border-t border-border bg-card">
-        <div className="max-w-6xl mx-auto text-center">
-          <p className="text-muted-foreground text-sm">
-            © {new Date().getFullYear()} طيور محافظة البريمي. جميع الحقوق محفوظة.
+        {/* Footer */}
+        <footer className="border-t border-border bg-card py-6 px-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            © {new Date().getFullYear()} أطلس طيور البريمي — مشروع المسح الميداني
           </p>
-          <p className="text-muted-foreground text-xs mt-2">
-            Built with ❤️ using{' '}
+          <p className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+            Built with <Heart className="h-3 w-3 text-red-500 fill-red-500" /> using{' '}
             <a
               href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname || 'unknown-app')}`}
               target="_blank"
@@ -315,8 +259,8 @@ export default function HomePage() {
               caffeine.ai
             </a>
           </p>
-        </div>
-      </footer>
-    </main>
+        </footer>
+      </div>
+    </>
   );
 }
