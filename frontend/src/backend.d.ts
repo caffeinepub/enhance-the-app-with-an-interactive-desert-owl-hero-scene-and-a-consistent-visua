@@ -22,6 +22,7 @@ export interface BirdData {
     notes: string;
     scientificName: string;
     locations: Array<LocationEntry>;
+    mainImage?: string;
 }
 export interface TeamGroup {
     members: Array<string>;
@@ -66,21 +67,19 @@ export enum UserRole {
 export interface backendInterface {
     addAudioFile(birdName: string, audioFilePath: string): Promise<string>;
     addBirdData(birdName: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, notes: string, locationDesc: string): Promise<void>;
-    addBirdWithDetails(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
-    addOrUpdateBird(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
-    addSubImage(birdName: string, imagePath: string): Promise<string>;
+    addBirdWithDetails(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>, mainImageFile: string | null): Promise<void>;
+    addOrUpdateBird(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>, mainImageFile: string | null): Promise<void>;
     addTeamMember(fullNameTribe: string, university: string, specialization: string, residence: string, contactNumber: string, number: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     birdExists(birdName: string): Promise<boolean>;
     canCallerModifyData(): Promise<boolean>;
-    completeBackupProcess(updatedData: Array<[string, BirdData]>): Promise<void>;
-    conditionalDrop(): Promise<void>;
     deleteAudioFile(birdName: string): Promise<void>;
     deleteBirdById(birdId: bigint): Promise<void>;
     deleteBirdData(birdName: string): Promise<void>;
     deleteImageFromBirdAndRegistry(birdName: string, imagePath: string): Promise<void>;
     deleteImageFromGallery(imagePath: string): Promise<void>;
     deleteImageFromGalleryAndBirds(imagePath: string): Promise<void>;
+    deleteMainImageForBird(birdName: string): Promise<void>;
     deleteSubImage(birdName: string, imagePath: string): Promise<void>;
     dropFileReference(path: string): Promise<void>;
     getActiveMapReference(): Promise<string | null>;
@@ -99,7 +98,7 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getFileReference(path: string): Promise<FileReference>;
     getLocationCountByBird(): Promise<Array<[string, bigint]>>;
-    getSnapshotDetails(): Promise<string>;
+    getMainImage(birdName: string): Promise<string | null>;
     getSubImages(birdName: string): Promise<Array<string> | null>;
     getTeamGroups(): Promise<TeamGroup>;
     getTeamMembers(): Promise<Array<TeamMember>>;
@@ -108,20 +107,17 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     hasAudioFile(birdName: string): Promise<boolean>;
     initializeAccessControl(): Promise<void>;
-    isBackupProcessActive(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     isCallerAuthorizedUser(): Promise<boolean>;
     listFileReferences(): Promise<Array<FileReference>>;
     registerFileReference(path: string, hash: string): Promise<void>;
     restoreBackupMap(): Promise<void>;
-    restoreSnapshot(): Promise<void>;
     saveAllBirdData(birdDataArray: Array<[string, BirdData]>): Promise<void>;
     saveBirdData(birdData: BirdData): Promise<void>;
     saveBirdDataArray(birdDataArray: Array<BirdData>): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveChanges(birdName: string, updatedData: BirdData): Promise<void>;
-    startBackupProcess(): Promise<void>;
-    takeSnapshot(): Promise<void>;
+    setMainImage(birdName: string, imagePath: string): Promise<string>;
     updateBirdDetails(birdName: string, arabicName: string, scientificName: string, englishName: string, description: string, notes: string): Promise<void>;
     updateDescriptionAndNotes(birdName: string, newDescription: string, newNotes: string): Promise<void>;
     uploadMapImage(mapPath: string): Promise<void>;

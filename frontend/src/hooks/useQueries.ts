@@ -2,28 +2,39 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import { BirdData, LocationEntry, UserProfile, UserRole } from '../backend';
 
-// ---- Bird Queries ----
+// ─── Bird Data Queries ───────────────────────────────────────────────────────
 
-export function useGetAllBirdDetails() {
+export function useGetAllBirdData() {
   const { actor, isFetching } = useActor();
-  return useQuery<[string, BirdData][]>({
-    queryKey: ['allBirdDetails'],
+  return useQuery<Array<[string, BirdData]>>({
+    queryKey: ['allBirdData'],
     queryFn: async () => {
       if (!actor) return [];
-      const result = await actor.getAllBirdDetails();
-      return result;
+      return actor.getAllBirdData();
     },
     enabled: !!actor && !isFetching,
   });
 }
 
-export function useGetAllBirdData() {
+export function useGetAllBirdDetails() {
   const { actor, isFetching } = useActor();
-  return useQuery<[string, BirdData][]>({
-    queryKey: ['allBirdData'],
+  return useQuery<Array<[string, BirdData]>>({
+    queryKey: ['allBirdDetails'],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllBirdData();
+      return actor.getAllBirdDetails();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetBirdNames() {
+  const { actor, isFetching } = useActor();
+  return useQuery<string[]>({
+    queryKey: ['birdNames'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getBirdNames();
     },
     enabled: !!actor && !isFetching,
   });
@@ -41,15 +52,15 @@ export function useGetBirdDetails(birdName: string) {
   });
 }
 
-export function useGetBirdNames() {
+export function useGetBirdLocations(birdName: string) {
   const { actor, isFetching } = useActor();
-  return useQuery<string[]>({
-    queryKey: ['birdNames'],
+  return useQuery<LocationEntry[] | null>({
+    queryKey: ['birdLocations', birdName],
     queryFn: async () => {
-      if (!actor) return [];
-      return actor.getBirdNames();
+      if (!actor) return null;
+      return actor.getBirdLocations(birdName);
     },
-    enabled: !!actor && !isFetching,
+    enabled: !!actor && !isFetching && !!birdName,
   });
 }
 
@@ -60,30 +71,6 @@ export function useGetAllLocationsWithNames() {
     queryFn: async () => {
       if (!actor) return [];
       return actor.getAllLocationsWithNames();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetAllLocationsForMap(filter: string) {
-  const { actor, isFetching } = useActor();
-  return useQuery({
-    queryKey: ['allLocationsForMap', filter],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getAllLocationsForMap(filter);
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-export function useGetLocationCountByBird() {
-  const { actor, isFetching } = useActor();
-  return useQuery<[string, bigint][]>({
-    queryKey: ['locationCountByBird'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.getLocationCountByBird();
     },
     enabled: !!actor && !isFetching,
   });
@@ -113,6 +100,18 @@ export function useGetTotalLocationCount() {
   });
 }
 
+export function useGetLocationCountByBird() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Array<[string, bigint]>>({
+    queryKey: ['locationCountByBird'],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getLocationCountByBird();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
 export function useGetSubImages(birdName: string) {
   const { actor, isFetching } = useActor();
   return useQuery<string[] | null>({
@@ -137,31 +136,33 @@ export function useGetAudioFile(birdName: string) {
   });
 }
 
-export function useGetBirdLocations(birdName: string) {
+// ─── Map Queries ─────────────────────────────────────────────────────────────
+
+export function useGetActiveMapReference() {
   const { actor, isFetching } = useActor();
-  return useQuery<LocationEntry[] | null>({
-    queryKey: ['birdLocations', birdName],
+  return useQuery<string | null>({
+    queryKey: ['activeMapReference'],
     queryFn: async () => {
       if (!actor) return null;
-      return actor.getBirdLocations(birdName);
-    },
-    enabled: !!actor && !isFetching && !!birdName,
-  });
-}
-
-// ---- Admin / Auth Queries ----
-
-export function useIsCallerAdmin() {
-  const { actor, isFetching } = useActor();
-  return useQuery<boolean>({
-    queryKey: ['isCallerAdmin'],
-    queryFn: async () => {
-      if (!actor) return false;
-      return actor.isCallerAdmin();
+      return actor.getActiveMapReference();
     },
     enabled: !!actor && !isFetching,
   });
 }
+
+export function useGetAllLocationsForMap(filter: string) {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ['allLocationsForMap', filter],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllLocationsForMap(filter);
+    },
+    enabled: !!actor && !isFetching,
+  });
+}
+
+// ─── User Profile Queries ─────────────────────────────────────────────────────
 
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
@@ -181,33 +182,7 @@ export function useGetCallerUserProfile() {
   };
 }
 
-export function useGetCallerUserRole() {
-  const { actor, isFetching } = useActor();
-  return useQuery<UserRole>({
-    queryKey: ['callerUserRole'],
-    queryFn: async () => {
-      if (!actor) return UserRole.guest;
-      return actor.getCallerUserRole();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ---- Map Queries ----
-
-export function useGetActiveMapReference() {
-  const { actor, isFetching } = useActor();
-  return useQuery<string | null>({
-    queryKey: ['activeMapReference'],
-    queryFn: async () => {
-      if (!actor) return null;
-      return actor.getActiveMapReference();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ---- Team Queries ----
+// ─── Team Queries ─────────────────────────────────────────────────────────────
 
 export function useGetTeamGroups() {
   const { actor, isFetching } = useActor();
@@ -233,21 +208,7 @@ export function useGetTeamMembers() {
   });
 }
 
-// ---- File Reference Queries ----
-
-export function useListFileReferences() {
-  const { actor, isFetching } = useActor();
-  return useQuery({
-    queryKey: ['fileReferences'],
-    queryFn: async () => {
-      if (!actor) return [];
-      return actor.listFileReferences();
-    },
-    enabled: !!actor && !isFetching,
-  });
-}
-
-// ---- Mutations ----
+// ─── Bird Mutations ───────────────────────────────────────────────────────────
 
 export function useAddBirdData() {
   const { actor } = useActor();
@@ -276,9 +237,12 @@ export function useAddBirdData() {
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
       queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
       queryClient.invalidateQueries({ queryKey: ['birdNames'] });
+      queryClient.invalidateQueries({ queryKey: ['allLocationsWithNames'] });
+      queryClient.invalidateQueries({ queryKey: ['totalBirdCount'] });
+      queryClient.invalidateQueries({ queryKey: ['totalLocationCount'] });
     },
   });
 }
@@ -301,6 +265,7 @@ export function useAddBirdWithDetails() {
       locationDesc: string;
       audioFilePath: string | null;
       subImages: string[];
+      mainImageFile: string | null;
     }) => {
       if (!actor) throw new Error('Actor not available');
       return actor.addBirdWithDetails(
@@ -316,13 +281,17 @@ export function useAddBirdWithDetails() {
         params.governorate,
         params.locationDesc,
         params.audioFilePath,
-        params.subImages
+        params.subImages,
+        params.mainImageFile
       );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
       queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
       queryClient.invalidateQueries({ queryKey: ['birdNames'] });
+      queryClient.invalidateQueries({ queryKey: ['allLocationsWithNames'] });
+      queryClient.invalidateQueries({ queryKey: ['totalBirdCount'] });
+      queryClient.invalidateQueries({ queryKey: ['totalLocationCount'] });
     },
   });
 }
@@ -349,10 +318,10 @@ export function useUpdateBirdDetails() {
         params.notes
       );
     },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
-      queryClient.invalidateQueries({ queryKey: ['birdDetails', variables.birdName] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['birdNames'] });
     },
   });
 }
@@ -366,9 +335,46 @@ export function useDeleteBirdData() {
       return actor.deleteBirdData(birdName);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['birdNames'] });
+      queryClient.invalidateQueries({ queryKey: ['allLocationsWithNames'] });
+      queryClient.invalidateQueries({ queryKey: ['totalBirdCount'] });
+      queryClient.invalidateQueries({ queryKey: ['totalLocationCount'] });
+    },
+  });
+}
+
+export function useDeleteBirdById() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (birdId: bigint) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.deleteBirdById(birdId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+      queryClient.invalidateQueries({ queryKey: ['birdNames'] });
+      queryClient.invalidateQueries({ queryKey: ['allLocationsWithNames'] });
+      queryClient.invalidateQueries({ queryKey: ['totalBirdCount'] });
+      queryClient.invalidateQueries({ queryKey: ['totalLocationCount'] });
+    },
+  });
+}
+
+export function useSetMainImage() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { birdName: string; imagePath: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.setMainImage(params.birdName, params.imagePath);
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
       queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
-      queryClient.invalidateQueries({ queryKey: ['birdNames'] });
     },
   });
 }
@@ -381,24 +387,9 @@ export function useAddAudioFile() {
       if (!actor) throw new Error('Actor not available');
       return actor.addAudioFile(params.birdName, params.audioFilePath);
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
-      queryClient.invalidateQueries({ queryKey: ['audioFile', variables.birdName] });
-    },
-  });
-}
-
-export function useAddSubImage() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (params: { birdName: string; imagePath: string }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.addSubImage(params.birdName, params.imagePath);
-    },
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
-      queryClient.invalidateQueries({ queryKey: ['subImages', variables.birdName] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
     },
   });
 }
@@ -411,9 +402,9 @@ export function useDeleteSubImage() {
       if (!actor) throw new Error('Actor not available');
       return actor.deleteSubImage(params.birdName, params.imagePath);
     },
-    onSuccess: (_data, variables) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
-      queryClient.invalidateQueries({ queryKey: ['subImages', variables.birdName] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
     },
   });
 }
@@ -426,9 +417,53 @@ export function useDeleteAudioFile() {
       if (!actor) throw new Error('Actor not available');
       return actor.deleteAudioFile(birdName);
     },
-    onSuccess: (_data, birdName) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
-      queryClient.invalidateQueries({ queryKey: ['audioFile', birdName] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+    },
+  });
+}
+
+export function useSaveBirdData() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (birdData: BirdData) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.saveBirdData(birdData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+    },
+  });
+}
+
+export function useSaveChanges() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { birdName: string; updatedData: BirdData }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.saveChanges(params.birdName, params.updatedData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+    },
+  });
+}
+
+export function useUploadMapImage() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (mapPath: string) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.uploadMapImage(mapPath);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['activeMapReference'] });
     },
   });
 }
@@ -451,73 +486,22 @@ export function useAssignCallerUserRole() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (params: { user: string; role: UserRole }) => {
+    mutationFn: async (params: { user: any; role: UserRole }) => {
       if (!actor) throw new Error('Actor not available');
-      const { Principal } = await import('@icp-sdk/core/principal');
-      return actor.assignCallerUserRole(Principal.fromText(params.user), params.role);
+      return actor.assignCallerUserRole(params.user, params.role);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['isCallerAdmin'] });
-      queryClient.invalidateQueries({ queryKey: ['callerUserRole'] });
+      queryClient.invalidateQueries({ queryKey: ['userRole'] });
     },
   });
 }
 
-export function useUploadMapImage() {
+export function useInitializeAccessControl() {
   const { actor } = useActor();
-  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (mapPath: string) => {
+    mutationFn: async () => {
       if (!actor) throw new Error('Actor not available');
-      return actor.uploadMapImage(mapPath);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['activeMapReference'] });
-    },
-  });
-}
-
-export function useSaveBirdData() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (birdData: BirdData) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.saveBirdData(birdData);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
-      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
-    },
-  });
-}
-
-export function useDeleteBirdById() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (birdId: bigint) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.deleteBirdById(birdId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
-      queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
-    },
-  });
-}
-
-export function useDeleteImageFromBirdAndRegistry() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (params: { birdName: string; imagePath: string }) => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.deleteImageFromBirdAndRegistry(params.birdName, params.imagePath);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
-      queryClient.invalidateQueries({ queryKey: ['fileReferences'] });
+      return actor.initializeAccessControl();
     },
   });
 }

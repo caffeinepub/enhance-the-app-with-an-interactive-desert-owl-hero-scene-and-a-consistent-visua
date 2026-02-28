@@ -104,6 +104,7 @@ export interface BirdData {
     notes: string;
     scientificName: string;
     locations: Array<LocationEntry>;
+    mainImage?: string;
 }
 export interface TeamGroup {
     members: Array<string>;
@@ -164,21 +165,19 @@ export interface backendInterface {
     _caffeineStorageUpdateGatewayPrincipals(): Promise<void>;
     addAudioFile(birdName: string, audioFilePath: string): Promise<string>;
     addBirdData(birdName: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, notes: string, locationDesc: string): Promise<void>;
-    addBirdWithDetails(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
-    addOrUpdateBird(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>): Promise<void>;
-    addSubImage(birdName: string, imagePath: string): Promise<string>;
+    addBirdWithDetails(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>, mainImageFile: string | null): Promise<void>;
+    addOrUpdateBird(arabicName: string, scientificName: string, englishName: string, description: string, notes: string, latitude: number, longitude: number, mountainName: string, valleyName: string, governorate: string, locationDesc: string, audioFilePath: string | null, subImages: Array<string>, mainImageFile: string | null): Promise<void>;
     addTeamMember(fullNameTribe: string, university: string, specialization: string, residence: string, contactNumber: string, number: bigint): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     birdExists(birdName: string): Promise<boolean>;
     canCallerModifyData(): Promise<boolean>;
-    completeBackupProcess(updatedData: Array<[string, BirdData]>): Promise<void>;
-    conditionalDrop(): Promise<void>;
     deleteAudioFile(birdName: string): Promise<void>;
     deleteBirdById(birdId: bigint): Promise<void>;
     deleteBirdData(birdName: string): Promise<void>;
     deleteImageFromBirdAndRegistry(birdName: string, imagePath: string): Promise<void>;
     deleteImageFromGallery(imagePath: string): Promise<void>;
     deleteImageFromGalleryAndBirds(imagePath: string): Promise<void>;
+    deleteMainImageForBird(birdName: string): Promise<void>;
     deleteSubImage(birdName: string, imagePath: string): Promise<void>;
     dropFileReference(path: string): Promise<void>;
     getActiveMapReference(): Promise<string | null>;
@@ -197,7 +196,7 @@ export interface backendInterface {
     getCallerUserRole(): Promise<UserRole>;
     getFileReference(path: string): Promise<FileReference>;
     getLocationCountByBird(): Promise<Array<[string, bigint]>>;
-    getSnapshotDetails(): Promise<string>;
+    getMainImage(birdName: string): Promise<string | null>;
     getSubImages(birdName: string): Promise<Array<string> | null>;
     getTeamGroups(): Promise<TeamGroup>;
     getTeamMembers(): Promise<Array<TeamMember>>;
@@ -206,20 +205,17 @@ export interface backendInterface {
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     hasAudioFile(birdName: string): Promise<boolean>;
     initializeAccessControl(): Promise<void>;
-    isBackupProcessActive(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     isCallerAuthorizedUser(): Promise<boolean>;
     listFileReferences(): Promise<Array<FileReference>>;
     registerFileReference(path: string, hash: string): Promise<void>;
     restoreBackupMap(): Promise<void>;
-    restoreSnapshot(): Promise<void>;
     saveAllBirdData(birdDataArray: Array<[string, BirdData]>): Promise<void>;
     saveBirdData(birdData: BirdData): Promise<void>;
     saveBirdDataArray(birdDataArray: Array<BirdData>): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     saveChanges(birdName: string, updatedData: BirdData): Promise<void>;
-    startBackupProcess(): Promise<void>;
-    takeSnapshot(): Promise<void>;
+    setMainImage(birdName: string, imagePath: string): Promise<string>;
     updateBirdDetails(birdName: string, arabicName: string, scientificName: string, englishName: string, description: string, notes: string): Promise<void>;
     updateDescriptionAndNotes(birdName: string, newDescription: string, newNotes: string): Promise<void>;
     uploadMapImage(mapPath: string): Promise<void>;
@@ -325,45 +321,31 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async addBirdWithDetails(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: number, arg7: string, arg8: string, arg9: string, arg10: string, arg11: string | null, arg12: Array<string>): Promise<void> {
+    async addBirdWithDetails(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: number, arg7: string, arg8: string, arg9: string, arg10: string, arg11: string | null, arg12: Array<string>, arg13: string | null): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addBirdWithDetails(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12);
+                const result = await this.actor.addBirdWithDetails(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg13));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addBirdWithDetails(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12);
+            const result = await this.actor.addBirdWithDetails(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg13));
             return result;
         }
     }
-    async addOrUpdateBird(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: number, arg7: string, arg8: string, arg9: string, arg10: string, arg11: string | null, arg12: Array<string>): Promise<void> {
+    async addOrUpdateBird(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: number, arg7: string, arg8: string, arg9: string, arg10: string, arg11: string | null, arg12: Array<string>, arg13: string | null): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addOrUpdateBird(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12);
+                const result = await this.actor.addOrUpdateBird(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg13));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.addOrUpdateBird(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12);
-            return result;
-        }
-    }
-    async addSubImage(arg0: string, arg1: string): Promise<string> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.addSubImage(arg0, arg1);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.addSubImage(arg0, arg1);
+            const result = await this.actor.addOrUpdateBird(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg11), arg12, to_candid_opt_n8(this._uploadFile, this._downloadFile, arg13));
             return result;
         }
     }
@@ -420,34 +402,6 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.canCallerModifyData();
-            return result;
-        }
-    }
-    async completeBackupProcess(arg0: Array<[string, BirdData]>): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.completeBackupProcess(to_candid_vec_n11(this._uploadFile, this._downloadFile, arg0));
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.completeBackupProcess(to_candid_vec_n11(this._uploadFile, this._downloadFile, arg0));
-            return result;
-        }
-    }
-    async conditionalDrop(): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.conditionalDrop();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.conditionalDrop();
             return result;
         }
     }
@@ -535,6 +489,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async deleteMainImageForBird(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteMainImageForBird(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteMainImageForBird(arg0);
+            return result;
+        }
+    }
     async deleteSubImage(arg0: string, arg1: string): Promise<void> {
         if (this.processError) {
             try {
@@ -567,42 +535,42 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getActiveMapReference();
-                return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getActiveMapReference();
-            return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAllBirdData(): Promise<Array<[string, BirdData]>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllBirdData();
-                return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllBirdData();
-            return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAllBirdDetails(): Promise<Array<[string, BirdData]>> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAllBirdDetails();
-                return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
+                return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAllBirdDetails();
-            return from_candid_vec_n16(this._uploadFile, this._downloadFile, result);
+            return from_candid_vec_n12(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAllCoordinates(): Promise<Array<Coordinate>> {
@@ -665,56 +633,56 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getAudioFile(arg0);
-                return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAudioFile(arg0);
-            return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
         }
     }
     async getBackupMapReference(): Promise<string | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getBackupMapReference();
-                return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getBackupMapReference();
-            return from_candid_opt_n15(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
         }
     }
     async getBirdDetails(arg0: string): Promise<BirdData | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getBirdDetails(arg0);
-                return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getBirdDetails(arg0);
-            return from_candid_opt_n20(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
         }
     }
     async getBirdLocations(arg0: string): Promise<Array<LocationEntry> | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getBirdLocations(arg0);
-                return from_candid_opt_n21(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n17(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getBirdLocations(arg0);
-            return from_candid_opt_n21(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n17(this._uploadFile, this._downloadFile, result);
         }
     }
     async getBirdNames(): Promise<Array<string>> {
@@ -735,28 +703,28 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserProfile();
-                return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserProfile();
-            return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
         }
     }
     async getCallerUserRole(): Promise<UserRole> {
         if (this.processError) {
             try {
                 const result = await this.actor.getCallerUserRole();
-                return from_candid_UserRole_n23(this._uploadFile, this._downloadFile, result);
+                return from_candid_UserRole_n19(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getCallerUserRole();
-            return from_candid_UserRole_n23(this._uploadFile, this._downloadFile, result);
+            return from_candid_UserRole_n19(this._uploadFile, this._downloadFile, result);
         }
     }
     async getFileReference(arg0: string): Promise<FileReference> {
@@ -787,32 +755,32 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getSnapshotDetails(): Promise<string> {
+    async getMainImage(arg0: string): Promise<string | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.getSnapshotDetails();
-                return result;
+                const result = await this.actor.getMainImage(arg0);
+                return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getSnapshotDetails();
-            return result;
+            const result = await this.actor.getMainImage(arg0);
+            return from_candid_opt_n11(this._uploadFile, this._downloadFile, result);
         }
     }
     async getSubImages(arg0: string): Promise<Array<string> | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getSubImages(arg0);
-                return from_candid_opt_n25(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n21(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getSubImages(arg0);
-            return from_candid_opt_n25(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n21(this._uploadFile, this._downloadFile, result);
         }
     }
     async getTeamGroups(): Promise<TeamGroup> {
@@ -875,14 +843,14 @@ export class Backend implements backendInterface {
         if (this.processError) {
             try {
                 const result = await this.actor.getUserProfile(arg0);
-                return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getUserProfile(arg0);
-            return from_candid_opt_n22(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n18(this._uploadFile, this._downloadFile, result);
         }
     }
     async hasAudioFile(arg0: string): Promise<boolean> {
@@ -910,20 +878,6 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.initializeAccessControl();
-            return result;
-        }
-    }
-    async isBackupProcessActive(): Promise<boolean> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.isBackupProcessActive();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.isBackupProcessActive();
             return result;
         }
     }
@@ -997,45 +951,31 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async restoreSnapshot(): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.restoreSnapshot();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.restoreSnapshot();
-            return result;
-        }
-    }
     async saveAllBirdData(arg0: Array<[string, BirdData]>): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.saveAllBirdData(to_candid_vec_n11(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.saveAllBirdData(to_candid_vec_n22(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.saveAllBirdData(to_candid_vec_n11(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.saveAllBirdData(to_candid_vec_n22(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
     async saveBirdData(arg0: BirdData): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.saveBirdData(to_candid_BirdData_n13(this._uploadFile, this._downloadFile, arg0));
+                const result = await this.actor.saveBirdData(to_candid_BirdData_n24(this._uploadFile, this._downloadFile, arg0));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.saveBirdData(to_candid_BirdData_n13(this._uploadFile, this._downloadFile, arg0));
+            const result = await this.actor.saveBirdData(to_candid_BirdData_n24(this._uploadFile, this._downloadFile, arg0));
             return result;
         }
     }
@@ -1070,42 +1010,28 @@ export class Backend implements backendInterface {
     async saveChanges(arg0: string, arg1: BirdData): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.saveChanges(arg0, to_candid_BirdData_n13(this._uploadFile, this._downloadFile, arg1));
+                const result = await this.actor.saveChanges(arg0, to_candid_BirdData_n24(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.saveChanges(arg0, to_candid_BirdData_n13(this._uploadFile, this._downloadFile, arg1));
+            const result = await this.actor.saveChanges(arg0, to_candid_BirdData_n24(this._uploadFile, this._downloadFile, arg1));
             return result;
         }
     }
-    async startBackupProcess(): Promise<void> {
+    async setMainImage(arg0: string, arg1: string): Promise<string> {
         if (this.processError) {
             try {
-                const result = await this.actor.startBackupProcess();
+                const result = await this.actor.setMainImage(arg0, arg1);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.startBackupProcess();
-            return result;
-        }
-    }
-    async takeSnapshot(): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.takeSnapshot();
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.takeSnapshot();
+            const result = await this.actor.setMainImage(arg0, arg1);
             return result;
         }
     }
@@ -1152,28 +1078,28 @@ export class Backend implements backendInterface {
         }
     }
 }
-function from_candid_BirdData_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _BirdData): BirdData {
-    return from_candid_record_n19(_uploadFile, _downloadFile, value);
+function from_candid_BirdData_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _BirdData): BirdData {
+    return from_candid_record_n15(_uploadFile, _downloadFile, value);
 }
-function from_candid_UserRole_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
-    return from_candid_variant_n24(_uploadFile, _downloadFile, value);
+function from_candid_UserRole_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n20(_uploadFile, _downloadFile, value);
 }
 function from_candid__CaffeineStorageRefillResult_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: __CaffeineStorageRefillResult): _CaffeineStorageRefillResult {
     return from_candid_record_n5(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
+function from_candid_opt_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [string]): string | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_BirdData]): BirdData | null {
-    return value.length === 0 ? null : from_candid_BirdData_n18(_uploadFile, _downloadFile, value[0]);
+function from_candid_opt_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_BirdData]): BirdData | null {
+    return value.length === 0 ? null : from_candid_BirdData_n14(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_opt_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Array<_LocationEntry>]): Array<LocationEntry> | null {
+function from_candid_opt_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Array<_LocationEntry>]): Array<LocationEntry> | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+function from_candid_opt_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Array<string>]): Array<string> | null {
+function from_candid_opt_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [Array<string>]): Array<string> | null {
     return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [boolean]): boolean | null {
@@ -1182,7 +1108,7 @@ function from_candid_opt_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Ar
 function from_candid_opt_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [bigint]): bigint | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     subImages: Array<string>;
     localName: string;
@@ -1193,6 +1119,7 @@ function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uin
     notes: string;
     scientificName: string;
     locations: Array<_LocationEntry>;
+    mainImage: [] | [string];
 }): {
     id: bigint;
     subImages: Array<string>;
@@ -1204,18 +1131,20 @@ function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uin
     notes: string;
     scientificName: string;
     locations: Array<LocationEntry>;
+    mainImage?: string;
 } {
     return {
         id: value.id,
         subImages: value.subImages,
         localName: value.localName,
         description: value.description,
-        audioFile: record_opt_to_undefined(from_candid_opt_n15(_uploadFile, _downloadFile, value.audioFile)),
+        audioFile: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.audioFile)),
         arabicName: value.arabicName,
         englishName: value.englishName,
         notes: value.notes,
         scientificName: value.scientificName,
-        locations: value.locations
+        locations: value.locations,
+        mainImage: record_opt_to_undefined(from_candid_opt_n11(_uploadFile, _downloadFile, value.mainImage))
     };
 }
 function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1230,13 +1159,13 @@ function from_candid_record_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint
         topped_up_amount: record_opt_to_undefined(from_candid_opt_n7(_uploadFile, _downloadFile, value.topped_up_amount))
     };
 }
-function from_candid_tuple_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [string, _BirdData]): [string, BirdData] {
+function from_candid_tuple_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [string, _BirdData]): [string, BirdData] {
     return [
         value[0],
-        from_candid_BirdData_n18(_uploadFile, _downloadFile, value[1])
+        from_candid_BirdData_n14(_uploadFile, _downloadFile, value[1])
     ];
 }
-function from_candid_variant_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
 } | {
     user: null;
@@ -1245,11 +1174,11 @@ function from_candid_variant_n24(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): UserRole {
     return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
 }
-function from_candid_vec_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<[string, _BirdData]>): Array<[string, BirdData]> {
-    return value.map((x)=>from_candid_tuple_n17(_uploadFile, _downloadFile, x));
+function from_candid_vec_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<[string, _BirdData]>): Array<[string, BirdData]> {
+    return value.map((x)=>from_candid_tuple_n13(_uploadFile, _downloadFile, x));
 }
-function to_candid_BirdData_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BirdData): _BirdData {
-    return to_candid_record_n14(_uploadFile, _downloadFile, value);
+function to_candid_BirdData_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: BirdData): _BirdData {
+    return to_candid_record_n25(_uploadFile, _downloadFile, value);
 }
 function to_candid_UserRole_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
     return to_candid_variant_n10(_uploadFile, _downloadFile, value);
@@ -1263,7 +1192,7 @@ function to_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Arra
 function to_candid_opt_n8(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: string | null): [] | [string] {
     return value === null ? candid_none() : candid_some(value);
 }
-function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function to_candid_record_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     id: bigint;
     subImages: Array<string>;
     localName: string;
@@ -1274,6 +1203,7 @@ function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     notes: string;
     scientificName: string;
     locations: Array<LocationEntry>;
+    mainImage?: string;
 }): {
     id: bigint;
     subImages: Array<string>;
@@ -1285,6 +1215,7 @@ function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     notes: string;
     scientificName: string;
     locations: Array<_LocationEntry>;
+    mainImage: [] | [string];
 } {
     return {
         id: value.id,
@@ -1296,7 +1227,8 @@ function to_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         englishName: value.englishName,
         notes: value.notes,
         scientificName: value.scientificName,
-        locations: value.locations
+        locations: value.locations,
+        mainImage: value.mainImage ? candid_some(value.mainImage) : candid_none()
     };
 }
 function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -1308,10 +1240,10 @@ function to_candid_record_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
         proposed_top_up_amount: value.proposed_top_up_amount ? candid_some(value.proposed_top_up_amount) : candid_none()
     };
 }
-function to_candid_tuple_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [string, BirdData]): [string, _BirdData] {
+function to_candid_tuple_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [string, BirdData]): [string, _BirdData] {
     return [
         value[0],
-        to_candid_BirdData_n13(_uploadFile, _downloadFile, value[1])
+        to_candid_BirdData_n24(_uploadFile, _downloadFile, value[1])
     ];
 }
 function to_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
@@ -1329,11 +1261,11 @@ function to_candid_variant_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint
         guest: null
     } : value;
 }
-function to_candid_vec_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<[string, BirdData]>): Array<[string, _BirdData]> {
-    return value.map((x)=>to_candid_tuple_n12(_uploadFile, _downloadFile, x));
+function to_candid_vec_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<[string, BirdData]>): Array<[string, _BirdData]> {
+    return value.map((x)=>to_candid_tuple_n23(_uploadFile, _downloadFile, x));
 }
 function to_candid_vec_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<BirdData>): Array<_BirdData> {
-    return value.map((x)=>to_candid_BirdData_n13(_uploadFile, _downloadFile, x));
+    return value.map((x)=>to_candid_BirdData_n24(_uploadFile, _downloadFile, x));
 }
 export interface CreateActorOptions {
     agent?: Agent;

@@ -1,12 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Restore all bird data records and admin control buttons in `BirdDataTable.tsx` and `BirdGallery.tsx` that disappeared after the v598 regression.
+**Goal:** Fix the BirdGallery component so that newly added birds appear immediately, the edit button is visible and functional on each card, and the edit dialog supports image and audio file uploads.
 
 **Planned changes:**
-- In `BirdDataTable.tsx`: restore all five admin-only action buttons (إضافة, تعديل, حفظ, حذف, تحرير) using a `useState + useEffect` pattern for the `isAdmin` check so buttons render once admin identity resolves
-- In `BirdDataTable.tsx`: fix data-fetching logic so all bird records load correctly on first render
-- In `BirdGallery.tsx`: restore all five admin-only action buttons (إضافة, حفظ, حذف, تحرير, إضافة الصوت) using a `useState + useEffect` pattern for the `isAdmin` check
-- No other files, components, pages, routes, or backend files are modified
+- Invalidate or refetch the gallery list React Query cache after a new bird is successfully added, so the new card appears immediately without a page reload.
+- Ensure the edit button/icon is correctly rendered on each bird card for admin users, and that clicking it opens the edit dialog pre-populated with the bird's current data.
+- Add a file input for image (jpg, png, webp) and a file input for audio (mp3, wav, ogg) inside the BirdGallery edit dialog.
+- On edit form submission, upload any newly selected files as blobs to the backend and update the bird record with the new media references; preserve existing media if no new file is selected.
+- After a successful edit save, reflect the updated image on the gallery card.
+- Scope all changes exclusively to BirdGallery and the backend blob/bird update functions required to support media uploads in the edit flow.
 
-**User-visible outcome:** Authenticated admin users see all action buttons and all bird data records in both the data table and the gallery, exactly as they appeared before the v598 regression.
+**User-visible outcome:** Admins can add a bird and see it appear in the gallery instantly, click the edit button on any card, and replace the bird's image or audio file directly from the edit dialog.

@@ -1,7 +1,7 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-27T17:50:59.353Z",
+  "generatedAt": "2026-02-28T03:20:16.522Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
@@ -11,19 +11,8 @@
     "implemented": 3,
     "items": [
       {
-        "id": "REQ-144",
-        "summary": "Restore all five admin-only action buttons in frontend/src/components/BirdDataTable.tsx so they are present, visible, and fully functional for authenticated admin users after the v598 deployment. The five buttons must be: (1) 'إضافة' (Add) in the table toolbar/header area — inserts a new empty editable row at the top of the table; (2) 'تعديل' (Edit) on each data row — switches that row into inline edit mode; (3) 'حفظ' (Save) that replaces the Edit button when a row is in edit mode and commits changes to the backend; (4) 'حذف' (Delete) on each row — removes the record from the backend; (5) 'تحرير' (Update/Edit) on each row — alternative update action. The isAdmin check must use a useState + useEffect pattern that correctly triggers a re-render after the actor/identity resolves, ensuring buttons appear once admin identity is confirmed. All column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
-        ]
-      },
-      {
-        "id": "REQ-145",
-        "summary": "Restore all admin-only action buttons in frontend/src/components/BirdGallery.tsx so they are present, visible, and fully functional for authenticated admin users after the v598 deployment. The buttons must be: (1) 'إضافة' (Add) in the gallery toolbar/header area — opens a form/modal for uploading a new bird record with a main image and sub-images; (2) 'حفظ' (Save) on each gallery card — commits pending edits to the backend; (3) 'حذف' (Delete) on each gallery card — removes the record from the backend; (4) 'تحرير' (Update/Edit) on each gallery card — switches the entry into an editable state; (5) 'إضافة الصوت' (Add Audio) on each gallery card — opens a file picker for audio files and uploads the selected audio as a blob associated with the bird record. The isAdmin check must use a useState + useEffect pattern so buttons appear once admin identity is confirmed after the actor resolves. The gallery's existing search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal must remain exactly as they are. Do NOT modify any other file, component, page, route, or backend file.",
+        "id": "REQ-1",
+        "summary": "After a new bird is added, the BirdGallery component must immediately display the newly added bird's card without requiring a full page reload. Ensure the React Query cache for the gallery list is invalidated (or refetched) upon successful bird creation so the new entry appears in the gallery grid.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/components/BirdGallery.tsx"
@@ -33,25 +22,42 @@
         ]
       },
       {
-        "id": "REQ-146",
-        "summary": "Restore all bird data records displayed in frontend/src/components/BirdDataTable.tsx. The table must correctly fetch and display all bird records returned by the backend via the existing React Query / useActor data-fetching pattern. If data is not loading due to a query or actor initialization issue introduced in v598, identify and fix only the data-fetching logic within BirdDataTable.tsx. Do NOT change any column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, admin guard logic, or action buttons. Do NOT modify any other file, component, page, route, or backend file.",
+        "id": "REQ-2",
+        "summary": "The edit button/option in BirdGallery must be visible and functional for each bird card. Currently the edit option does not appear. Ensure the edit dialog is rendered and the edit trigger (button/icon) is shown correctly for each card, respecting existing admin-check logic without altering it.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
+          "frontend/src/components/BirdGallery.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/BirdDataTable.tsx"
+          "frontend/src/components/BirdGallery.tsx"
+        ]
+      },
+      {
+        "id": "REQ-3",
+        "summary": "In the BirdGallery edit dialog, add file upload inputs that allow replacing the bird's image and/or audio file. The upload should store the new blob to the backend and update the bird record. This change must be scoped only to the edit dialog inside BirdGallery and must not affect any other part of the application.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/BirdGallery.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/BirdGallery.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
     "frontend/src/components/BirdDataTable.tsx",
     "frontend/src/components/BirdGallery.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
     "frontend/src/hooks/useQueries.ts",
     "project_state.json",
     "scratch/component-selection.json",

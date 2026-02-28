@@ -1,148 +1,142 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import React, { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useGetAllBirdDetails } from '../hooks/useQueries';
-import type { BirdData } from '../backend';
-import { MapPin, Eye, EyeOff, ArrowRight, Filter } from 'lucide-react';
+import { BirdData, LocationEntry } from '../backend';
+import { Button } from '@/components/ui/button';
+import { Loader2, MapPin, RefreshCw, Home, Eye, EyeOff } from 'lucide-react';
+import { useNavigate } from '@tanstack/react-router';
+import { toast } from 'sonner';
+
+// Leaflet dynamic import
+let L: any = null;
 
 interface MarkerData {
-  birdName: string;
-  arabicName: string;
-  localName: string;
-  scientificName: string;
-  englishName: string;
-  latitude: number;
-  longitude: number;
-  location: string;
-  governorate: string;
-  mountainName: string;
-  valleyName: string;
-  notes: string;
-}
-
-declare global {
-  interface Window {
-    L: any;
-  }
+  birdKey: string;
+  bird: BirdData;
+  location: LocationEntry;
+  lat: number;
+  lng: number;
 }
 
 export default function AllLocationsMap() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMapRef = useRef<any>(null);
   const markersRef = useRef<any[]>([]);
-  const [isMapReady, setIsMapReady] = useState(false);
-  const [mapInitialized, setMapInitialized] = useState(false);
+
+  const [mapReady, setMapReady] = useState(false);
+  const [selectedBird, setSelectedBird] = useState<string>('all');
   const [showMarkers, setShowMarkers] = useState(true);
-  const [filterBird, setFilterBird] = useState('all');
+  const [leafletLoaded, setLeafletLoaded] = useState(false);
 
-  const { data: birdDataRaw, isLoading } = useGetAllBirdDetails();
+  const { data: allBirds, isLoading, error, refetch } = useGetAllBirdDetails();
 
-  const birdData: [string, BirdData][] = birdDataRaw || [];
-
-  // Extract all markers - memoized to avoid unnecessary re-renders
-  const allMarkers = useMemo<MarkerData[]>(() => {
+  // Extract all valid marker data
+  const allMarkers: MarkerData[] = React.useMemo(() => {
+    if (!allBirds) return [];
     const markers: MarkerData[] = [];
-    for (const [name, bird] of birdData) {
+    for (const [key, bird] of allBirds) {
+      if (!bird.locations) continue;
       for (const loc of bird.locations) {
-        const lat = loc.coordinate.latitude;
-        const lng = loc.coordinate.longitude;
-        // Validate coordinates are real numbers and not zero
+        const lat = loc.coordinate?.latitude;
+        const lng = loc.coordinate?.longitude;
         if (
-          typeof lat === 'number' &&
-          typeof lng === 'number' &&
-          isFinite(lat) &&
-          isFinite(lng) &&
-          !(lat === 0 && lng === 0)
+          lat !== undefined && lng !== undefined &&
+          !isNaN(lat) && !isNaN(lng) &&
+          lat !== 0 && lng !== 0 &&
+          lat >= -90 && lat <= 90 &&
+          lng >= -180 && lng <= 180
         ) {
-          markers.push({
-            birdName: name,
-            arabicName: bird.arabicName || name,
-            localName: bird.localName || '',
-            scientificName: bird.scientificName || '',
-            englishName: bird.englishName || '',
-            latitude: lat,
-            longitude: lng,
-            location: loc.location || '',
-            governorate: loc.governorate || '',
-            mountainName: loc.mountainName || '',
-            valleyName: loc.valleyName || '',
-            notes: loc.notes || '',
-          });
+          markers.push({ birdKey: key, bird, location: loc, lat, lng });
         }
       }
     }
     return markers;
-  }, [birdData]);
+  }, [allBirds]);
 
-  const filteredMarkers = useMemo<MarkerData[]>(() => {
-    if (filterBird === 'all') return allMarkers;
-    return allMarkers.filter((m) => m.birdName === filterBird);
-  }, [allMarkers, filterBird]);
+  const filteredMarkers = React.useMemo(() => {
+    if (selectedBird === 'all') return allMarkers;
+    return allMarkers.filter(m => m.birdKey === selectedBird || m.bird.arabicName === selectedBird);
+  }, [allMarkers, selectedBird]);
 
-  const birdNames = useMemo(() => Array.from(new Set(allMarkers.map((m) => m.birdName))), [allMarkers]);
+  const uniqueBirds = React.useMemo(() => {
+    if (!allBirds) return [];
+    return allBirds.filter(([, bird]) => bird.locations && bird.locations.length > 0);
+  }, [allBirds]);
 
-  // Load Leaflet CSS and JS
+  // Load Leaflet
   useEffect(() => {
-    if (typeof window.L !== 'undefined') {
-      setIsMapReady(true);
-      return;
-    }
-
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(link);
-
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => setIsMapReady(true);
-    script.onerror = () => console.error('Failed to load Leaflet');
-    document.head.appendChild(script);
+    const loadLeaflet = async () => {
+      try {
+        if (!(window as any).L) {
+          // Load CSS
+          if (!document.querySelector('link[href*="leaflet"]')) {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+            document.head.appendChild(link);
+          }
+          // Load JS
+          await new Promise<void>((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+            script.onload = () => resolve();
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        }
+        L = (window as any).L;
+        setLeafletLoaded(true);
+      } catch (err) {
+        console.error('Failed to load Leaflet:', err);
+      }
+    };
+    loadLeaflet();
   }, []);
 
-  // Initialize map once Leaflet is ready
+  // Initialize map
   useEffect(() => {
-    if (!isMapReady || !mapRef.current || leafletMapRef.current) return;
+    if (!leafletLoaded || !mapRef.current || leafletMapRef.current) return;
 
-    const L = window.L;
     const map = L.map(mapRef.current, {
-      center: [24.23, 56.12],
-      zoom: 10,
+      center: [23.5, 56.5],
+      zoom: 8,
       zoomControl: true,
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors',
-      maxZoom: 19,
+      maxZoom: 18,
     }).addTo(map);
 
     leafletMapRef.current = map;
-    setMapInitialized(true);
-  }, [isMapReady]);
+    setMapReady(true);
 
-  // Update markers whenever data, filter, or visibility changes
+    return () => {
+      if (leafletMapRef.current) {
+        leafletMapRef.current.remove();
+        leafletMapRef.current = null;
+      }
+    };
+  }, [leafletLoaded]);
+
+  // Update markers
   useEffect(() => {
-    if (!mapInitialized || !leafletMapRef.current) return;
-
-    const L = window.L;
-    const map = leafletMapRef.current;
+    if (!mapReady || !leafletMapRef.current || !L) return;
 
     // Clear existing markers
-    markersRef.current.forEach((m) => {
-      try {
-        map.removeLayer(m);
-      } catch (_) {}
-    });
+    markersRef.current.forEach(m => m.remove());
     markersRef.current = [];
 
-    if (!showMarkers || filteredMarkers.length === 0) return;
+    if (!showMarkers) return;
 
-    const bounds: [number, number][] = [];
+    const markers: any[] = [];
 
-    filteredMarkers.forEach((markerData) => {
-      const circleMarker = L.circleMarker([markerData.latitude, markerData.longitude], {
-        radius: 9,
-        fillColor: '#f59e0b',
+    filteredMarkers.forEach(({ bird, location, lat, lng }) => {
+      const circleMarker = L.circleMarker([lat, lng], {
+        radius: 10,
+        fillColor: '#d97706',
         color: '#92400e',
         weight: 2,
         opacity: 1,
@@ -150,165 +144,211 @@ export default function AllLocationsMap() {
       });
 
       const popupContent = `
-        <div dir="rtl" style="font-family: Arial, sans-serif; min-width: 210px; max-width: 280px;">
-          <h3 style="font-weight: bold; font-size: 14px; margin: 0 0 8px 0; color: #92400e; border-bottom: 1px solid #f59e0b; padding-bottom: 6px;">${markerData.arabicName}</h3>
-          ${markerData.localName ? `<p style="font-size: 12px; color: #555; margin: 3px 0;"><strong>الاسم المحلي:</strong> ${markerData.localName}</p>` : ''}
-          ${markerData.scientificName ? `<p style="font-size: 12px; color: #555; margin: 3px 0; font-style: italic;"><strong>الاسم العلمي:</strong> ${markerData.scientificName}</p>` : ''}
-          ${markerData.englishName ? `<p style="font-size: 12px; color: #555; margin: 3px 0;"><strong>الاسم الإنجليزي:</strong> ${markerData.englishName}</p>` : ''}
-          ${markerData.location ? `<p style="font-size: 12px; color: #333; margin: 3px 0;"><strong>الموقع:</strong> ${markerData.location}</p>` : ''}
-          ${markerData.governorate ? `<p style="font-size: 12px; color: #333; margin: 3px 0;"><strong>المحافظة:</strong> ${markerData.governorate}</p>` : ''}
-          ${markerData.mountainName ? `<p style="font-size: 12px; color: #333; margin: 3px 0;"><strong>الجبل:</strong> ${markerData.mountainName}</p>` : ''}
-          ${markerData.valleyName ? `<p style="font-size: 12px; color: #333; margin: 3px 0;"><strong>الوادي:</strong> ${markerData.valleyName}</p>` : ''}
-          <p style="font-size: 11px; color: #999; margin: 6px 0 0 0; padding-top: 4px; border-top: 1px solid #eee;">${markerData.latitude.toFixed(5)}, ${markerData.longitude.toFixed(5)}</p>
-          ${markerData.notes ? `<p style="font-size: 12px; color: #555; margin-top: 4px; padding-top: 4px; border-top: 1px solid #eee;"><strong>ملاحظات:</strong> ${markerData.notes}</p>` : ''}
+        <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, sans-serif; min-width: 200px; padding: 4px;">
+          <h3 style="color: #92400e; font-size: 16px; font-weight: bold; margin: 0 0 8px 0; border-bottom: 2px solid #d97706; padding-bottom: 4px;">
+            ${bird.arabicName || '—'}
+          </h3>
+          ${bird.localName ? `<p style="margin: 3px 0; color: #78350f;"><strong>الاسم المحلي:</strong> ${bird.localName}</p>` : ''}
+          ${bird.scientificName ? `<p style="margin: 3px 0; color: #78350f; font-style: italic;"><strong>الاسم العلمي:</strong> ${bird.scientificName}</p>` : ''}
+          ${bird.englishName ? `<p style="margin: 3px 0; color: #78350f;"><strong>الاسم الإنجليزي:</strong> ${bird.englishName}</p>` : ''}
+          <hr style="border-color: #fde68a; margin: 6px 0;" />
+          ${location.location ? `<p style="margin: 3px 0; color: #78350f;"><strong>الموقع:</strong> ${location.location}</p>` : ''}
+          ${location.governorate ? `<p style="margin: 3px 0; color: #78350f;"><strong>المحافظة:</strong> ${location.governorate}</p>` : ''}
+          ${location.mountainName ? `<p style="margin: 3px 0; color: #78350f;"><strong>الجبل:</strong> ${location.mountainName}</p>` : ''}
+          ${location.valleyName ? `<p style="margin: 3px 0; color: #78350f;"><strong>الوادي:</strong> ${location.valleyName}</p>` : ''}
+          <p style="margin: 3px 0; color: #78350f; font-size: 12px;">
+            <strong>الإحداثيات:</strong> ${lat.toFixed(5)}, ${lng.toFixed(5)}
+          </p>
+          ${location.notes ? `<p style="margin: 6px 0 0 0; color: #92400e; font-size: 12px; background: #fef3c7; padding: 4px; border-radius: 4px;">${location.notes}</p>` : ''}
         </div>
       `;
 
-      circleMarker.bindPopup(popupContent);
-      circleMarker.addTo(map);
-      markersRef.current.push(circleMarker);
-      bounds.push([markerData.latitude, markerData.longitude]);
+      circleMarker.bindPopup(popupContent, { maxWidth: 280 });
+      circleMarker.addTo(leafletMapRef.current);
+      markers.push(circleMarker);
     });
 
-    if (bounds.length > 0) {
-      try {
-        if (bounds.length === 1) {
-          map.setView(bounds[0], 13);
-        } else {
-          map.fitBounds(bounds, { padding: [40, 40] });
-        }
-      } catch (_) {}
-    }
-  }, [mapInitialized, filteredMarkers, showMarkers]);
+    markersRef.current = markers;
 
-  // Invalidate map size after it becomes visible (fixes tile rendering issues)
-  useEffect(() => {
-    if (!mapInitialized || !leafletMapRef.current) return;
-    setTimeout(() => {
+    // Fit bounds if markers exist
+    if (markers.length > 0) {
+      const group = L.featureGroup(markers);
       try {
-        leafletMapRef.current?.invalidateSize();
-      } catch (_) {}
-    }, 200);
-  }, [mapInitialized]);
+        leafletMapRef.current.fitBounds(group.getBounds().pad(0.1));
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [mapReady, filteredMarkers, showMarkers]);
+
+  const handleRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+    await queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+    refetch();
+    toast.success('تم تحديث بيانات الخريطة');
+  };
 
   return (
-    <div className="min-h-screen bg-background" dir="rtl">
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          <button
-            onClick={() => navigate({ to: '/' })}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
+    <div className="min-h-screen bg-amber-50" dir="rtl">
+      {/* Header */}
+      <div className="bg-amber-800 text-white px-4 py-3 flex items-center justify-between shadow-md">
+        <div className="flex items-center gap-3">
+          <MapPin className="w-6 h-6 text-amber-300" />
+          <h1 className="text-xl font-bold">خريطة مواقع الطيور</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            className="border-amber-300 text-amber-100 hover:bg-amber-700 gap-1"
           >
-            <ArrowRight className="h-4 w-4" />
+            <RefreshCw className="w-4 h-4" />
+            تحديث
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate({ to: '/' })}
+            className="border-amber-300 text-amber-100 hover:bg-amber-700 gap-1"
+          >
+            <Home className="w-4 h-4" />
             الرئيسية
-          </button>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold text-foreground">خريطة المواقع</h1>
-            <p className="text-sm text-muted-foreground">
-              {isLoading ? 'جاري التحميل...' : `${allMarkers.length} موقع رصد`}
-            </p>
-          </div>
+          </Button>
+        </div>
+      </div>
 
-          {/* Controls */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Filter */}
-            <div className="flex items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
-              <select
-                value={filterBird}
-                onChange={(e) => setFilterBird(e.target.value)}
-                className="text-sm bg-card border border-border rounded-md px-2 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                <option value="all">جميع الطيور</option>
-                {birdNames.map((name) => (
-                  <option key={name} value={name}>
-                    {birdData.find(([n]) => n === name)?.[1].arabicName || name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Show/Hide Toggle */}
-            <button
-              onClick={() => setShowMarkers(!showMarkers)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition-colors ${
-                showMarkers
-                  ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              {showMarkers ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              {showMarkers ? 'إخفاء المواقع' : 'إظهار المواقع'}
-            </button>
-          </div>
+      {/* Controls */}
+      <div className="bg-white border-b border-amber-200 px-4 py-3 flex flex-wrap items-center gap-3 shadow-sm">
+        {/* Bird filter */}
+        <div className="flex items-center gap-2">
+          <label className="text-amber-800 font-semibold text-sm">تصفية حسب الطائر:</label>
+          <select
+            value={selectedBird}
+            onChange={e => setSelectedBird(e.target.value)}
+            className="border border-amber-300 rounded-md px-3 py-1.5 text-sm bg-white text-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-400"
+          >
+            <option value="all">جميع الطيور ({allMarkers.length} موقع)</option>
+            {uniqueBirds.map(([key, bird]) => (
+              <option key={key} value={key}>
+                {bird.arabicName} ({bird.locations.length} موقع)
+              </option>
+            ))}
+          </select>
         </div>
 
-        {/* Map */}
-        <div className="rounded-xl overflow-hidden border border-border shadow-md mb-6">
-          {isLoading && !mapInitialized && (
-            <div className="h-96 flex items-center justify-center bg-muted">
-              <div className="text-center">
-                <div className="text-4xl mb-3">🗺️</div>
-                <p className="text-muted-foreground">جاري تحميل الخريطة...</p>
-              </div>
-            </div>
-          )}
-          <div
-            ref={mapRef}
-            style={{ height: '500px', width: '100%', display: isLoading && !mapInitialized ? 'none' : 'block' }}
-          />
-        </div>
+        {/* Show/hide toggle */}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowMarkers(v => !v)}
+          className="border-amber-300 text-amber-700 hover:bg-amber-50 gap-1"
+        >
+          {showMarkers ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          {showMarkers ? 'إخفاء المواقع' : 'إظهار المواقع'}
+        </Button>
 
-        {/* Locations Table */}
-        {filteredMarkers.length > 0 && (
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="px-4 py-3 border-b border-border">
-              <h2 className="font-semibold text-foreground flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-primary" />
-                قائمة المواقع ({filteredMarkers.length})
-              </h2>
+        {/* Stats */}
+        <div className="text-sm text-amber-700 mr-auto">
+          <span className="bg-amber-100 px-2 py-1 rounded-full">
+            {filteredMarkers.length} موقع معروض
+          </span>
+        </div>
+      </div>
+
+      {/* Loading */}
+      {isLoading && (
+        <div className="flex items-center justify-center py-12 gap-2 text-amber-600">
+          <Loader2 className="w-6 h-6 animate-spin" />
+          <span>جاري تحميل بيانات الخريطة...</span>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="text-center py-8 text-red-600 bg-red-50 m-4 rounded-lg border border-red-200">
+          <p className="font-semibold">حدث خطأ في تحميل البيانات</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()} className="mt-3">
+            إعادة المحاولة
+          </Button>
+        </div>
+      )}
+
+      {/* Map */}
+      <div className="relative">
+        <div
+          ref={mapRef}
+          style={{ height: '60vh', minHeight: '400px', width: '100%' }}
+          className="z-0"
+        />
+        {!leafletLoaded && (
+          <div className="absolute inset-0 flex items-center justify-center bg-amber-50 z-10">
+            <div className="flex items-center gap-2 text-amber-600">
+              <Loader2 className="w-6 h-6 animate-spin" />
+              <span>جاري تحميل الخريطة...</span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted/50 border-b border-border">
-                    <th className="px-3 py-2 text-right font-medium text-foreground">#</th>
-                    <th className="px-3 py-2 text-right font-medium text-foreground">الطائر</th>
-                    <th className="px-3 py-2 text-right font-medium text-foreground">الموقع</th>
-                    <th className="px-3 py-2 text-right font-medium text-foreground">المحافظة</th>
-                    <th className="px-3 py-2 text-right font-medium text-foreground">الجبل</th>
-                    <th className="px-3 py-2 text-right font-medium text-foreground">الوادي</th>
-                    <th className="px-3 py-2 text-right font-medium text-foreground">الإحداثيات</th>
+          </div>
+        )}
+      </div>
+
+      {/* Locations Table */}
+      {!isLoading && allMarkers.length > 0 && (
+        <div className="p-4">
+          <h2 className="text-lg font-bold text-amber-800 mb-3 flex items-center gap-2">
+            <MapPin className="w-5 h-5" />
+            قائمة المواقع ({filteredMarkers.length})
+          </h2>
+          <div className="overflow-x-auto rounded-lg border border-amber-200 shadow-sm">
+            <table className="w-full text-sm">
+              <thead className="bg-amber-100">
+                <tr>
+                  <th className="text-right text-amber-800 font-bold px-3 py-2">#</th>
+                  <th className="text-right text-amber-800 font-bold px-3 py-2">الطائر</th>
+                  <th className="text-right text-amber-800 font-bold px-3 py-2">الموقع</th>
+                  <th className="text-right text-amber-800 font-bold px-3 py-2">المحافظة</th>
+                  <th className="text-right text-amber-800 font-bold px-3 py-2">الجبل</th>
+                  <th className="text-right text-amber-800 font-bold px-3 py-2">الوادي</th>
+                  <th className="text-right text-amber-800 font-bold px-3 py-2">الإحداثيات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMarkers.map((m, i) => (
+                  <tr key={`${m.birdKey}-${i}`} className="border-b border-amber-100 hover:bg-amber-50">
+                    <td className="px-3 py-2 text-amber-700">{i + 1}</td>
+                    <td className="px-3 py-2 font-semibold text-amber-900">{m.bird.arabicName}</td>
+                    <td className="px-3 py-2 text-amber-700">{m.location.location || '—'}</td>
+                    <td className="px-3 py-2 text-amber-700">{m.location.governorate || '—'}</td>
+                    <td className="px-3 py-2 text-amber-700">{m.location.mountainName || '—'}</td>
+                    <td className="px-3 py-2 text-amber-700">{m.location.valleyName || '—'}</td>
+                    <td className="px-3 py-2 text-amber-600 text-xs font-mono">
+                      {m.lat.toFixed(4)}, {m.lng.toFixed(4)}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {filteredMarkers.map((marker, index) => (
-                    <tr key={index} className="border-b border-border hover:bg-muted/30 transition-colors">
-                      <td className="px-3 py-2 text-muted-foreground">{index + 1}</td>
-                      <td className="px-3 py-2 font-medium text-foreground">{marker.arabicName}</td>
-                      <td className="px-3 py-2 text-foreground">{marker.location || '-'}</td>
-                      <td className="px-3 py-2 text-foreground">{marker.governorate || '-'}</td>
-                      <td className="px-3 py-2 text-foreground">{marker.mountainName || '-'}</td>
-                      <td className="px-3 py-2 text-foreground">{marker.valleyName || '-'}</td>
-                      <td className="px-3 py-2 text-muted-foreground text-xs">
-                        {marker.latitude.toFixed(4)}, {marker.longitude.toFixed(4)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Empty state */}
-        {!isLoading && allMarkers.length === 0 && (
-          <div className="text-center py-12 text-muted-foreground">
-            <MapPin className="h-12 w-12 mx-auto mb-3 opacity-30" />
-            <p>لا توجد مواقع رصد مسجلة بعد</p>
-          </div>
-        )}
+      {/* Empty state */}
+      {!isLoading && !error && allMarkers.length === 0 && (
+        <div className="text-center py-12 text-amber-600 m-4 bg-amber-50 rounded-lg border border-amber-200">
+          <MapPin className="w-12 h-12 mx-auto mb-3 opacity-40" />
+          <p className="font-semibold text-lg">لا توجد مواقع مسجلة بعد</p>
+          <p className="text-sm mt-1">أضف بيانات الطيور مع الإحداثيات لعرضها على الخريطة</p>
+        </div>
+      )}
+
+      {/* Return button */}
+      <div className="p-4 text-center">
+        <Button
+          onClick={() => navigate({ to: '/' })}
+          className="bg-amber-700 hover:bg-amber-800 text-white gap-2"
+        >
+          <Home className="w-4 h-4" />
+          العودة للرئيسية
+        </Button>
       </div>
     </div>
   );

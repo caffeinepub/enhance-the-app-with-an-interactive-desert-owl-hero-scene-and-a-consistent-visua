@@ -21,6 +21,7 @@ export interface BirdData {
   'notes' : string,
   'scientificName' : string,
   'locations' : Array<LocationEntry>,
+  'mainImage' : [] | [string],
 }
 export interface Coordinate { 'latitude' : number, 'longitude' : number }
 export interface FileReference { 'hash' : string, 'path' : string }
@@ -98,6 +99,7 @@ export interface _SERVICE {
       string,
       [] | [string],
       Array<string>,
+      [] | [string],
     ],
     undefined
   >,
@@ -116,10 +118,10 @@ export interface _SERVICE {
       string,
       [] | [string],
       Array<string>,
+      [] | [string],
     ],
     undefined
   >,
-  'addSubImage' : ActorMethod<[string, string], string>,
   'addTeamMember' : ActorMethod<
     [string, string, string, string, string, bigint],
     undefined
@@ -127,14 +129,13 @@ export interface _SERVICE {
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'birdExists' : ActorMethod<[string], boolean>,
   'canCallerModifyData' : ActorMethod<[], boolean>,
-  'completeBackupProcess' : ActorMethod<[Array<[string, BirdData]>], undefined>,
-  'conditionalDrop' : ActorMethod<[], undefined>,
   'deleteAudioFile' : ActorMethod<[string], undefined>,
   'deleteBirdById' : ActorMethod<[bigint], undefined>,
   'deleteBirdData' : ActorMethod<[string], undefined>,
   'deleteImageFromBirdAndRegistry' : ActorMethod<[string, string], undefined>,
   'deleteImageFromGallery' : ActorMethod<[string], undefined>,
   'deleteImageFromGalleryAndBirds' : ActorMethod<[string], undefined>,
+  'deleteMainImageForBird' : ActorMethod<[string], undefined>,
   'deleteSubImage' : ActorMethod<[string, string], undefined>,
   'dropFileReference' : ActorMethod<[string], undefined>,
   'getActiveMapReference' : ActorMethod<[], [] | [string]>,
@@ -153,7 +154,7 @@ export interface _SERVICE {
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getFileReference' : ActorMethod<[string], FileReference>,
   'getLocationCountByBird' : ActorMethod<[], Array<[string, bigint]>>,
-  'getSnapshotDetails' : ActorMethod<[], string>,
+  'getMainImage' : ActorMethod<[string], [] | [string]>,
   'getSubImages' : ActorMethod<[string], [] | [Array<string>]>,
   'getTeamGroups' : ActorMethod<[], TeamGroup>,
   'getTeamMembers' : ActorMethod<[], Array<TeamMember>>,
@@ -162,20 +163,17 @@ export interface _SERVICE {
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'hasAudioFile' : ActorMethod<[string], boolean>,
   'initializeAccessControl' : ActorMethod<[], undefined>,
-  'isBackupProcessActive' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isCallerAuthorizedUser' : ActorMethod<[], boolean>,
   'listFileReferences' : ActorMethod<[], Array<FileReference>>,
   'registerFileReference' : ActorMethod<[string, string], undefined>,
   'restoreBackupMap' : ActorMethod<[], undefined>,
-  'restoreSnapshot' : ActorMethod<[], undefined>,
   'saveAllBirdData' : ActorMethod<[Array<[string, BirdData]>], undefined>,
   'saveBirdData' : ActorMethod<[BirdData], undefined>,
   'saveBirdDataArray' : ActorMethod<[Array<BirdData>], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
   'saveChanges' : ActorMethod<[string, BirdData], undefined>,
-  'startBackupProcess' : ActorMethod<[], undefined>,
-  'takeSnapshot' : ActorMethod<[], undefined>,
+  'setMainImage' : ActorMethod<[string, string], string>,
   'updateBirdDetails' : ActorMethod<
     [string, string, string, string, string, string],
     undefined

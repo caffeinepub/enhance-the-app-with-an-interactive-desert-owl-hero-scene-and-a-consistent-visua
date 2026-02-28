@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from '@tanstack/react-router';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import React from 'react';
+import { useNavigate } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
+import { Button } from '@/components/ui/button';
+import { RefreshCw, LogIn, LogOut, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import HamburgerMenu from './HamburgerMenu';
 
 export default function MainHeader() {
-  const { login, clear, loginStatus, identity } = useInternetIdentity();
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const queryClient = useQueryClient();
+  const { login, clear, loginStatus, identity, isLoggingIn } = useInternetIdentity();
 
   const isAuthenticated = !!identity;
 
@@ -16,123 +18,110 @@ export default function MainHeader() {
     if (isAuthenticated) {
       await clear();
       queryClient.clear();
-      navigate({ to: '/' });
+      toast.success('تم تسجيل الخروج');
     } else {
-      setIsLoggingIn(true);
       try {
         await login();
       } catch (error: any) {
-        console.error('Login error:', error);
-        if (error.message === 'User is already authenticated') {
+        if (error?.message === 'User is already authenticated') {
           await clear();
           setTimeout(() => login(), 300);
+        } else {
+          toast.error('فشل تسجيل الدخول');
         }
-      } finally {
-        setIsLoggingIn(false);
       }
     }
   };
 
-  const handleRefresh = () => {
-    queryClient.invalidateQueries();
+  const handleRefresh = async () => {
+    await queryClient.invalidateQueries({ queryKey: ['allBirdData'] });
+    await queryClient.invalidateQueries({ queryKey: ['allBirdDetails'] });
+    await queryClient.invalidateQueries({ queryKey: ['birdNames'] });
+    await queryClient.invalidateQueries({ queryKey: ['allLocationsWithNames'] });
+    await queryClient.invalidateQueries({ queryKey: ['totalBirdCount'] });
+    await queryClient.invalidateQueries({ queryKey: ['totalLocationCount'] });
+    await queryClient.invalidateQueries({ queryKey: ['locationCountByBird'] });
+    await queryClient.invalidateQueries({ queryKey: ['activeMapReference'] });
+    toast.success('تم تحديث جميع البيانات');
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-card border-b border-border shadow-md" dir="rtl">
+    <header className="sticky top-0 z-40 bg-amber-900 text-white shadow-lg" dir="rtl">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
         {/* Logo & Title */}
-        <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+        <button
+          onClick={() => navigate({ to: '/' })}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+        >
           <img
             src="/assets/generated/owl-title-image-clean-background.png"
-            alt="شعار البومة"
-            className="h-10 w-10 object-contain"
-            onError={(e) => {
-              (e.target as HTMLImageElement).style.display = 'none';
-            }}
+            alt="شعار"
+            className="w-10 h-10 object-contain"
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
-          <div className="hidden sm:block">
-            <h1 className="text-sm font-bold text-primary leading-tight">أطلس طيور البريمي</h1>
-            <p className="text-xs text-muted-foreground">مشروع المسح الميداني</p>
+          <div className="text-right">
+            <h1 className="text-base font-bold leading-tight text-amber-100">
+              رصد طيور البومة العقاب
+            </h1>
+            <p className="text-xs text-amber-300 leading-tight">محافظة البريمي - سلطنة عُمان</p>
           </div>
-        </Link>
+        </button>
 
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-1">
-          <Link
-            to="/"
-            className="px-3 py-1.5 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
-          >
-            الرئيسية
-          </Link>
-          <Link
-            to="/data"
-            className="px-3 py-1.5 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
-          >
-            البيانات
-          </Link>
-          <Link
-            to="/gallery"
-            className="px-3 py-1.5 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
-          >
-            المعرض
-          </Link>
-          <Link
-            to="/map"
-            className="px-3 py-1.5 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
-          >
-            الخريطة
-          </Link>
-          <Link
-            to="/statistics"
-            className="px-3 py-1.5 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
-          >
-            الإحصائيات
-          </Link>
-          <Link
-            to="/eagle-owl"
-            className="px-3 py-1.5 text-sm rounded-md hover:bg-accent hover:text-accent-foreground transition-colors text-foreground"
-          >
-            البومة العقاب
-          </Link>
+          {[
+            { label: 'الرئيسية', to: '/' },
+            { label: 'بيانات الطيور', to: '/data' },
+            { label: 'معرض الصور', to: '/gallery' },
+            { label: 'خريطة المواقع', to: '/map' },
+            { label: 'الإحصائيات', to: '/statistics' },
+            { label: 'البومة العقاب', to: '/eagle-owl' },
+          ].map(link => (
+            <button
+              key={link.to}
+              onClick={() => navigate({ to: link.to })}
+              className="px-3 py-1.5 text-sm text-amber-200 hover:text-white hover:bg-amber-700 rounded-md transition-colors"
+            >
+              {link.label}
+            </button>
+          ))}
         </nav>
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          {/* Refresh Button */}
-          <button
+          {/* Refresh */}
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleRefresh}
-            className="p-2 rounded-md hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+            className="border-amber-400 text-amber-200 hover:bg-amber-700 hover:text-white gap-1"
             title="تحديث البيانات"
           >
-            <img
-              src="/assets/generated/refresh-icon-transparent.dim_32x32.png"
-              alt="تحديث"
-              className="h-5 w-5 object-contain"
-              onError={(e) => {
-                const btn = e.currentTarget.parentElement;
-                if (btn) btn.innerHTML = '🔄';
-              }}
-            />
-          </button>
+            <RefreshCw className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs">تحديث</span>
+          </Button>
 
-          {/* Auth Button */}
-          <button
+          {/* Auth */}
+          <Button
+            variant="outline"
+            size="sm"
             onClick={handleAuth}
-            disabled={loginStatus === 'logging-in' || isLoggingIn}
-            className={`px-3 py-1.5 text-sm rounded-md font-medium transition-colors disabled:opacity-50 ${
-              isAuthenticated
-                ? 'bg-muted hover:bg-muted/80 text-muted-foreground'
-                : 'bg-primary hover:bg-primary/90 text-primary-foreground'
-            }`}
+            disabled={isLoggingIn}
+            className="border-amber-400 text-amber-200 hover:bg-amber-700 hover:text-white gap-1"
           >
-            {loginStatus === 'logging-in' || isLoggingIn
-              ? 'جاري الدخول...'
-              : isAuthenticated
-              ? 'تسجيل الخروج'
-              : 'تسجيل الدخول'}
-          </button>
+            {isLoggingIn ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : isAuthenticated ? (
+              <LogOut className="w-4 h-4" />
+            ) : (
+              <LogIn className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline text-xs">
+              {isLoggingIn ? 'جاري...' : isAuthenticated ? 'خروج' : 'دخول'}
+            </span>
+          </Button>
 
-          {/* Hamburger Menu */}
+          {/* Hamburger */}
           <HamburgerMenu />
         </div>
       </div>

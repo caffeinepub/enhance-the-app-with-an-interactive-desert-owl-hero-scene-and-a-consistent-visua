@@ -10,8 +10,11 @@ import BlobStorage "blob-storage/Mixin";
 import AccessControl "authorization/access-control";
 import Principal "mo:base/Principal";
 import Debug "mo:base/Debug";
+import Migration "migration";
 
+(with migration = Migration.run)
 actor {
+
     type Coordinate = {
         latitude : Float;
         longitude : Float;
@@ -37,6 +40,7 @@ actor {
         subImages : [Text];
         notes : Text;
         localName : Text;
+        mainImage : ?Text;
     };
 
     type LocationData = {
@@ -83,12 +87,11 @@ actor {
     };
 
     let registry = Registry.new();
+
     let accessControlState = AccessControl.initState();
 
     transient let textMap = OrderedMap.Make<Text>(Text.compare);
-    var birdLocationsSnapshot : OrderedMap.Map<Text, BirdData> = textMap.empty();
-    var birdLocationsBackup : OrderedMap.Map<Text, BirdData> = textMap.empty();
-    var isBackupInProgress : Bool = false;
+    var birdLocations : OrderedMap.Map<Text, BirdData> = textMap.empty();
 
     transient let principalMap = OrderedMap.Make<Principal>(Principal.compare);
     var userProfiles : OrderedMap.Map<Principal, UserProfile> = principalMap.empty();
@@ -156,7 +159,7 @@ actor {
     // --- User Profile Management ---
     public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
         if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-            Debug.trap("Unauthorized: Only users can view profiles");
+            Debug.trap("Unauthorized: Only users can save profiles");
         };
         principalMap.get(userProfiles, caller);
     };
@@ -239,30 +242,27 @@ actor {
 
     // --- Bird Data Retrieval ---
     public query func getBirdNames() : async [Text] {
-        let birdNames = Iter.toArray(textMap.keys(birdLocationsSnapshot));
+        let birdNames = Iter.toArray(textMap.keys(birdLocations));
         let normalizedNames = Array.map<Text, Text>(birdNames, func(name) { normalizeBirdName(name) });
         normalizedNames;
     };
 
     public query func getBirdLocations(birdName : Text) : async ?[LocationEntry] {
-        switch (textMap.get(birdLocationsSnapshot, birdName)) {
+        switch (textMap.get(birdLocations, birdName)) {
             case (null) { null };
             case (?birdData) { ?birdData.locations };
         };
     };
 
     public query func getAllBirdData() : async [(Text, BirdData)] {
-        let result = Iter.toArray(textMap.entries(birdLocationsSnapshot));
-        Debug.print("getAllBirdData: returning " # debug_show(result.size()) # " records");
-        for ((name, bd) in result.vals()) {
-            Debug.print("Bird: " # name # " subImages count: " # debug_show(bd.subImages.size()) # " audioFile: " # debug_show(bd.audioFile));
-        };
+        let result = Iter.toArray(textMap.entries(birdLocations));
+        for ((name, bd) in result.vals()) {};
         result;
     };
 
     public query func getAllCoordinates() : async [Coordinate] {
         var allCoordinates = List.nil<Coordinate>();
-        for ((_, birdData) in textMap.entries(birdLocationsSnapshot)) {
+        for ((_, birdData) in textMap.entries(birdLocations)) {
             for (loc in birdData.locations.vals()) {
                 allCoordinates := List.push(loc.coordinate, allCoordinates);
             };
@@ -272,7 +272,7 @@ actor {
 
     public query func getAllLocationsWithNames() : async [LocationData] {
         var allLocations = List.nil<LocationData>();
-        for ((birdName, birdData) in textMap.entries(birdLocationsSnapshot)) {
+        for ((birdName, birdData) in textMap.entries(birdLocations)) {
             for (loc in birdData.locations.vals()) {
                 allLocations := List.push({ birdName; coordinate = loc.coordinate }, allLocations);
             };
@@ -282,7 +282,7 @@ actor {
 
     public query func getLocationCountByBird() : async [(Text, Int)] {
         var counts = List.nil<(Text, Int)>();
-        for ((birdName, birdData) in textMap.entries(birdLocationsSnapshot)) {
+        for ((birdName, birdData) in textMap.entries(birdLocations)) {
             counts := List.push((birdName, Array.size(birdData.locations)), counts);
         };
         List.toArray(counts);
@@ -290,19 +290,19 @@ actor {
 
     public query func getTotalLocationCount() : async Int {
         var total = 0;
-        for ((_, birdData) in textMap.entries(birdLocationsSnapshot)) {
+        for ((_, birdData) in textMap.entries(birdLocations)) {
             total += Array.size(birdData.locations);
         };
         total;
     };
 
     public query func getTotalBirdCount() : async Int {
-        Int.abs(textMap.size(birdLocationsSnapshot));
+        Int.abs(textMap.size(birdLocations));
     };
 
     public query func getAllLocationsForMap(filter : Text) : async [LocationData] {
         var allLocations = List.nil<LocationData>();
-        for ((birdName, birdData) in textMap.entries(birdLocationsSnapshot)) {
+        for ((birdName, birdData) in textMap.entries(birdLocations)) {
             if (filter == "all") {
                 for (loc in birdData.locations.vals()) {
                     allLocations := List.push({ birdName; coordinate = loc.coordinate }, allLocations);
@@ -349,6 +349,15 @@ actor {
         };
     };
 
+    public query func getMainImage(birdName : Text) : async ?Text {
+        let normalizedBirdName = normalizeBirdName(birdName);
+
+        switch (findBirdByNormalizedName(normalizedBirdName)) {
+            case (null) { null };
+            case (?(_, birdData)) { birdData.mainImage };
+        };
+    };
+
     // --- Bird Data Existence and Details ---
     public query func birdExists(birdName : Text) : async Bool {
         let normalizedBirdName = normalizeBirdName(birdName);
@@ -362,24 +371,17 @@ actor {
         let normalizedBirdName = normalizeBirdName(birdName);
         switch (findBirdByNormalizedName(normalizedBirdName)) {
             case (null) { null };
-            case (?(_, birdData)) {
-                Debug.print("getBirdDetails for " # birdName # ": subImages=" # debug_show(birdData.subImages.size()) # " audioFile=" # debug_show(birdData.audioFile));
-                ?birdData;
-            };
+            case (?(_, birdData)) { ?birdData };
         };
     };
 
     public query func getAllBirdDetails() : async [(Text, BirdData)] {
-        let result = Iter.toArray(textMap.entries(birdLocationsSnapshot));
-        Debug.print("getAllBirdDetails: returning " # debug_show(result.size()) # " records");
-        for ((name, bd) in result.vals()) {
-            Debug.print("Bird: " # name # " subImages=" # debug_show(bd.subImages.size()) # " audioFile=" # debug_show(bd.audioFile) # " locations=" # debug_show(bd.locations.size()));
-        };
+        let result = Iter.toArray(textMap.entries(birdLocations));
         result;
     };
 
     public query func getAllNormalizedBirdNames() : async [Text] {
-        let birdNames = Iter.toArray(textMap.keys(birdLocationsSnapshot));
+        let birdNames = Iter.toArray(textMap.keys(birdLocations));
         let normalizedNames = Array.map<Text, Text>(birdNames, func(name) { normalizeBirdName(name) });
         normalizedNames;
     };
@@ -394,7 +396,9 @@ actor {
             projectManagers = ["Mohammed Al Balushi"];
             designers = ["Nabila Al Jabri"];
             followers = ["Nasser Al Yaqoubi", "Salem Al Maskari", "Hazza Al Maamari", "Fatima Al Jabri"];
-            members = ["Youssef Al Alawi", "Hilal Al Shamsi", "Marwan Al Zaidi", "Ahlam Al Maqbali", "Amina Al Kindi"];
+            members = [
+                "Youssef Al Alawi", "Hilal Al Shamsi", "Marwan Al Zaidi", "Ahlam Al Maqbali", "Amina Al Kindi",
+            ];
         };
     };
 
@@ -418,7 +422,7 @@ actor {
     };
 
     func findBirdByNormalizedName(normalizedBirdName : Text) : ?(Text, BirdData) {
-        for ((key, value) in textMap.entries(birdLocationsSnapshot)) {
+        for ((key, value) in textMap.entries(birdLocations)) {
             if (normalizeBirdName(key) == normalizedBirdName) {
                 return ?(key, value);
             };
@@ -456,19 +460,20 @@ actor {
                     subImages = [];
                     notes = "";
                     localName = "";
+                    mainImage = null;
                 };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
+                birdLocations := textMap.put(birdLocations, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
                 let updatedLocations = Array.append(birdData.locations, [locationEntry]);
                 let updatedBirdData = { birdData with locations = updatedLocations };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
     };
 
-    public shared ({ caller }) func addBirdWithDetails(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, mountainName : Text, valleyName : Text, governorate : Text, locationDesc : Text, audioFilePath : ?Text, subImages : [Text]) : async () {
+    public shared ({ caller }) func addBirdWithDetails(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, mountainName : Text, valleyName : Text, governorate : Text, locationDesc : Text, audioFilePath : ?Text, subImages : [Text], mainImageFile : ?Text) : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("Unauthorized: Only admins can add bird data");
         };
@@ -497,19 +502,20 @@ actor {
                     subImages;
                     notes;
                     localName = "";
+                    mainImage = mainImageFile;
                 };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
+                birdLocations := textMap.put(birdLocations, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
                 let updatedLocations = Array.append(birdData.locations, [locationEntry]);
                 let updatedBirdData = { birdData with locations = updatedLocations };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
     };
 
-    public shared ({ caller }) func addOrUpdateBird(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, mountainName : Text, valleyName : Text, governorate : Text, locationDesc : Text, audioFilePath : ?Text, subImages : [Text]) : async () {
+    public shared ({ caller }) func addOrUpdateBird(arabicName : Text, scientificName : Text, englishName : Text, description : Text, notes : Text, latitude : Float, longitude : Float, mountainName : Text, valleyName : Text, governorate : Text, locationDesc : Text, audioFilePath : ?Text, subImages : [Text], mainImageFile : ?Text) : async () {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("Unauthorized: Only admins can add or update bird data");
         };
@@ -538,14 +544,15 @@ actor {
                     subImages;
                     notes;
                     localName = "";
+                    mainImage = mainImageFile;
                 };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
+                birdLocations := textMap.put(birdLocations, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
                 let updatedLocations = Array.append(birdData.locations, [locationEntry]);
                 let updatedBirdData = { birdData with locations = updatedLocations };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
     };
@@ -570,20 +577,21 @@ actor {
                     subImages = [];
                     notes = "";
                     localName = "";
+                    mainImage = null;
                 };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
+                birdLocations := textMap.put(birdLocations, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
                 let updatedBirdData = { birdData with audioFile = ?audioFilePath };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
 
         "✅ تم حفظ الملف بنجاح!";
     };
 
-    public shared ({ caller }) func addSubImage(birdName : Text, imagePath : Text) : async Text {
+    public shared ({ caller }) func setMainImage(birdName : Text, imagePath : Text) : async Text {
         if (not AccessControl.isAdmin(accessControlState, caller)) {
             Debug.trap("Unauthorized: Only admins can add sub images");
         };
@@ -603,14 +611,14 @@ actor {
                     subImages = [imagePath];
                     notes = "";
                     localName = "";
+                    mainImage = ?imagePath;
                 };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, newBirdData);
+                birdLocations := textMap.put(birdLocations, normalizedBirdName, newBirdData);
                 nextBirdId += 1;
             };
             case (?(originalName, birdData)) {
-                let updatedSubImages = Array.append(birdData.subImages, [imagePath]);
-                let updatedBirdData = { birdData with subImages = updatedSubImages };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                let updatedBirdData = { birdData with mainImage = ?imagePath };
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
 
@@ -648,7 +656,7 @@ actor {
             case (null) { Debug.trap("Bird not found: " # birdName) };
             case (?(originalName, birdData)) {
                 let updatedBirdData = { birdData with description = newDescription; notes = newNotes };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
     };
@@ -666,7 +674,7 @@ actor {
                 let updatedBirdData = {
                     birdData with arabicName; scientificName; englishName; description; notes
                 };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
     };
@@ -680,7 +688,7 @@ actor {
         switch (findBirdByNormalizedName(normalizedBirdName)) {
             case (null) { Debug.trap("Bird not found: " # birdName) };
             case (?(originalName, _)) {
-                birdLocationsSnapshot := textMap.delete(birdLocationsSnapshot, originalName);
+                birdLocations := textMap.delete(birdLocations, originalName);
             };
         };
     };
@@ -697,7 +705,7 @@ actor {
             case (?(originalName, birdData)) {
                 let updatedSubImages = Array.filter<Text>(birdData.subImages, func(img) { img != imagePath });
                 let updatedBirdData = { birdData with subImages = updatedSubImages };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
     };
@@ -713,7 +721,7 @@ actor {
             case (null) { Debug.trap("Bird not found: " # birdName) };
             case (?(originalName, birdData)) {
                 let updatedBirdData = { birdData with audioFile = null };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
     };
@@ -730,7 +738,7 @@ actor {
             case (?(originalName, birdData)) {
                 let updatedSubImages = Array.filter<Text>(birdData.subImages, func(img) { img != imagePath });
                 let updatedBirdData = { birdData with subImages = updatedSubImages };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
 
                 Registry.remove(registry, imagePath);
             };
@@ -752,11 +760,27 @@ actor {
 
         Registry.remove(registry, imagePath);
 
-        for ((birdName, birdData) in textMap.entries(birdLocationsSnapshot)) {
+        for ((birdName, birdData) in textMap.entries(birdLocations)) {
             let updatedSubImages = Array.filter<Text>(birdData.subImages, func(img) { img != imagePath });
             if (Array.size(updatedSubImages) != Array.size(birdData.subImages)) {
                 let updatedBirdData = { birdData with subImages = updatedSubImages };
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, birdName, updatedBirdData);
+                birdLocations := textMap.put(birdLocations, birdName, updatedBirdData);
+            };
+        };
+    };
+
+    public shared ({ caller }) func deleteMainImageForBird(birdName : Text) : async () {
+        if (not AccessControl.isAdmin(accessControlState, caller)) {
+            Debug.trap("Unauthorized: Only admins can delete main image");
+        };
+
+        let normalizedBirdName = normalizeBirdName(birdName);
+
+        switch (findBirdByNormalizedName(normalizedBirdName)) {
+            case (null) { Debug.trap("Bird not found: " # birdName) };
+            case (?(originalName, birdData)) {
+                let updatedBirdData = { birdData with mainImage = null };
+                birdLocations := textMap.put(birdLocations, originalName, updatedBirdData);
             };
         };
     };
@@ -767,11 +791,11 @@ actor {
             Debug.trap("Unauthorized: Only admins can bulk save all bird data");
         };
 
-        birdLocationsSnapshot := textMap.empty();
+        birdLocations := textMap.empty();
 
         for ((birdName, birdData) in birdDataArray.vals()) {
             let normalizedBirdName = normalizeBirdName(birdName);
-            birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, birdData);
+            birdLocations := textMap.put(birdLocations, normalizedBirdName, birdData);
         };
     };
 
@@ -785,7 +809,7 @@ actor {
         switch (findBirdByNormalizedName(normalizedBirdName)) {
             case (null) { Debug.trap("Bird not found: " # birdName) };
             case (?(originalName, _)) {
-                birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, originalName, updatedData);
+                birdLocations := textMap.put(birdLocations, originalName, updatedData);
             };
         };
     };
@@ -796,7 +820,7 @@ actor {
         };
 
         let normalizedBirdName = normalizeBirdName(birdData.arabicName);
-        birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, birdData);
+        birdLocations := textMap.put(birdLocations, normalizedBirdName, birdData);
     };
 
     public shared ({ caller }) func deleteBirdById(birdId : Nat) : async () {
@@ -805,9 +829,9 @@ actor {
         };
 
         var found = false;
-        for ((_, birdData) in textMap.entries(birdLocationsSnapshot)) {
+        for ((_, birdData) in textMap.entries(birdLocations)) {
             if (birdData.id == birdId) {
-                birdLocationsSnapshot := textMap.delete(birdLocationsSnapshot, normalizeBirdName(birdData.arabicName));
+                birdLocations := textMap.delete(birdLocations, normalizeBirdName(birdData.arabicName));
                 found := true;
             };
         };
@@ -822,84 +846,12 @@ actor {
             Debug.trap("Unauthorized: Only admins can bulk save bird data array");
         };
 
-        birdLocationsSnapshot := textMap.empty();
+        birdLocations := textMap.empty();
 
         for (birdData in birdDataArray.vals()) {
             let normalizedBirdName = normalizeBirdName(birdData.arabicName);
-            birdLocationsSnapshot := textMap.put(birdLocationsSnapshot, normalizedBirdName, birdData);
+            birdLocations := textMap.put(birdLocations, normalizedBirdName, birdData);
         };
-    };
-
-    // --- Utility Functions ---
-    func createSnapshot() : OrderedMap.Map<Text, BirdData> {
-        textMap.map<BirdData, BirdData>(birdLocationsSnapshot, func(_, b) = b);
-    };
-
-    public shared ({ caller }) func takeSnapshot() : async () {
-        if (not AccessControl.isAdmin(accessControlState, caller)) {
-            Debug.trap("Unauthorized: Only admins can take snapshots");
-        };
-        let snapshot = createSnapshot();
-        birdLocationsSnapshot := snapshot;
-    };
-
-    public query func getSnapshotDetails() : async Text {
-        let size = textMap.size(birdLocationsSnapshot);
-        "عدد السجلات في اللقطة الحالية: " # debug_show(size);
-    };
-
-    public shared ({ caller }) func conditionalDrop() : async () {
-        if (not AccessControl.isAdmin(accessControlState, caller)) {
-            Debug.trap("Unauthorized: Only admins can perform conditional drop");
-        };
-
-        let now : Int = 0;
-
-        if (isSnapshotOneDayOld(birdLocationsSnapshot, now)) {
-            birdLocationsSnapshot := createSnapshot();
-        };
-    };
-
-    func isSnapshotOneDayOld(snapshot : OrderedMap.Map<Text, BirdData>, now : Int) : Bool {
-        let oneDayInNanos = 24 * 60 * 60 * 1_000_000_000;
-        let snapshotTime = getSnapshotTime(snapshot);
-        now - snapshotTime > oneDayInNanos;
-    };
-
-    func getSnapshotTime(_snapshot : OrderedMap.Map<Text, BirdData>) : Int {
-        0;
-    };
-
-    // Start and Complete Backup Process (Admin-only)
-    public shared ({ caller }) func startBackupProcess() : async () {
-        if (not AccessControl.isAdmin(accessControlState, caller)) {
-            Debug.trap("Unauthorized: Only admins can start backup process");
-        };
-        isBackupInProgress := true;
-    };
-
-    public shared ({ caller }) func completeBackupProcess(updatedData : [(Text, BirdData)]) : async () {
-        if (not AccessControl.isAdmin(accessControlState, caller)) {
-            Debug.trap("Unauthorized: Only admins can complete backup process");
-        };
-        isBackupInProgress := false;
-        birdLocationsBackup := textMap.empty();
-        for ((name, data) in updatedData.vals()) {
-            birdLocationsBackup := textMap.put(birdLocationsBackup, name, data);
-        };
-    };
-
-    public shared ({ caller }) func restoreSnapshot() : async () {
-        if (not AccessControl.isAdmin(accessControlState, caller)) {
-            Debug.trap("Unauthorized: Only admins can restore snapshots");
-        };
-        birdLocationsSnapshot := createSnapshot();
-    };
-
-    public query ({ caller }) func isBackupProcessActive() : async Bool {
-        if (not AccessControl.isAdmin(accessControlState, caller)) {
-            Debug.trap("Unauthorized: Only admins can check backup process status");
-        };
-        isBackupInProgress;
     };
 };
+

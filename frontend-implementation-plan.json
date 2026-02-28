@@ -1,64 +1,56 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Restore all bird data and admin control buttons after v598 regression",
+  "title": "Fix BirdGallery: show newly added birds and enable image/audio upload in edit dialog",
   "requirements": [
     {
-      "id": "REQ-144",
-      "summary": "Restore all five admin-only action buttons in BirdDataTable (إضافة, تعديل, حفظ, حذف, تحرير) for authenticated admin users, ensuring isAdmin check uses useState + useEffect pattern that triggers re-render after actor/identity resolves",
+      "id": "REQ-1",
+      "summary": "Invalidate gallery query cache after adding a new bird so it appears immediately without page reload",
       "acceptanceCriteria": [
-        "Authenticated admin user sees all five action buttons (إضافة, تعديل, حفظ, حذف, تحرير) in BirdDataTable",
-        "Add button appears in the toolbar/header area and creates a new empty editable row",
-        "Edit button on each row switches it into inline edit mode",
-        "Save button replaces Edit when a row is in edit mode and commits changes to the backend",
-        "Delete button on each row removes the record from the backend",
-        "Update/Edit (تحرير) button on each row provides alternative update action",
-        "Non-admin and unauthenticated users do not see any action buttons",
-        "All existing column definitions, RTL orientation, horizontal scrolling, color scheme, and data-fetching logic are unchanged"
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/BirdDataTable.tsx",
-          "operation": "modify",
-          "description": "Restore all five admin-only action buttons (إضافة in toolbar, تعديل/حفظ/حذف/تحرير on each row) by implementing a useState + useEffect pattern for isAdmin that properly triggers re-render after the actor and identity resolve. Ensure the isAdmin state is initially false, then updated in useEffect when isCallerAdmin() query resolves successfully. Keep all existing column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, and data-fetching logic exactly as they are. The Add button must insert a new empty editable row at the top of the table. The Edit button must switch the row into inline edit mode. The Save button must replace Edit when in edit mode and commit changes to the backend. The Delete button must remove the record from the backend. The Update/Edit (تحرير) button must provide alternative update action. Use the authorization component's isCallerAdmin backend capability via React Query to determine admin status. Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-145",
-      "summary": "Restore all admin-only action buttons in BirdGallery (إضافة, حفظ, حذف, تحرير, إضافة الصوت) for authenticated admin users, ensuring isAdmin check uses useState + useEffect pattern that triggers re-render after actor/identity resolves",
-      "acceptanceCriteria": [
-        "Authenticated admin user sees Add (إضافة), Save (حفظ), Delete (حذف), Update/Edit (تحرير), and Add Audio (إضافة الصوت) buttons in BirdGallery",
-        "Add button opens a form/modal for uploading main image and sub-images for a new bird record",
-        "Save button on each card commits pending edits to the backend",
-        "Delete button on each card removes the record from the backend",
-        "Update/Edit button on each card switches the entry into an editable state",
-        "Add Audio button opens a file picker restricted to audio types and uploads the audio blob to the backend",
-        "Non-admin and unauthenticated users do not see any action buttons",
-        "Existing gallery search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal are unchanged"
+        "When a new bird is added via the gallery's add dialog, the bird's card appears in the gallery immediately after the dialog closes.",
+        "No full page reload is required to see the new bird in the gallery.",
+        "The gallery list query is refetched/invalidated on successful bird creation."
       ],
       "file_operations": [
         {
           "path": "frontend/src/components/BirdGallery.tsx",
           "operation": "modify",
-          "description": "Restore all admin-only action buttons (إضافة in toolbar, حفظ/حذف/تحرير/إضافة الصوت on each card) by implementing a useState + useEffect pattern for isAdmin that properly triggers re-render after the actor and identity resolve. Ensure the isAdmin state is initially false, then updated in useEffect when isCallerAdmin() query resolves successfully. Keep all existing gallery search, card layout, image display, RTL orientation, data-fetching logic, and image-click modal exactly as they are. The Add button must open a form/modal for uploading main image and sub-images for a new bird record. The Save button on each card must commit pending edits to the backend. The Delete button on each card must remove the record from the backend. The Update/Edit (تحرير) button on each card must switch the entry into an editable state. The Add Audio (إضافة الصوت) button on each card must open a file picker restricted to audio file types and upload the selected audio blob to the backend using the blob-storage component. Use the authorization component's isCallerAdmin backend capability via React Query to determine admin status. Verify the blob-storage component's usage instructions before implementing file uploads."
+          "description": "In the handleAddBird function (within the add dialog's onSubmit), after the successful addBirdWithDetails mutation, call queryClient.invalidateQueries({ queryKey: ['getAllBirdDetails'] }) to refetch the bird list. This ensures the newly added bird appears in the gallery grid immediately without requiring a page reload."
         }
       ]
     },
     {
-      "id": "REQ-146",
-      "summary": "Restore all bird data records displayed in BirdDataTable by fixing the data-fetching logic if broken by v598, ensuring the table correctly fetches and displays all bird records returned by the backend via React Query / useActor pattern",
+      "id": "REQ-2",
+      "summary": "Ensure the edit button is visible and functional for each bird card in the gallery",
       "acceptanceCriteria": [
-        "All bird records stored in the backend are visible in the BirdDataTable on the data page",
-        "Table renders all rows returned by the backend without deduplication or collapse",
-        "Data loads correctly on first render without requiring page refresh",
-        "No regression to existing table structure, columns, styling, or admin buttons"
+        "An edit button or icon is visible on each bird card in the gallery for users with admin access.",
+        "Clicking the edit button opens the edit dialog pre-populated with the bird's current data.",
+        "The edit option does not disappear or fail to render after adding a new bird."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/BirdDataTable.tsx",
+          "path": "frontend/src/components/BirdGallery.tsx",
           "operation": "modify",
-          "description": "Identify and fix any data-fetching logic issues introduced in v598 that prevent bird records from loading in the table. Ensure the component correctly uses the existing React Query hook (likely useGetAllBirdDetails or similar from useQueries.ts) with the useActor pattern to fetch all bird records from the backend. Verify the query is enabled only when the actor is available, that loading states are handled properly, and that all returned records are displayed without deduplication or filtering. Do not change column definitions, layout, RTL orientation, horizontal scrolling, color scheme, font sizes, admin guard logic, or action buttons. Only fix the data-fetching and rendering logic if it is broken."
+          "description": "Review the bird card rendering logic to ensure the edit button/icon is always rendered when isAdmin is true. Verify that the edit button's onClick handler correctly sets the selectedBirdForEdit state and opens the edit dialog. If the edit button is conditionally hidden or not wired, add or fix the button element with proper event handling. Ensure the edit dialog's open state is controlled by checking if selectedBirdForEdit is not null."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Add file upload inputs to the edit dialog for replacing bird image and audio, storing blobs and updating the bird record",
+      "acceptanceCriteria": [
+        "The edit dialog in BirdGallery contains a file input for uploading a new image (accepts common image formats: jpg, png, webp).",
+        "The edit dialog in BirdGallery contains a file input for uploading a new audio file (accepts common audio formats: mp3, wav, ogg).",
+        "When a new image or audio file is selected and the edit form is submitted, the blob is uploaded to the backend and the bird record is updated with the new media reference.",
+        "If no new file is selected, the existing image/audio is preserved.",
+        "No other components or pages in the application are modified.",
+        "After a successful edit save, the gallery card reflects the updated image."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/BirdGallery.tsx",
+          "operation": "modify",
+          "description": "In the edit dialog form: (1) Add two useState hooks to track selected image and audio files (e.g., selectedImageFile and selectedAudioFile, both File | null). (2) Add a file input for image with accept=\"image/jpeg,image/png,image/webp\" and onChange handler that stores the selected file in selectedImageFile. (3) Add a file input for audio with accept=\"audio/mp3,audio/wav,audio/ogg\" and onChange handler that stores the selected file in selectedAudioFile. (4) In the edit dialog's onSubmit handler, before calling the saveBirdData mutation: if selectedImageFile exists, call uploadFile from useFileUpload (imported from '../blob-storage/FileStorage') to upload the image blob, then update the bird's mainImage field with the returned path; if selectedAudioFile exists, similarly upload it and update the bird's audioFile field with the returned path. (5) After successful mutation, call queryClient.invalidateQueries({ queryKey: ['getAllBirdDetails'] }) to refresh the gallery. (6) Reset selectedImageFile and selectedAudioFile to null when the dialog closes or after a successful save. Verify the blob-storage component's usage instructions before implementing the upload logic."
         }
       ]
     }
